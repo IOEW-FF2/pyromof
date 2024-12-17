@@ -3,12 +3,13 @@ from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 import logging
-logging.basicConfig(filename='logging.log', format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', encoding='utf-8', level=logging.INFO)
+logging.basicConfig(filename=os.path.join('meta_info','logging.log'), format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', encoding='utf-8', level=logging.INFO)
 
 from oemof.solph import EnergySystem, Model, processing, components, buses, flows, create_time_index, views
 
 # scenario definition
 ROOT_PATH = Path(__file__).parent
+RESULTS = os.path.join(ROOT_PATH, 'results')
 
 es = EnergySystem()
 es.restore(ROOT_PATH , 'es_dump.oemof')
@@ -27,7 +28,7 @@ nodes = [x for x in es.results.keys() if x[1] is None] # This is only storage
 
 # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
 results_pyrolysis_energy = views.node(es.results, 'conversion_orc')
-results_pyrolysis_energy["sequences"].to_csv(str(ROOT_PATH / "results_pyrolysis_energy.csv"))
+results_pyrolysis_energy["sequences"].to_csv(os.path.join(RESULTS, "results_pyrolysis_energy.csv"))
 results_pyrolysis_material = views.node(es.results, 'conversion_bc')
 results_pyrolysis = views.node(es.results, 'pyrolysis')
 
@@ -46,7 +47,7 @@ def plot_figures_for(element: dict, filename):
     axes.legend(labels=labels)
     axes.set_ylabel('kWh')
     figure.subplots_adjust(top=0.8)
-    figure.savefig(str(ROOT_PATH / filename))
+    figure.savefig(os.path.join(RESULTS, filename))
 
 # plot_figures_for(results_pyrolyse)
 # plot_figures_for(results_pyrolyse_materiell)

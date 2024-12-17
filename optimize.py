@@ -6,6 +6,7 @@ from pathlib import Path
 from oemof.network.graph import create_nx_graph
 
 ROOT_PATH = Path(__file__).parent
+META_INFO = os.path.join(ROOT_PATH, 'meta_info')
 
 # Reading in the raw data
 buses = pd.read_excel("input_data.xlsx", sheet_name = "buses")
@@ -16,7 +17,7 @@ transformers = pd.read_excel("input_data.xlsx", sheet_name = "transformer")
 storage = pd.read_excel("input_data.xlsx", sheet_name = "storage")
 
 # Definition of the time period
-time = pd.date_range("2023-01-02", periods=145, freq="h") # 145 Would also be possible
+time = pd.date_range("2023-01-02", periods=145, freq="h")
 
 # Model definition
 es = solph.EnergySystem(timeindex=time)
@@ -116,13 +117,15 @@ print("The model has been constructed.")
 om = solph.Model(es)
 
 # Store lp file for debugging
-file_path = os.path.join(ROOT_PATH, "lp_file.lp")
+file_path = os.path.join(META_INFO, "lp_file.lp")
 om.write(file_path, io_options = {"symbolic_solver_labels": True})
 
 # Solve the system
 om.solve(solver="cbc")
 
-graph = create_nx_graph(es, filename='es_graph.graphml')
+# Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
+filename = os.path.join(META_INFO, 'es_graph.graphml')
+graph = create_nx_graph(es, filename=filename)
 
 # get results from the solved model
 es.params = solph.processing.parameter_as_dict(es)
