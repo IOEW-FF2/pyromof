@@ -40,7 +40,10 @@ def plot_figures_for(element: dict, filename):
         bbox_to_anchor=(0.5, 1.25),
         ncol=2,
     )
-    #axes.legend(labels=['biomass input', 'electricity input', 'biochar output', 'syngas output'])
+    # labels = [element["sequences"].columns[i][0][0] for i in range(len(element["sequences"].columns))] 
+    # # Would be nice to shorten the labels, but it's not always the first element that is relevant. This depends on whether the bus is an in- or outflow.
+    labels = [element["sequences"].columns[i][0] for i in range(len(element["sequences"].columns))]
+    axes.legend(labels=labels)
     axes.set_ylabel('kWh')
     figure.subplots_adjust(top=0.8)
     figure.savefig(str(ROOT_PATH / filename))
