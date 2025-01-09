@@ -15,8 +15,10 @@ es = EnergySystem()
 es.restore(ROOT_PATH , 'es_dump.oemof')
 
 logging.info('The EnergySystem is restored.')
-# now we use the write results method to write the scalar results in oemof-tabular
-# format
+
+# Meta-information could be assessed in es.results["meta"] to retreive the objective variable.
+
+es.results = es.results["main"]
 
 flows = [x for x in es.results.keys() if x[1] is not None]
 nodes = [x for x in es.results.keys() if x[1] is None] # This is only storage
