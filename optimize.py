@@ -1,6 +1,5 @@
 from oemof import solph
 import pandas as pd
-import numpy as np
 
 import os
 from pathlib import Path
@@ -17,9 +16,14 @@ sinks = pd.read_excel("input_data.xlsx", sheet_name = "sink")
 sources = pd.read_excel("input_data.xlsx", sheet_name = "source")
 transformers = pd.read_excel("input_data.xlsx", sheet_name = "transformer")
 storage = pd.read_excel("input_data.xlsx", sheet_name = "storage")
+general = pd.read_excel("input_data.xlsx", sheet_name = "general")
 
 # Definition of the time period
 time = pd.date_range("2023-01-02", periods=145, freq="h")
+
+# Read in wacc for investment optimization
+wacc = general.loc[general["item"] == "wacc", "value"].item()
+
 
 # Model definition
 es = solph.EnergySystem(timeindex=time)
@@ -30,7 +34,7 @@ busd = {}
 # Create Bus objects from buses table
 
 for i, b in buses.iterrows():
-    bus = solph.Bus(label=b["label"])
+    bus = solph.Bus(label=b["label"], type="bus")
     nodes.append(bus)
     busd[b["label"]] = bus
     es.add(bus)
@@ -148,7 +152,7 @@ for col in sources_df.columns:
 
 sinks_df = pd.DataFrame(index=time, columns=sinks_comp)
 for col in sinks_df.columns:
-    sinks_df[col] = [b for a, b in om.flows.items() if a[1] == biochar_market][0].variable_costs
+    sinks_df[col] = [b for a, b in om.flows.items() if a[1] == col][0].variable_costs
 
 variable_costs = pd.concat([sources_df, sinks_df], axis=1)
 variable_costs.to_csv(os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"))
