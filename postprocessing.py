@@ -18,6 +18,9 @@ logging.info('The EnergySystem is restored.')
 
 # Meta-information could be assessed in es.results["meta"] to retreive the objective variable.
 
+scalar_results = {}
+scalar_results["objective"] = es.results["meta"]["objective"]
+
 es.results = es.results["main"]
 
 nodes = [x for x in es.results.keys() if x[1] is None] # This is only storage
@@ -59,8 +62,8 @@ plot_figures_for(results_pyrolysis_material, "pyrolysis_outputs_material.png")
 plot_figures_for(results_pyrolysis, "pyrolysis.png")
 plot_figures_for(results_heat_demand, "results_heat_demand.png")
 
-## Multiply flow results data and variable costs for every time step to obtain optimal variable costs
-## per flow per timestep
+# Multiply flow results data and variable costs for every time step to obtain optimal variable costs
+# per flow per timestep
 
 flows = convert_result_sequences_to_df(results_data = es.results)
 flows.to_csv(os.path.join(RESULTS, "flows.csv"), sep=";")
@@ -70,6 +73,15 @@ varc = varc.set_index(flows.index[:-1]) # -1 because the index in flows in one t
 
 effective_variable_costs = pd.DataFrame(index=flows.index, columns=flows.columns)
 for col in effective_variable_costs.columns:
-    print(col)
     effective_variable_costs[col] = flows[col] * varc[col]
-print(effective_variable_costs)
+effective_variable_costs.to_csv(os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";")
+
+# Calculate sums of the effective variable costs and append them to the scalar results if they are not 0
+
+sums = effective_variable_costs.sum(axis=0)
+non_zero_dict = {index: value for index, value in sums.items() if value != 0}
+scalar_results.update(non_zero_dict)
+
+# Save scalar results when all are collected
+scalar_results = pd.DataFrame.from_dict(scalar_results, orient='index')
+scalar_results.to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")
