@@ -145,17 +145,14 @@ es.params = solph.processing.parameter_as_dict(es)
 es.results["main"] = solph.processing.results(om)
 es.results["meta"] = solph.processing.meta_results(om)
 
-# Store variable costs for sources and sinks per timestep in a dataframe
-sources_df = pd.DataFrame(index=time, columns=sources_comp)
-for col in sources_df.columns:
-    sources_df[col] = [b for a, b in om.flows.items() if a[0] == col][0].variable_costs
+flows = solph.processing.convert_keys_to_strings(om.flows)
+columns = [a for a,b in flows.items()]
+df = pd.DataFrame(columns=columns)
+for col in df.columns:
+    df[col] = [b for a,b in flows.items() if a == col][0].variable_costs
+variable_costs = df
+variable_costs.to_csv(os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";")
 
-sinks_df = pd.DataFrame(index=time, columns=sinks_comp)
-for col in sinks_df.columns:
-    sinks_df[col] = [b for a, b in om.flows.items() if a[1] == col][0].variable_costs
-
-variable_costs = pd.concat([sources_df, sinks_df], axis=1)
-variable_costs.to_csv(os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"))
 # dump the EnergySystem
 es.dump(dpath=DUMPING_SPACE, filename='es_dump.oemof')
 print("The results have been saved.")
