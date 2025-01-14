@@ -18,8 +18,17 @@ logging.info('The EnergySystem is restored.')
 
 # Meta-information could be assessed in es.results["meta"] to retreive the objective variable.
 
-scalar_results = {}
-scalar_results["objective"] = es.results["meta"]["objective"]
+scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
+
+def add_items_to_scalar_results(dictionary:dict, type:str, scarar_results = scalar_results):
+    new_df = pd.DataFrame({
+        "variable": list(dictionary.keys()),
+        'type': [type] * len(dictionary),
+        'value' : list(dictionary.values())
+    })
+    return pd.concat([scalar_results, new_df], ignore_index=True)
+
+scalar_results = add_items_to_scalar_results({"objective": es.results["meta"]["objective"]}, "objective", scalar_results)
 
 es.results = es.results["main"]
 
@@ -80,8 +89,7 @@ effective_variable_costs.to_csv(os.path.join(RESULTS, "effective_variable_costs.
 
 sums = effective_variable_costs.sum(axis=0)
 non_zero_dict = {index: value for index, value in sums.items() if value != 0}
-scalar_results.update(non_zero_dict)
+scalar_results = add_items_to_scalar_results(non_zero_dict, "sum of variable costs", scalar_results)
 
 # Save scalar results when all are collected
-scalar_results = pd.DataFrame.from_dict(scalar_results, orient='index')
 scalar_results.to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")
