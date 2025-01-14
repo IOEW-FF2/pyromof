@@ -10,9 +10,10 @@ from oemof.solph import EnergySystem, Model, processing, components, buses, flow
 # scenario definition
 ROOT_PATH = Path(__file__).parent
 RESULTS = os.path.join(ROOT_PATH, 'results')
+DUMPING_SPACE = os.path.join(ROOT_PATH, 'dumping_space')
 
 es = EnergySystem()
-es.restore(ROOT_PATH , 'es_dump.oemof')
+es.restore(DUMPING_SPACE , 'es_dump.oemof')
 
 logging.info('The EnergySystem is restored.')
 
@@ -22,6 +23,13 @@ es.results = es.results["main"]
 
 flows = [x for x in es.results.keys() if x[1] is not None]
 nodes = [x for x in es.results.keys() if x[1] is None] # This is only storage
+
+results = processing.convert_keys_to_strings(es.results)
+flows = [x for x in results.keys() if x[1] is not None]
+df = pd.DataFrame(columns=flows)
+for flow in flows:
+    df[flow] = results[flow]['sequences']
+df.to_csv(os.path.join(RESULTS, "flows.csv"), sep=";")
 
 # Simple manual workaround to assess flow-data: Search in list(es.results.keys()) for the desired key
 # and then print the sequence as a dataframe: list(es.results.values())[10]["sequences"]
