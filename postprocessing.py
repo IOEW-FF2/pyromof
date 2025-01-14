@@ -7,7 +7,6 @@ logging.basicConfig(filename=os.path.join('meta_info','logging.log'), format='%(
 
 from oemof.solph import EnergySystem, Model, processing, components, buses, flows, create_time_index, views
 
-# scenario definition
 ROOT_PATH = Path(__file__).parent
 RESULTS = os.path.join(ROOT_PATH, 'results')
 DUMPING_SPACE = os.path.join(ROOT_PATH, 'dumping_space')
@@ -21,20 +20,15 @@ logging.info('The EnergySystem is restored.')
 
 es.results = es.results["main"]
 
-flows = [x for x in es.results.keys() if x[1] is not None]
 nodes = [x for x in es.results.keys() if x[1] is None] # This is only storage
 
-results = processing.convert_keys_to_strings(es.results)
-flows = [x for x in results.keys() if x[1] is not None]
-df = pd.DataFrame(columns=flows)
-for flow in flows:
-    df[flow] = results[flow]['sequences']
-df.to_csv(os.path.join(RESULTS, "flows.csv"), sep=";")
-
-# Simple manual workaround to assess flow-data: Search in list(es.results.keys()) for the desired key
-# and then print the sequence as a dataframe: list(es.results.values())[10]["sequences"]
-
-# plots and result processing
+def convert_result_sequences_to_df(results_data = es.results):
+    results = processing.convert_keys_to_strings(results_data)
+    flows = [x for x in results.keys() if x[1] is not None]
+    df = pd.DataFrame(columns=flows)
+    for flow in flows:
+        df[flow] = results[flow]['sequences']
+    return df
 
 # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
 results_pyrolysis_energy = views.node(es.results, 'conversion_orc')
@@ -64,3 +58,18 @@ plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
 plot_figures_for(results_pyrolysis_material, "pyrolysis_outputs_material.png")
 plot_figures_for(results_pyrolysis, "pyrolysis.png")
 plot_figures_for(results_heat_demand, "results_heat_demand.png")
+
+## Multiply flow results data and variable costs for every time step to obtain optimal variable costs
+## per flow per timestep
+
+flows = convert_result_sequences_to_df(results_data = es.results)
+flows.to_csv(os.path.join(RESULTS, "flows.csv"), sep=";")
+flows = pd.read_csv(os.path.join(RESULTS, "flows.csv"), sep=";", index_col=0)
+varc = pd.read_csv(os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";", index_col=0)
+varc = varc.set_index(flows.index[:-1]) # -1 because the index in flows in one time step longer than the data
+
+effective_variable_costs = pd.DataFrame(index=flows.index, columns=flows.columns)
+for col in effective_variable_costs.columns:
+    print(col)
+    effective_variable_costs[col] = flows[col] * varc[col]
+print(effective_variable_costs)
