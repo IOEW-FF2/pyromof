@@ -105,20 +105,6 @@ heat_source = solph.components.Source(
 )
 
 ### TRANSFORMER
-row = transformers.loc[transformers.label == "conversion_bc"]
-conversion_bc = solph.components.Transformer(
-    label="conversion_bc",
-    inputs={busd[row.bus_in_1.item()]: solph.Flow()},
-    outputs={
-        busd[row.bus_out_1.item()]: solph.Flow(),
-        busd[row.bus_out_2.item()]: solph.Flow(),
-    },
-    conversion_factors={
-        busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-        busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-        busd[row.bus_out_2.item()]: row.eff_out_2.item(),
-    },
-)
 
 row = transformers.loc[transformers.label == "conversion_orc"]
 conversion_orc = solph.components.Transformer(
@@ -145,12 +131,14 @@ pyrolysis = solph.components.Transformer(
     outputs={
         busd[row.bus_out_1.item()]: solph.Flow(),
         busd[row.bus_out_2.item()]: solph.Flow(),
+        busd[row.bus_out_3.item()]: solph.Flow(),
     },
     conversion_factors={
         busd[row.bus_in_1.item()]: row.eff_in_1.item(),
         busd[row.bus_in_2.item()]: row.eff_in_2.item(),
         busd[row.bus_out_1.item()]: row.eff_out_1.item(),
         busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+        busd[row.bus_out_3.item()]: row.eff_out_3.item(),
     },
 )
 
@@ -163,7 +151,7 @@ sinks_comp = [
     heat_demand_with_orc,
 ]
 sources_comp = [biomass, heat_source]
-transformers_comp = [conversion_bc, conversion_orc, pyrolysis]
+transformers_comp = [conversion_orc, pyrolysis]
 all_components = sinks_comp + sources_comp + transformers_comp
 es.add(*all_components)  # The star dissolves the list
 

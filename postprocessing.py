@@ -66,9 +66,8 @@ def convert_result_sequences_to_df(results_data=es.results):
 
 # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
 results_pyrolysis_energy = views.node(es.results, "conversion_orc")
-results_pyrolysis_material = views.node(es.results, "conversion_bc")
 results_pyrolysis = views.node(es.results, "pyrolysis")
-results_heat_demand = views.node(es.results, "heat_demand")
+results_heat_demand = views.node(es.results, "heat_demand_ht")
 
 
 def plot_figures_for(element: dict, filename):
@@ -95,7 +94,6 @@ def plot_figures_for(element: dict, filename):
 
 
 plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
-plot_figures_for(results_pyrolysis_material, "pyrolysis_outputs_material.png")
 plot_figures_for(results_pyrolysis, "pyrolysis.png")
 plot_figures_for(results_heat_demand, "results_heat_demand.png")
 
