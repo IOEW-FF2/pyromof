@@ -4,6 +4,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import logging
 
+from oemof.solph import (
+    EnergySystem,
+    processing,
+    views,
+)
+
 logging.basicConfig(
     filename=os.path.join("meta_info", "logging.log"),
     format="%(asctime)s %(message)s",
@@ -12,16 +18,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-from oemof.solph import (
-    EnergySystem,
-    Model,
-    processing,
-    components,
-    buses,
-    flows,
-    create_time_index,
-    views,
-)
 
 ROOT_PATH = Path(__file__).parent
 RESULTS = os.path.join(ROOT_PATH, "results")
@@ -85,7 +81,8 @@ def plot_figures_for(element: dict, filename):
         ncol=2,
     )
     # labels = [element["sequences"].columns[i][0][0] for i in range(len(element["sequences"].columns))]
-    # # Would be nice to shorten the labels, but it's not always the first element that is relevant. This depends on whether the bus is an in- or outflow.
+    # # Would be nice to shorten the labels, but it's not always the first element that is relevant.
+    # This depends on whether the bus is an in- or outflow.
     labels = [
         element["sequences"].columns[i][0]
         for i in range(len(element["sequences"].columns))
@@ -122,7 +119,8 @@ effective_variable_costs.to_csv(
     os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
 )
 
-# Calculate sums of the effective variable costs and append them to the scalar results if they are not 0
+# Calculate sums of the effective variable costs and append them to the scalar
+# results if they are not 0
 
 sums = effective_variable_costs.sum(axis=0)
 non_zero_dict = {index: value for index, value in sums.items() if value != 0}
