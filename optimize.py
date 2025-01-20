@@ -61,19 +61,17 @@ electricity_grid = solph.components.Sink(
     inputs = {busd[row.bus.item()]: solph.Flow(variable_costs=row.variable_costs.item())}
 )
 
-row = sinks.loc[sinks.label == "heat_demand", :]
+row = sinks.loc[sinks.label == "heat_demand_ht", :]
 heat_demand = solph.components.Sink(
-    label = "heat_demand",
+    label = "heat_demand_ht",
     inputs = {busd[row.bus.item()]: solph.Flow(nominal_value=row.amount.item(), fix=profiles[row.profile.item()], variable_costs=row.variable_costs.item())}
 )
 
-row = sinks.loc[sinks.label == "heat_demand_with_orc", :]
+row = sinks.loc[sinks.label == "heat_demand_lt", :]
 heat_demand_with_orc = solph.components.Sink(
-    label = "heat_demand_with_orc",
+    label = "heat_demand_lt",
     inputs = {busd[row.bus.item()]: solph.Flow(nominal_value=row.amount.item(), fix=profiles[row.profile.item()], variable_costs=row.variable_costs.item())}
 )
-
-# TODO: b_heat_2 muss auch Input für heat_demand sein. Dazu muss die Tabellenstruktur verändert werden, um mehrere Inputs für die gleiche Senke zu erlauben.
 
 ### SOURCES
 row = sources.loc[sources.label == "biomass", :]
