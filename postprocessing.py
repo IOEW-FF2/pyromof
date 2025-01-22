@@ -58,15 +58,18 @@ nodes = [x for x in es.results.keys() if x[1] is None]  # This is only storage
 def convert_result_sequences_to_df(results_data=es.results):
     results = processing.convert_keys_to_strings(results_data)
     flows = [x for x in results.keys() if x[1] is not None]
-    df = pd.DataFrame(columns=flows)
+    df_sequences = pd.DataFrame(columns=flows)
     for flow in flows:
-        df[flow] = results[flow]["sequences"]
-    return df
+        df_sequences[flow] = results[flow]["sequences"]
+    df_scalars = pd.DataFrame(columns=flows)
+    for flow in flows:
+        df_scalars[flow] = results[flow]["scalars"]
+    return df_sequences, df_scalars
 
 
 # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
-results_pyrolysis_energy = views.node(es.results, "conversion_orc")
-results_pyrolysis = views.node(es.results, "pyrolysis")
+results_pyrolysis_energy = views.node(es.results, "conversion_orc_invest")
+results_pyrolysis = views.node(es.results, "pyrolysis_invest")
 results_heat_demand = views.node(es.results, "heat_demand_ht")
 
 
@@ -100,19 +103,19 @@ plot_figures_for(results_heat_demand, "results_heat_demand.png")
 # Multiply flow results data and variable costs for every time step to obtain optimal variable costs
 # per flow per timestep
 
-flows = convert_result_sequences_to_df(results_data=es.results)
-flows.to_csv(os.path.join(RESULTS, "flows.csv"), sep=";")
-flows = pd.read_csv(os.path.join(RESULTS, "flows.csv"), sep=";", index_col=0)
+sequences, scalars = convert_result_sequences_to_df(results_data=es.results)
+sequences.to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
+sequences = pd.read_csv(os.path.join(RESULTS, "sequences.csv"), sep=";", index_col=0)
 varc = pd.read_csv(
     os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";", index_col=0
 )
 varc = varc.set_index(
-    flows.index[:-1]
+    sequences.index[:-1]
 )  # -1 because the index in flows in one time step longer than the data
 
-effective_variable_costs = pd.DataFrame(index=flows.index, columns=flows.columns)
+effective_variable_costs = pd.DataFrame(index=sequences.index, columns=sequences.columns)
 for col in effective_variable_costs.columns:
-    effective_variable_costs[col] = flows[col] * varc[col]
+    effective_variable_costs[col] = sequences[col] * varc[col]
 effective_variable_costs.to_csv(
     os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
 )
@@ -128,9 +131,19 @@ scalar_results = add_items_to_scalar_results(
 
 # Calculate the sums of the flows and append them to the scalar results
 
-sums = flows.sum(axis=0)
+sums = sequences.sum(axis=0)
 sums = sums.to_dict()
 scalar_results = add_items_to_scalar_results(sums, "sum of flow [kWh]", scalar_results)
+
+# Extract non-NaN-values from the scalars df and append them to the scalar results
+
+scalars = scalars.dropna(axis=1)
+dict = {}
+for (columnName, columnData) in scalars.items():
+    dict[columnName] = columnData["invest"]
+scalar_results = add_items_to_scalar_results(dict, "built capacity [kW]", scalar_results)
+# The unit here should be kWh per timestep. It is kW because the timesteps are hours.
+# Multiplied with the epc for pyrolysis, this yields the annuity for investment costs.
 
 # Save scalar results when all are collected
 scalar_results.to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")
