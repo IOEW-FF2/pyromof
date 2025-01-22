@@ -4,6 +4,7 @@ import pandas as pd
 import os
 from pathlib import Path
 from oemof.network.graph import create_nx_graph
+from oemof.tools import economics
 
 ROOT_PATH = Path(__file__).parent
 META_INFO = os.path.join(ROOT_PATH, "meta_info")
@@ -18,12 +19,18 @@ transformers = pd.read_excel("input_data.xlsx", sheet_name="transformer")
 storage = pd.read_excel("input_data.xlsx", sheet_name="storage")
 general = pd.read_excel("input_data.xlsx", sheet_name="general")
 
+# Read in the scenario and set investment variable
+scenario = general.loc[general["item"] == "scenario", "value"].item()
+if "investment" in scenario:
+    investment = True
+else:
+    investment = False
+
 # Definition of the time period
 time = pd.date_range("2023-01-02", periods=145, freq="h")
 
 # Read in wacc for investment optimization
 wacc = general.loc[general["item"] == "wacc", "value"].item()
-
 
 # Model definition
 es = solph.EnergySystem(timeindex=time)
@@ -104,43 +111,89 @@ heat_source = solph.components.Source(
     },
 )
 
-### TRANSFORMER
+### TRANSFORMERS WITH INVESTMENT OPTIMISATION
+if investment == True:
+    row = transformers.loc[transformers.label == "conversion_orc"]
+    epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+    print("epc for conversion_orc: ", epc)
+    conversion_orc = solph.components.Transformer(
+        label="conversion_orc_invest",
+        inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+        outputs={
+            busd[row.bus_out_1.item()]: solph.Flow(),
+            busd[row.bus_out_2.item()]: solph.Flow()
+        },
+        conversion_factors={
+            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+        },
+    )
 
-row = transformers.loc[transformers.label == "conversion_orc"]
-conversion_orc = solph.components.Transformer(
-    label="conversion_orc",
-    inputs={busd[row.bus_in_1.item()]: solph.Flow()},
-    outputs={
-        busd[row.bus_out_1.item()]: solph.Flow(),
-        busd[row.bus_out_2.item()]: solph.Flow(),
-    },
-    conversion_factors={
-        busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-        busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-        busd[row.bus_out_2.item()]: row.eff_out_2.item(),
-    },
-)
+    row = transformers.loc[transformers.label == "pyrolysis"]
+    epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+    print("epc for pyrolysis: ", epc)
+    pyrolysis = solph.components.Transformer(
+        label="pyrolysis_invest",
+        inputs={
+            busd[row.bus_in_1.item()]: solph.Flow(),
+            busd[row.bus_in_2.item()]: solph.Flow(),
+        },
+        outputs={
+            busd[row.bus_out_1.item()]: solph.Flow(
+                nominal_value=solph.Investment(
+                    ep_costs=epc
+                )
+            ),
+            busd[row.bus_out_2.item()]: solph.Flow(),
+            busd[row.bus_out_3.item()]: solph.Flow(),
+        },
+        conversion_factors={
+            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+            busd[row.bus_in_2.item()]: row.eff_in_2.item(),
+            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+            busd[row.bus_out_3.item()]: row.eff_out_3.item(),
+        },
+    )
 
-row = transformers.loc[transformers.label == "pyrolysis"]
-pyrolysis = solph.components.Transformer(
-    label="pyrolysis",
-    inputs={
-        busd[row.bus_in_1.item()]: solph.Flow(),
-        busd[row.bus_in_2.item()]: solph.Flow(),
-    },
-    outputs={
-        busd[row.bus_out_1.item()]: solph.Flow(),
-        busd[row.bus_out_2.item()]: solph.Flow(),
-        busd[row.bus_out_3.item()]: solph.Flow(),
-    },
-    conversion_factors={
-        busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-        busd[row.bus_in_2.item()]: row.eff_in_2.item(),
-        busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-        busd[row.bus_out_2.item()]: row.eff_out_2.item(),
-        busd[row.bus_out_3.item()]: row.eff_out_3.item(),
-    },
-)
+### TRANSFORMERS WITHOUT INVESTMENT OPTIMISATION
+else:
+    row = transformers.loc[transformers.label == "conversion_orc"]
+    conversion_orc = solph.components.Transformer(
+        label="conversion_orc",
+        inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+        outputs={
+            busd[row.bus_out_1.item()]: solph.Flow(),
+            busd[row.bus_out_2.item()]: solph.Flow(),
+        },
+        conversion_factors={
+            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+        },
+    )
+
+    row = transformers.loc[transformers.label == "pyrolysis"]
+    pyrolysis = solph.components.Transformer(
+        label="pyrolysis",
+        inputs={
+            busd[row.bus_in_1.item()]: solph.Flow(),
+            busd[row.bus_in_2.item()]: solph.Flow(),
+        },
+        outputs={
+            busd[row.bus_out_1.item()]: solph.Flow(),
+            busd[row.bus_out_2.item()]: solph.Flow(),
+            busd[row.bus_out_3.item()]: solph.Flow(),
+        },
+        conversion_factors={
+            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+            busd[row.bus_in_2.item()]: row.eff_in_2.item(),
+            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+            busd[row.bus_out_3.item()]: row.eff_out_3.item(),
+        },
+    )
 
 # Add elements to the energy system
 sinks_comp = [
@@ -152,8 +205,8 @@ sinks_comp = [
 ]
 sources_comp = [biomass, heat_source]
 transformers_comp = [conversion_orc, pyrolysis]
-all_components = sinks_comp + sources_comp + transformers_comp
-es.add(*all_components)  # The star dissolves the list
+all_components_dispatch = sinks_comp + sources_comp + transformers_comp
+es.add(*all_components_dispatch)  # The star dissolves the list
 
 print("The model has been constructed.")
 
