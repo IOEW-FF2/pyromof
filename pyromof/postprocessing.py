@@ -75,7 +75,7 @@ def convert_result_sequences_to_df(results_data=es.results):
 
 
 # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
-if investment == True:
+if investment is True:
     results_pyrolysis_energy = views.node(es.results, "conversion_orc_invest")
     results_pyrolysis = views.node(es.results, "pyrolysis_invest")
 else:
@@ -124,7 +124,9 @@ varc = varc.set_index(
     sequences.index[:-1]
 )  # -1 because the index in flows in one time step longer than the data
 
-effective_variable_costs = pd.DataFrame(index=sequences.index, columns=sequences.columns)
+effective_variable_costs = pd.DataFrame(
+    index=sequences.index, columns=sequences.columns
+)
 for col in effective_variable_costs.columns:
     effective_variable_costs[col] = sequences[col] * varc[col]
 effective_variable_costs.to_csv(
@@ -147,12 +149,14 @@ sums = sums.to_dict()
 scalar_results = add_items_to_scalar_results(sums, "sum of flow [kWh]", scalar_results)
 
 # Extract non-NaN-values from the scalars df and append them to the scalar results
-if investment == True:
+if investment is True:
     scalars = scalars.dropna(axis=1)
     dict = {}
-    for (columnName, columnData) in scalars.items():
+    for columnName, columnData in scalars.items():
         dict[columnName] = columnData["invest"]
-    scalar_results = add_items_to_scalar_results(dict, "built capacity [kW]", scalar_results)
+    scalar_results = add_items_to_scalar_results(
+        dict, "built capacity [kW]", scalar_results
+    )
     # The unit here should be kWh per timestep. It is kW because the timesteps are hours.
     # Multiplied with the epc for pyrolysis, this yields the annuity for investment costs.
 

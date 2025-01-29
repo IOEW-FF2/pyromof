@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
-import helpers
 
 ROOT_PATH = Path(__file__).parent.parent
 META_INFO = os.path.join(ROOT_PATH, "meta_info")
@@ -50,7 +49,7 @@ for i, b in buses.iterrows():
 
 # Create other components
 
-### SINKS
+# SINKS
 row = sinks.loc[sinks.label == "biochar_market", :]
 biochar_market = solph.components.Sink(
     label="biochar_market",
@@ -93,7 +92,7 @@ heat_demand_with_orc = solph.components.Sink(
     },
 )
 
-### SOURCES
+# SOURCES
 row = sources.loc[sources.label == "biomass", :]
 biomass = solph.components.Source(
     label="biomass",
@@ -112,8 +111,8 @@ heat_source = solph.components.Source(
     },
 )
 
-### TRANSFORMERS WITH INVESTMENT OPTIMISATION
-if investment == True:
+# TRANSFORMERS WITH INVESTMENT OPTIMISATION
+if investment is True:
     print("Adding transformers with investment optimization")
     row = transformers.loc[transformers.label == "conversion_orc"]
     epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
@@ -159,7 +158,7 @@ if investment == True:
         },
     )
 
-### TRANSFORMERS WITHOUT INVESTMENT OPTIMISATION
+# TRANSFORMERS WITHOUT INVESTMENT OPTIMISATION
 else:
     print("Adding transformers without investment optimization")
     row = transformers.loc[transformers.label == "conversion_orc"]
@@ -200,7 +199,7 @@ else:
 
     row = transformers.loc[transformers.label == "combustor_hot"]
     combustor_hot = solph.components.Transformer(
-        label = "combustor_hot",
+        label="combustor_hot",
         inputs={
             busd[row.bus_in_1.item()]: solph.Flow(),
         },
@@ -237,7 +236,6 @@ om = solph.Model(es)
 # Store lp file for debugging
 file_path = os.path.join(META_INFO, "lp_file.lp")
 om.write(file_path, io_options={"symbolic_solver_labels": True})
-print(om.name)
 
 # Solve the system
 om.solve(solver="cbc")
