@@ -122,7 +122,7 @@ if investment is True:
         inputs={busd[row.bus_in_1.item()]: solph.Flow()},
         outputs={
             busd[row.bus_out_1.item()]: solph.Flow(),
-            busd[row.bus_out_2.item()]: solph.Flow()
+            busd[row.bus_out_2.item()]: solph.Flow(),
         },
         conversion_factors={
             busd[row.bus_in_1.item()]: row.eff_in_1.item(),
@@ -142,9 +142,7 @@ if investment is True:
         },
         outputs={
             busd[row.bus_out_1.item()]: solph.Flow(
-                nominal_value=solph.Investment(
-                    ep_costs=epc
-                )
+                nominal_value=solph.Investment(ep_costs=epc)
             ),
             busd[row.bus_out_2.item()]: solph.Flow(),
             busd[row.bus_out_3.item()]: solph.Flow(),
