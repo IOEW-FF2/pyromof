@@ -26,6 +26,10 @@ jobs:
   lint:
     runs-on: windows-latest
     steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Lint with black
         run: |
           pip install black
