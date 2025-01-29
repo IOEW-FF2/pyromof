@@ -1,0 +1,3 @@
+[flake8]
+exclude = dumping_space/, meta_info/, results/
+max-line-length=110
