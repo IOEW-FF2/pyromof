@@ -28,6 +28,13 @@ es.restore(DUMPING_SPACE, "es_dump.oemof")
 
 logging.info("The EnergySystem is restored.")
 
+# Read in the scenario and set investment variable
+scenario = es.results["scenario"]
+if "investment" in scenario:
+    investment = True
+else:
+    investment = False
+
 # Meta-information could be assessed in es.results["meta"] to retreive the objective variable.
 
 scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
@@ -68,8 +75,12 @@ def convert_result_sequences_to_df(results_data=es.results):
 
 
 # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
-results_pyrolysis_energy = views.node(es.results, "conversion_orc_invest")
-results_pyrolysis = views.node(es.results, "pyrolysis_invest")
+if investment == True:
+    results_pyrolysis_energy = views.node(es.results, "conversion_orc_invest")
+    results_pyrolysis = views.node(es.results, "pyrolysis_invest")
+else:
+    results_pyrolysis_energy = views.node(es.results, "conversion_orc")
+    results_pyrolysis = views.node(es.results, "pyrolysis")
 results_heat_demand = views.node(es.results, "heat_demand_ht")
 
 
@@ -136,14 +147,14 @@ sums = sums.to_dict()
 scalar_results = add_items_to_scalar_results(sums, "sum of flow [kWh]", scalar_results)
 
 # Extract non-NaN-values from the scalars df and append them to the scalar results
-
-scalars = scalars.dropna(axis=1)
-dict = {}
-for (columnName, columnData) in scalars.items():
-    dict[columnName] = columnData["invest"]
-scalar_results = add_items_to_scalar_results(dict, "built capacity [kW]", scalar_results)
-# The unit here should be kWh per timestep. It is kW because the timesteps are hours.
-# Multiplied with the epc for pyrolysis, this yields the annuity for investment costs.
+if investment == True:
+    scalars = scalars.dropna(axis=1)
+    dict = {}
+    for (columnName, columnData) in scalars.items():
+        dict[columnName] = columnData["invest"]
+    scalar_results = add_items_to_scalar_results(dict, "built capacity [kW]", scalar_results)
+    # The unit here should be kWh per timestep. It is kW because the timesteps are hours.
+    # Multiplied with the epc for pyrolysis, this yields the annuity for investment costs.
 
 # Save scalar results when all are collected
 scalar_results.to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")

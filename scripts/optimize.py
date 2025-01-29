@@ -114,6 +114,7 @@ heat_source = solph.components.Source(
 
 ### TRANSFORMERS WITH INVESTMENT OPTIMISATION
 if investment == True:
+    print("Adding transformers with investment optimization")
     row = transformers.loc[transformers.label == "conversion_orc"]
     epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
     print("epc for conversion_orc: ", epc)
@@ -160,6 +161,7 @@ if investment == True:
 
 ### TRANSFORMERS WITHOUT INVESTMENT OPTIMISATION
 else:
+    print("Adding transformers without investment optimization")
     row = transformers.loc[transformers.label == "conversion_orc"]
     conversion_orc = solph.components.Transformer(
         label="conversion_orc",
@@ -196,6 +198,21 @@ else:
         },
     )
 
+    row = transformers.loc[transformers.label == "combustor_hot"]
+    combustor_hot = solph.components.Transformer(
+        label = "combustor_hot",
+        inputs={
+            busd[row.bus_in_1.item()]: solph.Flow(),
+        },
+        outputs={
+            busd[row.bus_out_1.item()]: solph.Flow(),
+        },
+        conversion_factors={
+            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+        },
+    )
+
 # Add elements to the energy system
 sinks_comp = [
     biochar_market,
@@ -205,9 +222,9 @@ sinks_comp = [
     heat_demand_with_orc,
 ]
 sources_comp = [biomass, heat_source]
-transformers_comp = [conversion_orc, pyrolysis]
-all_components_dispatch = sinks_comp + sources_comp + transformers_comp
-es.add(*all_components_dispatch)  # The star dissolves the list
+transformers_comp = [conversion_orc, pyrolysis, combustor_hot]
+all_components = sinks_comp + sources_comp + transformers_comp
+es.add(*all_components)  # The star dissolves the list
 
 print("The model has been constructed.")
 
@@ -220,6 +237,7 @@ om = solph.Model(es)
 # Store lp file for debugging
 file_path = os.path.join(META_INFO, "lp_file.lp")
 om.write(file_path, io_options={"symbolic_solver_labels": True})
+print(om.name)
 
 # Solve the system
 om.solve(solver="cbc")
@@ -232,6 +250,7 @@ graph = create_nx_graph(es, filename=filename)
 es.params = solph.processing.parameter_as_dict(es)
 es.results["main"] = solph.processing.results(om)
 es.results["meta"] = solph.processing.meta_results(om)
+es.results["scenario"] = scenario
 
 flows = solph.processing.convert_keys_to_strings(om.flows)
 columns = [a for a, b in flows.items()]
