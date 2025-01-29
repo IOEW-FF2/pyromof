@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 ROOT_PATH = Path(__file__).parent.parent
 sys.path.append(ROOT_PATH)
-from scripts import postprocessing
+from pyromof import postprocessing
 
 
 def test_list_int():
