@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  build_and_test:
     runs-on: windows-latest
     steps:
       - name: Checkout code
@@ -22,12 +22,17 @@ jobs:
         run: |
           pip install pytest
           pytest tests/test_postprocessing.py
-
+    
+  lint:
+    runs-on: windows-latest
+    steps:
       - name: Lint with black
         run: |
-          black --check .
+          pip install black
+          python -m black pyromof/* tests/*
 
       - name: Lint with flake8
         run: |
-          flake8
+          pip install flake8
+          flake8 pyromof/* tests/*
 
