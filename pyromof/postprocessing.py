@@ -1,13 +1,12 @@
 import os
 from pathlib import Path
 import pandas as pd
-import matplotlib.pyplot as plt
 import logging
+import helpers
 
 from oemof.solph import (
     EnergySystem,
     processing,
-    views,
 )
 
 logging.basicConfig(
@@ -48,31 +47,6 @@ def convert_result_sequences_to_df(results_data):
     for flow in flows:
         df_scalars[flow] = results[flow]["scalars"]
     return df_sequences, df_scalars
-
-
-
-def plot_figures_for(element: dict, filename):
-    figure, axes = plt.subplots(figsize=(10, 5))
-    element["sequences"].plot(ax=axes, kind="line", drawstyle="steps-post")
-    plt.legend(
-        loc="upper center",
-        prop={"size": 8},
-        bbox_to_anchor=(0.5, 1.25),
-        ncol=2,
-    )
-    # labels = [element["sequences"].columns[i][0][0] for i in range(len(element["sequences"].columns))]
-    # # Would be nice to shorten the labels, but it's not always the first element that is relevant.
-    # This depends on whether the bus is an in- or outflow.
-    labels = [
-        element["sequences"].columns[i][0]
-        for i in range(len(element["sequences"].columns))
-    ]
-    axes.legend(labels=labels)
-    axes.set_ylabel("kWh")
-    figure.subplots_adjust(top=0.8)
-    figure.savefig(os.path.join(RESULTS, filename))
-    element["sequences"].to_csv(os.path.join(RESULTS, filename + ".csv"))
-
 
 
 def calculate_variable_costs_per_flow_per_timestep():
@@ -144,15 +118,14 @@ if __name__ == "__main__":
     logging.info("The EnergySystem is restored.")
 
     # Read in the scenario and set investment variable
-    scenario = es.results["scenario"]
-    if "investment" in scenario:
-        investment = True
-    else:
-        investment = False
+    scenario, investment = helpers.retreive_scenario_from_results(es)
 
-    # Meta-information could be assessed in es.results["meta"] to retreive the objective variable.
+    # Create an empty dataframe for the scalar results:
 
     scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
+
+    # From the meta information, only the objective value is interesting for the results.
+    # Store this value in the scalar results remove the meta part from the results:
 
     scalar_results = add_items_to_scalar_results(
     {"objective": es.results["meta"]["objective"]}, "objective [Euros]", scalar_results
@@ -161,19 +134,6 @@ if __name__ == "__main__":
     es.results = es.results["main"]
 
     nodes = [x for x in es.results.keys() if x[1] is None]  # This is only storage
-
-    # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
-    if investment is True:
-        results_pyrolysis_energy = views.node(es.results, "conversion_orc_invest")
-        results_pyrolysis = views.node(es.results, "pyrolysis_invest")
-    else:
-        results_pyrolysis_energy = views.node(es.results, "conversion_orc")
-        results_pyrolysis = views.node(es.results, "pyrolysis")
-    results_heat_demand = views.node(es.results, "heat_demand_ht")
-
-    plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
-    plot_figures_for(results_pyrolysis, "pyrolysis.png")
-    plot_figures_for(results_heat_demand, "results_heat_demand.png")
 
     sequences, scalars = convert_result_sequences_to_df(results_data=es.results)
     sequences.to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")

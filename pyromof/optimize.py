@@ -41,7 +41,7 @@ busd = {}
 # Create Bus objects from buses table
 
 for i, b in buses.iterrows():
-    bus = solph.Bus(label=b["label"], type="bus")
+    bus = solph.Bus(label=b["label"])
     nodes.append(bus)
     busd[b["label"]] = bus
     es.add(bus)
