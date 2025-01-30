@@ -36,7 +36,6 @@ def add_items_to_scalar_results(
     return pd.concat([scalar_results, new_df], ignore_index=True)
 
 
-
 def convert_result_sequences_to_df(results_data):
     results = processing.convert_keys_to_strings(results_data)
     flows = [x for x in results.keys() if x[1] is not None]
@@ -49,14 +48,14 @@ def convert_result_sequences_to_df(results_data):
     return df_sequences, df_scalars
 
 
-def calculate_variable_costs_per_flow_per_timestep():
+def calculate_variable_costs_per_flow_per_timestep(path_sequences, path_varcosts):
     '''
     This function takes the result sequences (flows per timestep) and the variable costs from csv files and
-    multiplies them. The results are returned as a dataframe and stored in a csv file.
+    multiplies them. The results are returned as a dataframe.
     '''
-    sequences = pd.read_csv(os.path.join(RESULTS, "sequences.csv"), sep=";", index_col=0)
+    sequences = pd.read_csv(path_sequences, sep=";", index_col=0)
     varcosts = pd.read_csv(
-        os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";", index_col=0
+        path_varcosts, sep=";", index_col=0
     )
     varcosts = varcosts.set_index(
         sequences.index[:-1]
@@ -69,12 +68,7 @@ def calculate_variable_costs_per_flow_per_timestep():
     # Calculate the effective variable costs by multiplying the sequences with the variable costs
     for col in effective_variable_costs.columns:
         effective_variable_costs[col] = sequences[col] * varcosts[col]
-    # Save the result as csv
-    effective_variable_costs.to_csv(
-        os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
-    )
     return effective_variable_costs
-
 
 
 def add_sums_to_scalar_results(effective_variable_costs, sequences, scalar_results):
@@ -138,7 +132,13 @@ if __name__ == "__main__":
     sequences, scalars = convert_result_sequences_to_df(results_data=es.results)
     sequences.to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
 
-    effective_variable_costs = calculate_variable_costs_per_flow_per_timestep()
+    effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
+        os.path.join(RESULTS, "sequences.csv"), os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv")
+        )
+    # Save the result as csv
+    effective_variable_costs.to_csv(
+        os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
+    )
     scalar_results = add_sums_to_scalar_results(effective_variable_costs, sequences, scalar_results)
     scalar_results = add_investment_amount_to_scalar_results(investment, scalars, scalar_results)
 
