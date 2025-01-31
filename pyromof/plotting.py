@@ -2,11 +2,12 @@ import matplotlib.pyplot as plt
 import os
 import helpers
 from pathlib import Path
-from oemof.solph import (EnergySystem, views)
+from oemof.solph import EnergySystem, views
 
 ROOT_PATH = Path(__file__).parent.parent
 RESULTS = os.path.join(ROOT_PATH, "results")
 DUMPING_SPACE = os.path.join(ROOT_PATH, "dumping_space")
+
 
 def plot_figures_for(element: dict, filename):
     figure, axes = plt.subplots(figsize=(10, 5))
@@ -30,11 +31,12 @@ def plot_figures_for(element: dict, filename):
     figure.savefig(os.path.join(RESULTS, filename))
     element["sequences"].to_csv(os.path.join(RESULTS, filename + ".csv"))
 
+
 if __name__ == "__main__":
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
     scenario, investment = helpers.retreive_scenario_from_results(es)
-        # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
+    # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
     if investment is True:
         results_pyrolysis_energy = views.node(es.results, "conversion_orc_invest")
         results_pyrolysis = views.node(es.results, "pyrolysis_invest")
