@@ -36,7 +36,8 @@ def plot_figures_for(element: dict, filename):
 
 def prepare_cost_sequences_for_plotting():
     """
-    Reads the csv files of time-variable cost data, selects the columns that contain non-0 data and stores them in
+    Reads the csv files of time-variable cost data, selects the columns
+    that contain non-0 data and stores them in
     a dictionary of dataframes, sorted by the cost type (e.g. variable costs, start-up costs)
     """
     # Create a dictionary to hold the dataframes:
@@ -51,7 +52,8 @@ def prepare_cost_sequences_for_plotting():
     varcosts = varcosts.loc[:, varcosts.any()]
     varcosts = varcosts * -1
     df_dict["variable costs"] = varcosts
-    # When more types of variable costs occur, the code for converting them in dfs ready for plotting should be added here:
+    # When more types of variable costs occur, the code for converting
+    # them in dfs ready for plotting should be added here:
     return df_dict
 
 
@@ -85,17 +87,21 @@ def plot_cost_sequences(df_dict, scenario):
     fig.update_layout(yaxis=dict(title="Euros/hour"))
     fig.write_html(os.path.join(RESULTS, "cost_sequences_{}.html".format(scenario)))
 
+
 def prepare_cost_scalars_for_plotting():
     """
     Reads in the scalars from a csv file, filters for cost components and multiplies by -1
     """
-    scalar_data = pd.read_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";", index_col=0)
+    scalar_data = pd.read_csv(
+        os.path.join(RESULTS, "scalar_results.csv"), sep=";", index_col=0
+    )
     scalcosts = scalar_data[
-        (~scalar_data['type'].str.contains('objective \\[Euros\\]', regex=True)) &
-        scalar_data['type'].str.contains('Euros', regex=False)
+        (~scalar_data["type"].str.contains("objective \\[Euros\\]", regex=True))
+        & scalar_data["type"].str.contains("Euros", regex=False)
     ]
     scalcosts = scalcosts * -1
     return scalcosts
+
 
 def plot(scenario):
     df_dict = prepare_cost_sequences_for_plotting()
@@ -122,4 +128,3 @@ if __name__ == "__main__":
     scalcosts = prepare_cost_scalars_for_plotting()
 
     plot(scenario)
-    
