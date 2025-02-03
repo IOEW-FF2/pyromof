@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import os
@@ -56,7 +55,7 @@ def prepare_cost_sequences_for_plotting():
     return df_dict
 
 
-def plot_cost_sequences(df_dict):
+def plot_cost_sequences(df_dict, scenario):
     """
     Takes a dictionary of dataframes and plots them, each with a different line style.
     """
@@ -84,12 +83,23 @@ def plot_cost_sequences(df_dict):
             )
         dashtypenumber = dashtypenumber + 1
     fig.update_layout(yaxis=dict(title="Euros/hour"))
-    fig.write_html(os.path.join(RESULTS, "cost_sequences.html"))
+    fig.write_html(os.path.join(RESULTS, "cost_sequences_{}.html".format(scenario)))
 
+def prepare_cost_scalars_for_plotting():
+    """
+    Reads in the scalars from a csv file, filters for cost components and multiplies by -1
+    """
+    scalar_data = pd.read_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";", index_col=0)
+    scalcosts = scalar_data[
+        (~scalar_data['type'].str.contains('objective \\[Euros\\]', regex=True)) &
+        scalar_data['type'].str.contains('Euros', regex=False)
+    ]
+    scalcosts = scalcosts * -1
+    return scalcosts
 
-def plot():
+def plot(scenario):
     df_dict = prepare_cost_sequences_for_plotting()
-    plot_cost_sequences(df_dict)
+    plot_cost_sequences(df_dict, scenario)
 
 
 if __name__ == "__main__":
@@ -109,4 +119,7 @@ if __name__ == "__main__":
     # plot_figures_for(results_pyrolysis, "pyrolysis.png")
     # plot_figures_for(results_heat_demand, "results_heat_demand.png")
 
-    plot()
+    scalcosts = prepare_cost_scalars_for_plotting()
+
+    plot(scenario)
+    
