@@ -57,7 +57,19 @@ def prepare_cost_sequences_for_plotting():
 
 
 def plot_cost_sequences(df_dict):
+    """
+    Takes a dictionary of dataframes and plots them, each with a different line style.
+    """
+    dashtypes = [
+        "solid",
+        "dot",
+        "dash",
+        "longdash",
+        "dashdot",
+        "longdashdot",
+    ]  # also possible: dash length list
     fig = go.Figure()
+    dashtypenumber = 0
     for df in df_dict.values():
         # Loop df columns and plot columns to the figure
         for col in df.columns:
@@ -66,10 +78,11 @@ def plot_cost_sequences(df_dict):
                     x=df.index,
                     y=df[col],
                     mode="lines",
-                    line=dict(dash="solid"), # dash='dash'
+                    line=dict(dash=dashtypes[dashtypenumber]),  # dash='dash'
                     name=col,
                 )
-            )  
+            )
+        dashtypenumber = dashtypenumber + 1
     fig.update_layout(yaxis=dict(title="Euros/hour"))
     fig.write_html(os.path.join(RESULTS, "cost_sequences.html"))
 
