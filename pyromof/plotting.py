@@ -1,4 +1,7 @@
 import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
 import os
 import helpers
 from pathlib import Path
@@ -32,6 +35,50 @@ def plot_figures_for(element: dict, filename):
     element["sequences"].to_csv(os.path.join(RESULTS, filename + ".csv"))
 
 
+def prepare_cost_sequences_for_plotting():
+    """
+    Reads the csv files of time-variable cost data, selects the columns that contain non-0 data and stores them in
+    a dictionary of dataframes, sorted by the cost type (e.g. variable costs, start-up costs)
+    """
+    # Create a dictionary to hold the dataframes:
+    df_dict = {}
+    varcosts = pd.read_csv(
+        os.path.join(RESULTS, "effective_variable_costs.csv"),
+        sep=";",
+        index_col=0,
+        parse_dates=True,
+    )
+    # Remove all columns where all values are 0
+    varcosts = varcosts.loc[:, varcosts.any()]
+    varcosts = varcosts * -1
+    df_dict["variable costs"] = varcosts
+    # When more types of variable costs occur, the code for converting them in dfs ready for plotting should be added here:
+    return df_dict
+
+
+def plot_cost_sequences(df_dict):
+    fig = go.Figure()
+    for df in df_dict.values():
+        # Loop df columns and plot columns to the figure
+        for col in df.columns:
+            fig.add_trace(
+                go.Scatter(
+                    x=df.index,
+                    y=df[col],
+                    mode="lines",
+                    line=dict(dash="solid"), # dash='dash'
+                    name=col,
+                )
+            )  
+    fig.update_layout(yaxis=dict(title="Euros/hour"))
+    fig.write_html(os.path.join(RESULTS, "cost_sequences.html"))
+
+
+def plot():
+    df_dict = prepare_cost_sequences_for_plotting()
+    plot_cost_sequences(df_dict)
+
+
 if __name__ == "__main__":
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
@@ -45,6 +92,8 @@ if __name__ == "__main__":
         results_pyrolysis = views.node(es.results, "pyrolysis")
     results_heat_demand = views.node(es.results, "heat_demand_ht")
 
-    plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
-    plot_figures_for(results_pyrolysis, "pyrolysis.png")
-    plot_figures_for(results_heat_demand, "results_heat_demand.png")
+    # plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
+    # plot_figures_for(results_pyrolysis, "pyrolysis.png")
+    # plot_figures_for(results_heat_demand, "results_heat_demand.png")
+
+    plot()
