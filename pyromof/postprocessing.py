@@ -1,9 +1,8 @@
 import os
-from pathlib import Path
 import pandas as pd
 import logging
+from pathlib import Path
 from pyromof import helpers
-
 from oemof.solph import (
     EnergySystem,
     processing,
@@ -24,9 +23,16 @@ DUMPING_SPACE = os.path.join(ROOT_PATH, "dumping_space")
 
 
 def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
+    """
+    This functions adds given data to an existing dataframe with scalar results.
+    The existing dataframe must have the columns "variable", "type" and "value".
+    The input dict must contain the variable and value for each item. The type
+    must be valid for all items in the dictionary.
+    """
     new_df = pd.DataFrame(
         {
             "variable": list(dictionary.keys()),
+            # Insert the given type for all new rows:
             "type": [type] * len(dictionary),
             "value": list(dictionary.values()),
         }
@@ -35,6 +41,11 @@ def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
 
 
 def convert_result_sequences_to_df(results_data):
+    """
+    This function extracts all the sequences and all scalars from the flows
+    from the results data and stores them in two dataframes (one for sequences,
+    one for scalars) with the flow names as columnnames and a datetime index.
+    """
     results = processing.convert_keys_to_strings(results_data)
     flows = [x for x in results.keys() if x[1] is not None]
     df_sequences = pd.DataFrame(columns=flows)
@@ -92,7 +103,9 @@ def add_sums_to_scalar_results(effective_variable_costs, sequences, scalar_resul
 
 
 def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_results):
-    # Extract non-NaN-values from the scalars df and append them to the scalar results
+    """
+    Extract non-NaN-values from the scalars df and append them to the scalar results
+    """
     if investment is True:
         scalars = scalars.dropna(axis=1)
         dict = {}
