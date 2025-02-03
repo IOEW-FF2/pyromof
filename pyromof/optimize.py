@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
+from pyromof import helpers
 
 ROOT_PATH = Path(__file__).parent.parent
 META_INFO = os.path.join(ROOT_PATH, "meta_info")
@@ -41,7 +42,7 @@ busd = {}
 # Create Bus objects from buses table
 
 for i, b in buses.iterrows():
-    bus = solph.Bus(label=b["label"], type="bus")
+    bus = solph.Bus(label=b["label"])
     nodes.append(bus)
     busd[b["label"]] = bus
     es.add(bus)
@@ -253,7 +254,7 @@ columns = [a for a, b in flows.items()]
 df = pd.DataFrame(columns=columns)
 for col in df.columns:
     df[col] = [b for a, b in flows.items() if a == col][0].variable_costs
-variable_costs = df
+variable_costs = helpers.convert_tuple_columnnames_to_strings(df)
 variable_costs.to_csv(
     os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";"
 )
