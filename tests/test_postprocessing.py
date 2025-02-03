@@ -1,14 +1,11 @@
-import sys
 import os
 import numpy as np
 from pathlib import Path
 import pandas as pd
+from pyromof import postprocessing
 
 TEST_PATH = Path(__file__).parent
 ROOT_PATH = TEST_PATH.parent
-sys.path.append(ROOT_PATH)
-from pyromof import postprocessing
-
 
 def test_calculate_variable_costs_per_flow_per_timestep():
     path_sequences = os.path.join(TEST_PATH, "files", "sequences.csv")
