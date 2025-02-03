@@ -7,6 +7,7 @@ from pyromof import postprocessing
 TEST_PATH = Path(__file__).parent
 ROOT_PATH = TEST_PATH.parent
 
+
 def test_calculate_variable_costs_per_flow_per_timestep():
     path_sequences = os.path.join(TEST_PATH, "files", "sequences.csv")
     path_varcosts = os.path.join(TEST_PATH, "files", "variable_costs_from_model.csv")
