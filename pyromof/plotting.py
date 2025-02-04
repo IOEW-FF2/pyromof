@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+import plotly.express as px
 import pandas as pd
 import os
 import helpers
@@ -99,13 +100,44 @@ def prepare_cost_scalars_for_plotting():
         (~scalar_data["type"].str.contains("objective \\[Euros\\]", regex=True))
         & scalar_data["type"].str.contains("Euros", regex=False)
     ]
-    scalcosts = scalcosts * -1
+    scalcosts.loc[:, "value"] = scalcosts.loc[:, "value"] * -1
+    scalcosts.loc[:, "scenario"] = [scenario] * len(scalcosts)
+    # TODO: merge 'variable' and 'type' into a single practical label
+    # TODO: join scalars from different scenarios
     return scalcosts
+
+
+def plot_cost_scalars(scalcosts, scenario):
+    total = scalcosts["value"].sum()
+
+    fig = px.bar(scalcosts, x="scenario", y="value", color="variable", barmode="stack")
+
+    ## Add point for total
+    fig.add_trace(
+        go.Scatter(
+            x=[scalcosts["scenario"][1]],
+            y=[total],
+            mode="markers",
+            marker_symbol="diamond",
+            marker_color="black",
+            marker=dict(size=15),
+            hoverinfo="text+y",
+            text=["Total"],
+            name="Total",
+        )
+    )
+
+    # Plot negative values below the x-axis
+    fig.update_layout(barmode="relative")
+    # Save plot as html
+    fig.write_html(os.path.join(RESULTS, "cost_scalars_{}.html".format(scenario)))
 
 
 def plot(scenario):
     df_dict = prepare_cost_sequences_for_plotting()
     plot_cost_sequences(df_dict, scenario)
+    scalcosts = prepare_cost_scalars_for_plotting()
+    plot_cost_scalars(scalcosts, scenario)
 
 
 if __name__ == "__main__":
@@ -121,10 +153,12 @@ if __name__ == "__main__":
         results_pyrolysis = views.node(es.results, "pyrolysis")
     results_heat_demand = views.node(es.results, "heat_demand_ht")
 
+    '''
     # plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
     # plot_figures_for(results_pyrolysis, "pyrolysis.png")
     # plot_figures_for(results_heat_demand, "results_heat_demand.png")
-
+    '''
+    
     scalcosts = prepare_cost_scalars_for_plotting()
 
     plot(scenario)
