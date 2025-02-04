@@ -12,7 +12,6 @@ META_INFO = os.path.join(ROOT_PATH, "meta_info")
 DUMPING_SPACE = os.path.join(ROOT_PATH, "dumping_space")
 
 # Reading in the raw data
-buses = pd.read_excel("input_data.xlsx", sheet_name="buses")
 profiles = pd.read_excel("input_data.xlsx", sheet_name="profiles")
 sinks = pd.read_excel("input_data.xlsx", sheet_name="sink")
 sources = pd.read_excel("input_data.xlsx", sheet_name="source")
@@ -22,10 +21,7 @@ general = pd.read_excel("input_data.xlsx", sheet_name="general")
 
 # Read in the scenario and set investment variable
 scenario = general.loc[general["item"] == "scenario", "value"].item()
-if "investment" in scenario:
-    investment = True
-else:
-    investment = False
+investment = False
 
 # Definition of the time period
 time = pd.date_range("2023-01-02", periods=145, freq="h")
@@ -33,12 +29,36 @@ time = pd.date_range("2023-01-02", periods=145, freq="h")
 # Read in wacc for investment optimization
 wacc = general.loc[general["item"] == "wacc", "value"].item()
 
+# Initiate dataframe to store annuities
+
+
 # Model definition
 es = solph.EnergySystem(timeindex=time)
 
 nodes = []
 busd = {}
 
+def extract_buses_from_input_data(sinks, sources, transformers, storage):
+    filtered_sinks = sinks[sinks['scenario'].isin(['all', scenario])]
+    filtered_sources = sources[sources['scenario'].isin(['all', scenario])]
+    filtered_transformers = transformers[transformers['scenario'].isin(['all', scenario])]
+    filtered_storage = storage[storage['scenario'].isin(['all', scenario])]
+
+    buses = (
+        filtered_sinks['bus_in'].tolist() +
+        filtered_sources['bus_out'].tolist() +
+        filtered_transformers[['bus_in_1', 'bus_in_2', 'bus_out_1', 'bus_out_2', 'bus_out_3']].stack().tolist() +
+        filtered_storage[['bus_in', 'bus_out']].stack().tolist()
+    )
+    # Filter unique values
+    buses = set(buses)
+    buses = list(buses)
+    buses_df = pd.DataFrame(data={"label": buses})
+    return buses_df
+
+buses = extract_buses_from_input_data(sinks, sources, transformers, storage)
+
+print(buses)
 # Create Bus objects from buses table
 
 for i, b in buses.iterrows():
@@ -52,28 +72,30 @@ for i, b in buses.iterrows():
 
 # SINKS
 row = sinks.loc[sinks.label == "biochar_market", :]
-biochar_market = solph.components.Sink(
-    label="biochar_market",
-    inputs={busd[row.bus.item()]: solph.Flow(variable_costs=row.variable_costs.item())},
-)
+if row.scenario.item() == "all" or scenario in row.scenario.item():
+    print("Instantiating biochar_market")
+    biochar_market = solph.components.Sink(
+        label="biochar_market",
+        inputs={busd[row.bus_in.item()]: solph.Flow(variable_costs=row.variable_costs.item())},
+    )
 
 row = sinks.loc[sinks.label == "co2_market", :]
 co2_market = solph.components.Sink(
     label="co2_market",
-    inputs={busd[row.bus.item()]: solph.Flow(variable_costs=row.variable_costs.item())},
+    inputs={busd[row.bus_in.item()]: solph.Flow(variable_costs=row.variable_costs.item())},
 )
 
 row = sinks.loc[sinks.label == "electricity_grid", :]
 electricity_grid = solph.components.Sink(
     label="electricity_grid",
-    inputs={busd[row.bus.item()]: solph.Flow(variable_costs=row.variable_costs.item())},
+    inputs={busd[row.bus_in.item()]: solph.Flow(variable_costs=row.variable_costs.item())},
 )
 
 row = sinks.loc[sinks.label == "heat_demand_ht", :]
-heat_demand = solph.components.Sink(
+heat_demand_ht = solph.components.Sink(
     label="heat_demand_ht",
     inputs={
-        busd[row.bus.item()]: solph.Flow(
+        busd[row.bus_in.item()]: solph.Flow(
             nominal_value=row.amount.item(),
             fix=profiles[row.profile.item()],
             variable_costs=row.variable_costs.item(),
@@ -82,10 +104,10 @@ heat_demand = solph.components.Sink(
 )
 
 row = sinks.loc[sinks.label == "heat_demand_lt", :]
-heat_demand_with_orc = solph.components.Sink(
+heat_demand_lt = solph.components.Sink(
     label="heat_demand_lt",
     inputs={
-        busd[row.bus.item()]: solph.Flow(
+        busd[row.bus_in.item()]: solph.Flow(
             nominal_value=row.amount.item(),
             fix=profiles[row.profile.item()],
             variable_costs=row.variable_costs.item(),
@@ -212,22 +234,14 @@ else:
     )
 
 # Add elements to the energy system
-sinks_comp = [
-    biochar_market,
-    co2_market,
-    electricity_grid,
-    heat_demand,
-    heat_demand_with_orc,
-]
-sources_comp = [biomass, heat_source]
-transformers_comp = [conversion_orc, pyrolysis, combustor_hot]
-all_components = sinks_comp + sources_comp + transformers_comp
-es.add(*all_components)  # The star dissolves the list
 
-print("The model has been constructed.")
+es.add(biochar_market, co2_market, heat_demand_lt, heat_demand_ht, electricity_grid, biomass, heat_source, conversion_orc, pyrolysis, combustor_hot)
+
 
 # Initialise the operational model
 om = solph.Model(es)
+
+print("The model has been constructed.")
 
 # Tell the model to get the dual variables when solving
 # om.receive_duals()
