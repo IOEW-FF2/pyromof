@@ -112,7 +112,7 @@ def plot_cost_scalars(scalcosts, scenario):
 
     fig = px.bar(scalcosts, x="scenario", y="value", color="variable", barmode="stack")
 
-    ## Add point for total
+    # Add point for total
     fig.add_trace(
         go.Scatter(
             x=[scalcosts["scenario"][1]],
@@ -153,12 +153,10 @@ if __name__ == "__main__":
         results_pyrolysis = views.node(es.results, "pyrolysis")
     results_heat_demand = views.node(es.results, "heat_demand_ht")
 
-    '''
     # plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
     # plot_figures_for(results_pyrolysis, "pyrolysis.png")
     # plot_figures_for(results_heat_demand, "results_heat_demand.png")
-    '''
-    
+
     scalcosts = prepare_cost_scalars_for_plotting()
 
     plot(scenario)
