@@ -33,7 +33,7 @@ def convert_result_sequences_to_df(results_data):
     one for scalars) with the flow names as columnnames and a datetime index.
     """
     results = processing.convert_keys_to_strings(results_data)
-    flows = [x for x in results.keys() if x[1] is not None]
+    flows = [x for x in results.keys() if x[1] != 'None']
     df_sequences = pd.DataFrame(columns=flows)
     for flow in flows:
         df_sequences[flow] = results[flow]["sequences"]

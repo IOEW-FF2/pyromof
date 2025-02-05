@@ -347,6 +347,36 @@ if "combustor_hot" in components:
         )
     es.add(combustor_hot)
 
+# STORAGE
+
+if "storage_syngas" in components:
+    row = storage.loc[storage.label == "storage_syngas"]
+    if row.investment.item() is True:
+        epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        print("epc for syngas storage: ", epc)
+        investment = True
+        storage_syngas = solph.components.GenericStorage(
+            label="storage_syngas_invest",
+            inputs={busd[row.bus_in.item()]: solph.Flow(),}, # The flows could also be constrained by a nominal capacity or variable costs.
+            outputs={busd[row.bus_out.item()]: solph.Flow(),},
+            loss_rate=row.loss_rate.item(),
+            initial_storage_level=row.initial_storage_level.item(),
+            inflow_conversion_factor=row.inflow_conversion_factor.item(),
+            outflow_conversion_factor=row.outflow_conversion_factor.item(),
+            nominal_storage_capacity=solph.Investment(ep_costs=epc)
+        )
+    elif row.investment.item() is False:
+        storage_syngas = solph.components.GenericStorage(
+            label = "storage_syngas",
+            inputs={busd[row.bus_in.item()]: solph.Flow(),},
+            outputs={busd[row.bus_out.item()]: solph.Flow(),},
+            loss_rate=row.loss_rate.item(),
+            initial_storage_level=row.initial_storage_level.item(),
+            inflow_conversion_factor=row.inflow_conversion_factor.item(),
+            outflow_conversion_factor=row.outflow_conversion_factor.item(),
+            nominal_storage_capacity=row.nominal_storage_capacity.item()
+        )
+    es.add(storage_syngas)
 
 # Initialise the operational model
 om = solph.Model(es)
