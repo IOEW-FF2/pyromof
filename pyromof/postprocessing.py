@@ -1,19 +1,10 @@
 import os
 import pandas as pd
-import logging
 from pathlib import Path
 from pyromof import helpers
 from oemof.solph import (
     EnergySystem,
     processing,
-)
-
-logging.basicConfig(
-    filename=os.path.join("meta_info", "logging.log"),
-    format="%(asctime)s %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S %p",
-    encoding="utf-8",
-    level=logging.INFO,
 )
 
 
@@ -127,8 +118,6 @@ if __name__ == "__main__":
 
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
-
-    logging.info("The EnergySystem is restored.")
 
     # Read in the scenario and set investment variable
     scenario, investment = helpers.retreive_scenario_from_results(es)
