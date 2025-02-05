@@ -7,10 +7,7 @@ def check_type(object, type_wanted):
 
 def retreive_scenario_from_results(es):
     scenario = es.results["scenario"]
-    if "investment" in scenario:
-        investment = True
-    else:
-        investment = False
+    investment = es.results["investment"]
     return scenario, investment
 
 

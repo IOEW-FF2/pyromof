@@ -1,25 +1,11 @@
 import os
 import pandas as pd
-import logging
 from pathlib import Path
 from pyromof import helpers
 from oemof.solph import (
     EnergySystem,
     processing,
 )
-
-logging.basicConfig(
-    filename=os.path.join("meta_info", "logging.log"),
-    format="%(asctime)s %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S %p",
-    encoding="utf-8",
-    level=logging.INFO,
-)
-
-
-ROOT_PATH = Path(__file__).parent.parent
-RESULTS = os.path.join(ROOT_PATH, "results")
-DUMPING_SPACE = os.path.join(ROOT_PATH, "dumping_space")
 
 
 def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
@@ -121,10 +107,17 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
 
 if __name__ == "__main__":
 
+    scenario = input("Which scenario shall be postprocessed? ")
+
+    ROOT_PATH = Path(__file__).parent.parent
+    SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
+    DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
+    # Create a results folder if it doesn't exist yet
+    Path(os.path.join(SCENARIO_PATH, "results")).mkdir(exist_ok=True)
+    RESULTS = os.path.join(SCENARIO_PATH, "results")
+
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
-
-    logging.info("The EnergySystem is restored.")
 
     # Read in the scenario and set investment variable
     scenario, investment = helpers.retreive_scenario_from_results(es)

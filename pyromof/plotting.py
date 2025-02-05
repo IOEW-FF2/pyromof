@@ -7,10 +7,6 @@ import helpers
 from pathlib import Path
 from oemof.solph import EnergySystem, views
 
-ROOT_PATH = Path(__file__).parent.parent
-RESULTS = os.path.join(ROOT_PATH, "results")
-DUMPING_SPACE = os.path.join(ROOT_PATH, "dumping_space")
-
 
 def plot_figures_for(element: dict, filename):
     figure, axes = plt.subplots(figsize=(10, 5))
@@ -141,6 +137,13 @@ def plot(scenario):
 
 
 if __name__ == "__main__":
+
+    scenario = input("For which scenario shall the results be plotted? ")
+
+    ROOT_PATH = Path(__file__).parent.parent
+    RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")
+    DUMPING_SPACE = os.path.join(ROOT_PATH, "results", scenario, "dumping_space")
+
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
     scenario, investment = helpers.retreive_scenario_from_results(es)
