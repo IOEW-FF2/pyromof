@@ -7,10 +7,6 @@ from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
 from pyromof import helpers
 
-ROOT_PATH = Path(__file__).parent.parent
-META_INFO = os.path.join(ROOT_PATH, "meta_info")
-DUMPING_SPACE = os.path.join(ROOT_PATH, "dumping_space")
-
 # Reading in the raw data
 profiles = pd.read_excel("input_data.xlsx", sheet_name="profiles")
 sinks = pd.read_excel("input_data.xlsx", sheet_name="sink")
@@ -22,6 +18,17 @@ general = pd.read_excel("input_data.xlsx", sheet_name="general")
 # Read in the scenario and set investment variable
 scenario = general.loc[general["item"] == "scenario", "value"].item()
 print("Selected scenario: " + scenario)
+
+ROOT_PATH = Path(__file__).parent.parent
+RESULTS = os.path.join(ROOT_PATH, "results")
+# Create folder for the scenario within the results folder if it doesn't exist yet
+Path(os.path.join(RESULTS, scenario)).mkdir(exist_ok=True)
+SCENARIO_PATH = os.path.join(RESULTS, scenario)
+# Create folders for meta_info and dumping_space
+Path(os.path.join(SCENARIO_PATH, "meta_info")).mkdir(exist_ok=True)
+META_INFO = os.path.join(SCENARIO_PATH, "meta_info")
+Path(os.path.join(SCENARIO_PATH, "dumping_space")).mkdir(exist_ok=True)
+DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
 
 # Initiate an investment variable as False that will be overwritten
 # with True if any component with investment is added.
