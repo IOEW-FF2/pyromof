@@ -23,6 +23,11 @@ general = pd.read_excel("input_data.xlsx", sheet_name="general")
 scenario = general.loc[general["item"] == "scenario", "value"].item()
 print("Selected scenario: " + scenario)
 
+# Initiate an investment variable as False that will be overwritten
+# with True if any component with investment is added.
+# This information is required for the postprocessing.
+investment = False
+
 # Definition of the time period
 time = pd.date_range("2023-01-02", periods=145, freq="h")
 
@@ -46,7 +51,6 @@ def matches_scenario(scenario_to_check, scenario_wanted):
 def extract_components_and_buses_from_input_data(
     sinks, sources, transformers, storage, scenario_wanted
 ):
-    print(scenario_wanted)
     filtered_sinks = sinks[
         sinks["scenario"].apply(matches_scenario, args=(scenario_wanted,))
     ]
@@ -103,6 +107,7 @@ for i, b in buses.iterrows():
 # Create other components
 print("Adding the following components to the energysystem:")
 print(components)
+
 # SINKS
 if "biochar_market" in components:
     row = sinks.loc[sinks.label == "biochar_market", :]
@@ -198,9 +203,10 @@ if "heat_source" in components:
 
 if "conversion_orc" in components:
     row = transformers.loc[transformers.label == "conversion_orc"]
-    if row.investment.item() == True:
+    if row.investment.item() is True:
+        investment = True
         print(
-            "Warning: Investment optimisation is not yet implemented for conversion_orc. It is treated as dispatch."
+            "Warning: Investment optimisation is not yet implemented for conversion_orc."
         )
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
         print("epc for conversion_orc: ", epc)
@@ -217,7 +223,7 @@ if "conversion_orc" in components:
                 busd[row.bus_out_2.item()]: row.eff_out_2.item(),
             },
         )
-    elif row.investment.item() == False:
+    elif row.investment.item() is False:
         conversion_orc = solph.components.Transformer(
             label="conversion_orc",
             inputs={busd[row.bus_in_1.item()]: solph.Flow()},
@@ -235,7 +241,8 @@ if "conversion_orc" in components:
 
 if "pyrolysis" in components:
     row = transformers.loc[transformers.label == "pyrolysis"]
-    if row.investment.item() == True:
+    if row.investment.item() is True:
+        investment = True
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
         print("epc for pyrolysis: ", epc)
         pyrolysis = solph.components.Transformer(
@@ -259,7 +266,7 @@ if "pyrolysis" in components:
                 busd[row.bus_out_3.item()]: row.eff_out_3.item(),
             },
         )
-    elif row.investment.item() == False:
+    elif row.investment.item() is False:
         pyrolysis = solph.components.Transformer(
             label="pyrolysis",
             inputs={
@@ -283,9 +290,10 @@ if "pyrolysis" in components:
 
 if "combustor_hot" in components:
     row = transformers.loc[transformers.label == "combustor_hot"]
-    if row.investment.item() == True:
+    if row.investment.item() is True:
+        investment = True
         print(
-            "Warning: Investment optimisation is not yet implemented for combustor_hot. It is treated as dispatch."
+            "Warning: Investment optimisation is not yet implemented for combustor_hot."
         )
         combustor_hot = solph.components.Transformer(
             label="combustor_hot",
@@ -300,7 +308,7 @@ if "combustor_hot" in components:
                 busd[row.bus_out_1.item()]: row.eff_out_1.item(),
             },
         )
-    elif row.investment.item() == False:
+    elif row.investment.item() is False:
         combustor_hot = solph.components.Transformer(
             label="combustor_hot",
             inputs={
@@ -341,6 +349,7 @@ es.params = solph.processing.parameter_as_dict(es)
 es.results["main"] = solph.processing.results(om)
 es.results["meta"] = solph.processing.meta_results(om)
 es.results["scenario"] = scenario
+es.results["investment"] = investment
 
 flows = solph.processing.convert_keys_to_strings(om.flows)
 columns = [a for a, b in flows.items()]
