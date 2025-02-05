@@ -40,17 +40,26 @@ wacc = general.loc[general["item"] == "wacc", "value"].item()
 # Model definition
 es = solph.EnergySystem(timeindex=time)
 
-nodes = []
-busd = {}
-
 
 def matches_scenario(scenario_to_check, scenario_wanted):
+    """
+    Checks wether the string "scenario to check" is either "all" or includes the "scenario_wanted".
+    "scenario_wanted" should be the scenario to be optimized, and "scenario_to_check" a scenario field
+    from the input data.
+    """
     return scenario_to_check == "all" or scenario_wanted in scenario_to_check
 
 
 def extract_components_and_buses_from_input_data(
     sinks, sources, converters, storage, scenario_wanted
 ):
+    """
+    Takes the dfs from the input data sheets and the selected scenario and extracts
+    (1) the components included in the scenario and (2) the buses which are connected
+    to these components. The buses are returned as a dataframe with one column named
+    "label" and the components are returned as a list.
+    """
+    # Filter input data sheets by scenario
     filtered_sinks = sinks[
         sinks["scenario"].apply(matches_scenario, args=(scenario_wanted,))
     ]
@@ -64,6 +73,7 @@ def extract_components_and_buses_from_input_data(
         storage["scenario"].apply(matches_scenario, args=(scenario_wanted,))
     ]
 
+    # Create component list for the selected scenario
     components = (
         filtered_sinks["label"].tolist()
         + filtered_sources["label"].tolist()
@@ -71,6 +81,7 @@ def extract_components_and_buses_from_input_data(
         + filtered_storage["label"].tolist()
     )
 
+    # Create list of unique buses for the selected scenario
     buses = (
         filtered_sinks["bus_in"].tolist()
         + filtered_sources["bus_out"].tolist()
@@ -85,6 +96,7 @@ def extract_components_and_buses_from_input_data(
     buses = set(buses)
     # Convert back to list
     buses = list(buses)
+    # Convert to dataframe
     buses_df = pd.DataFrame(data={"label": buses})
     return buses_df, components
 
@@ -93,9 +105,13 @@ buses, components = extract_components_and_buses_from_input_data(
     sinks, sources, converters, storage, scenario
 )
 
+# Create Bus objects from buses table
+
 print("Adding the following buses to the energy system:")
 print(buses)
-# Create Bus objects from buses table
+
+nodes = []
+busd = {}
 
 for i, b in buses.iterrows():
     bus = solph.Bus(label=b["label"])
