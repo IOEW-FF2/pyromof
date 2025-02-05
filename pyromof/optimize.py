@@ -21,7 +21,7 @@ general = pd.read_excel("input_data.xlsx", sheet_name="general")
 
 # Read in the scenario and set investment variable
 scenario = general.loc[general["item"] == "scenario", "value"].item()
-investment = False
+print("Selected scenario: " + scenario)
 
 # Definition of the time period
 time = pd.date_range("2023-01-02", periods=145, freq="h")
@@ -38,26 +38,58 @@ es = solph.EnergySystem(timeindex=time)
 nodes = []
 busd = {}
 
-def extract_buses_from_input_data(sinks, sources, transformers, storage):
-    filtered_sinks = sinks[sinks['scenario'].isin(['all', scenario])]
-    filtered_sources = sources[sources['scenario'].isin(['all', scenario])]
-    filtered_transformers = transformers[transformers['scenario'].isin(['all', scenario])]
-    filtered_storage = storage[storage['scenario'].isin(['all', scenario])]
+
+def matches_scenario(scenario_to_check, scenario_wanted):
+    return scenario_to_check == "all" or scenario_wanted in scenario_to_check
+
+
+def extract_components_and_buses_from_input_data(
+    sinks, sources, transformers, storage, scenario_wanted
+):
+    print(scenario_wanted)
+    filtered_sinks = sinks[
+        sinks["scenario"].apply(matches_scenario, args=(scenario_wanted,))
+    ]
+    filtered_sources = sources[
+        sources["scenario"].apply(matches_scenario, args=(scenario_wanted,))
+    ]
+    filtered_transformers = transformers[
+        transformers["scenario"].apply(matches_scenario, args=(scenario_wanted,))
+    ]
+    filtered_storage = storage[
+        storage["scenario"].apply(matches_scenario, args=(scenario_wanted,))
+    ]
+
+    components = (
+        filtered_sinks["label"].tolist()
+        + filtered_sources["label"].tolist()
+        + filtered_transformers["label"].tolist()
+        + filtered_storage["label"].tolist()
+    )
 
     buses = (
-        filtered_sinks['bus_in'].tolist() +
-        filtered_sources['bus_out'].tolist() +
-        filtered_transformers[['bus_in_1', 'bus_in_2', 'bus_out_1', 'bus_out_2', 'bus_out_3']].stack().tolist() +
-        filtered_storage[['bus_in', 'bus_out']].stack().tolist()
+        filtered_sinks["bus_in"].tolist()
+        + filtered_sources["bus_out"].tolist()
+        + filtered_transformers[
+            ["bus_in_1", "bus_in_2", "bus_out_1", "bus_out_2", "bus_out_3"]
+        ]
+        .stack()
+        .tolist()
+        + filtered_storage[["bus_in", "bus_out"]].stack().tolist()
     )
     # Filter unique values
     buses = set(buses)
+    # Convert back to list
     buses = list(buses)
     buses_df = pd.DataFrame(data={"label": buses})
-    return buses_df
+    return buses_df, components
 
-buses = extract_buses_from_input_data(sinks, sources, transformers, storage)
 
+buses, components = extract_components_and_buses_from_input_data(
+    sinks, sources, transformers, storage, scenario
+)
+
+print("Adding the following buses to the energy system:")
 print(buses)
 # Create Bus objects from buses table
 
@@ -69,173 +101,220 @@ for i, b in buses.iterrows():
 
 
 # Create other components
-
+print("Adding the following components to the energysystem:")
+print(components)
 # SINKS
-row = sinks.loc[sinks.label == "biochar_market", :]
-if row.scenario.item() == "all" or scenario in row.scenario.item():
-    print("Instantiating biochar_market")
+if "biochar_market" in components:
+    row = sinks.loc[sinks.label == "biochar_market", :]
     biochar_market = solph.components.Sink(
         label="biochar_market",
-        inputs={busd[row.bus_in.item()]: solph.Flow(variable_costs=row.variable_costs.item())},
+        inputs={
+            busd[row.bus_in.item()]: solph.Flow(
+                variable_costs=row.variable_costs.item()
+            )
+        },
     )
+    es.add(biochar_market)
 
-row = sinks.loc[sinks.label == "co2_market", :]
-co2_market = solph.components.Sink(
-    label="co2_market",
-    inputs={busd[row.bus_in.item()]: solph.Flow(variable_costs=row.variable_costs.item())},
-)
+if "co2_market" in components:
+    row = sinks.loc[sinks.label == "co2_market", :]
+    co2_market = solph.components.Sink(
+        label="co2_market",
+        inputs={
+            busd[row.bus_in.item()]: solph.Flow(
+                variable_costs=row.variable_costs.item()
+            )
+        },
+    )
+    es.add(co2_market)
 
-row = sinks.loc[sinks.label == "electricity_grid", :]
-electricity_grid = solph.components.Sink(
-    label="electricity_grid",
-    inputs={busd[row.bus_in.item()]: solph.Flow(variable_costs=row.variable_costs.item())},
-)
+if "electricity_grid" in components:
+    row = sinks.loc[sinks.label == "electricity_grid", :]
+    electricity_grid = solph.components.Sink(
+        label="electricity_grid",
+        inputs={
+            busd[row.bus_in.item()]: solph.Flow(
+                variable_costs=row.variable_costs.item()
+            )
+        },
+    )
+    es.add(electricity_grid)
 
-row = sinks.loc[sinks.label == "heat_demand_ht", :]
-heat_demand_ht = solph.components.Sink(
-    label="heat_demand_ht",
-    inputs={
-        busd[row.bus_in.item()]: solph.Flow(
-            nominal_value=row.amount.item(),
-            fix=profiles[row.profile.item()],
-            variable_costs=row.variable_costs.item(),
-        )
-    },
-)
+if "heat_demand_ht" in components:
+    row = sinks.loc[sinks.label == "heat_demand_ht", :]
+    heat_demand_ht = solph.components.Sink(
+        label="heat_demand_ht",
+        inputs={
+            busd[row.bus_in.item()]: solph.Flow(
+                nominal_value=row.amount.item(),
+                fix=profiles[row.profile.item()],
+                variable_costs=row.variable_costs.item(),
+            )
+        },
+    )
+    es.add(heat_demand_ht)
 
-row = sinks.loc[sinks.label == "heat_demand_lt", :]
-heat_demand_lt = solph.components.Sink(
-    label="heat_demand_lt",
-    inputs={
-        busd[row.bus_in.item()]: solph.Flow(
-            nominal_value=row.amount.item(),
-            fix=profiles[row.profile.item()],
-            variable_costs=row.variable_costs.item(),
-        )
-    },
-)
+if "heat_demand_lt" in components:
+    row = sinks.loc[sinks.label == "heat_demand_lt", :]
+    heat_demand_lt = solph.components.Sink(
+        label="heat_demand_lt",
+        inputs={
+            busd[row.bus_in.item()]: solph.Flow(
+                nominal_value=row.amount.item(),
+                fix=profiles[row.profile.item()],
+                variable_costs=row.variable_costs.item(),
+            )
+        },
+    )
+    es.add(heat_demand_lt)
 
 # SOURCES
-row = sources.loc[sources.label == "biomass", :]
-biomass = solph.components.Source(
-    label="biomass",
-    outputs={
-        busd[row.bus_out.item()]: solph.Flow(
-            nominal_value=row.amount.item(), variable_costs=row.variable_costs.item()
+if "biomass" in components:
+    row = sources.loc[sources.label == "biomass", :]
+    biomass = solph.components.Source(
+        label="biomass",
+        outputs={
+            busd[row.bus_out.item()]: solph.Flow(
+                nominal_value=row.amount.item(),
+                variable_costs=row.variable_costs.item(),
+            )
+        },
+    )
+    es.add(biomass)
+
+if "heat_source" in components:
+    row = sources.loc[sources.label == "heat_source", :]
+    heat_source = solph.components.Source(
+        label="heat_source",
+        outputs={
+            busd[row.bus_out.item()]: solph.Flow(
+                variable_costs=row.variable_costs.item()
+            )
+        },
+    )
+    es.add(heat_source)
+
+# TRANSFORMERS
+
+if "conversion_orc" in components:
+    row = transformers.loc[transformers.label == "conversion_orc"]
+    if row.investment.item() == True:
+        print(
+            "Warning: Investment optimisation is not yet implemented for conversion_orc. It is treated as dispatch."
         )
-    },
-)
+        epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        print("epc for conversion_orc: ", epc)
+        conversion_orc = solph.components.Transformer(
+            label="conversion_orc_invest",
+            inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(),
+                busd[row.bus_out_2.item()]: solph.Flow(),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+                busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+            },
+        )
+    elif row.investment.item() == False:
+        conversion_orc = solph.components.Transformer(
+            label="conversion_orc",
+            inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(),
+                busd[row.bus_out_2.item()]: solph.Flow(),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+                busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+            },
+        )
+    es.add(conversion_orc)
 
-row = sources.loc[sources.label == "heat_source", :]
-heat_source = solph.components.Source(
-    label="heat_source",
-    outputs={
-        busd[row.bus_out.item()]: solph.Flow(variable_costs=row.variable_costs.item())
-    },
-)
-
-# TRANSFORMERS WITH INVESTMENT OPTIMISATION
-if investment is True:
-    print("Adding transformers with investment optimization")
-    row = transformers.loc[transformers.label == "conversion_orc"]
-    epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
-    print("epc for conversion_orc: ", epc)
-    conversion_orc = solph.components.Transformer(
-        label="conversion_orc_invest",
-        inputs={busd[row.bus_in_1.item()]: solph.Flow()},
-        outputs={
-            busd[row.bus_out_1.item()]: solph.Flow(),
-            busd[row.bus_out_2.item()]: solph.Flow(),
-        },
-        conversion_factors={
-            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-            busd[row.bus_out_2.item()]: row.eff_out_2.item(),
-        },
-    )
-
+if "pyrolysis" in components:
     row = transformers.loc[transformers.label == "pyrolysis"]
-    epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
-    print("epc for pyrolysis: ", epc)
-    pyrolysis = solph.components.Transformer(
-        label="pyrolysis_invest",
-        inputs={
-            busd[row.bus_in_1.item()]: solph.Flow(),
-            busd[row.bus_in_2.item()]: solph.Flow(),
-        },
-        outputs={
-            busd[row.bus_out_1.item()]: solph.Flow(
-                nominal_value=solph.Investment(ep_costs=epc)
-            ),
-            busd[row.bus_out_2.item()]: solph.Flow(),
-            busd[row.bus_out_3.item()]: solph.Flow(),
-        },
-        conversion_factors={
-            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-            busd[row.bus_in_2.item()]: row.eff_in_2.item(),
-            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-            busd[row.bus_out_2.item()]: row.eff_out_2.item(),
-            busd[row.bus_out_3.item()]: row.eff_out_3.item(),
-        },
-    )
+    if row.investment.item() == True:
+        epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        print("epc for pyrolysis: ", epc)
+        pyrolysis = solph.components.Transformer(
+            label="pyrolysis_invest",
+            inputs={
+                busd[row.bus_in_1.item()]: solph.Flow(),
+                busd[row.bus_in_2.item()]: solph.Flow(),
+            },
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=solph.Investment(ep_costs=epc)
+                ),
+                busd[row.bus_out_2.item()]: solph.Flow(),
+                busd[row.bus_out_3.item()]: solph.Flow(),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_in_2.item()]: row.eff_in_2.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+                busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+                busd[row.bus_out_3.item()]: row.eff_out_3.item(),
+            },
+        )
+    elif row.investment.item() == False:
+        pyrolysis = solph.components.Transformer(
+            label="pyrolysis",
+            inputs={
+                busd[row.bus_in_1.item()]: solph.Flow(),
+                busd[row.bus_in_2.item()]: solph.Flow(),
+            },
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(),
+                busd[row.bus_out_2.item()]: solph.Flow(),
+                busd[row.bus_out_3.item()]: solph.Flow(),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_in_2.item()]: row.eff_in_2.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+                busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+                busd[row.bus_out_3.item()]: row.eff_out_3.item(),
+            },
+        )
+    es.add(pyrolysis)
 
-# TRANSFORMERS WITHOUT INVESTMENT OPTIMISATION
-else:
-    print("Adding transformers without investment optimization")
-    row = transformers.loc[transformers.label == "conversion_orc"]
-    conversion_orc = solph.components.Transformer(
-        label="conversion_orc",
-        inputs={busd[row.bus_in_1.item()]: solph.Flow()},
-        outputs={
-            busd[row.bus_out_1.item()]: solph.Flow(),
-            busd[row.bus_out_2.item()]: solph.Flow(),
-        },
-        conversion_factors={
-            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-            busd[row.bus_out_2.item()]: row.eff_out_2.item(),
-        },
-    )
-
-    row = transformers.loc[transformers.label == "pyrolysis"]
-    pyrolysis = solph.components.Transformer(
-        label="pyrolysis",
-        inputs={
-            busd[row.bus_in_1.item()]: solph.Flow(),
-            busd[row.bus_in_2.item()]: solph.Flow(),
-        },
-        outputs={
-            busd[row.bus_out_1.item()]: solph.Flow(),
-            busd[row.bus_out_2.item()]: solph.Flow(),
-            busd[row.bus_out_3.item()]: solph.Flow(),
-        },
-        conversion_factors={
-            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-            busd[row.bus_in_2.item()]: row.eff_in_2.item(),
-            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-            busd[row.bus_out_2.item()]: row.eff_out_2.item(),
-            busd[row.bus_out_3.item()]: row.eff_out_3.item(),
-        },
-    )
-
+if "combustor_hot" in components:
     row = transformers.loc[transformers.label == "combustor_hot"]
-    combustor_hot = solph.components.Transformer(
-        label="combustor_hot",
-        inputs={
-            busd[row.bus_in_1.item()]: solph.Flow(),
-        },
-        outputs={
-            busd[row.bus_out_1.item()]: solph.Flow(),
-        },
-        conversion_factors={
-            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-        },
-    )
-
-# Add elements to the energy system
-
-es.add(biochar_market, co2_market, heat_demand_lt, heat_demand_ht, electricity_grid, biomass, heat_source, conversion_orc, pyrolysis, combustor_hot)
+    if row.investment.item() == True:
+        print(
+            "Warning: Investment optimisation is not yet implemented for combustor_hot. It is treated as dispatch."
+        )
+        combustor_hot = solph.components.Transformer(
+            label="combustor_hot",
+            inputs={
+                busd[row.bus_in_1.item()]: solph.Flow(),
+            },
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            },
+        )
+    elif row.investment.item() == False:
+        combustor_hot = solph.components.Transformer(
+            label="combustor_hot",
+            inputs={
+                busd[row.bus_in_1.item()]: solph.Flow(),
+            },
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            },
+        )
+    es.add(combustor_hot)
 
 
 # Initialise the operational model
