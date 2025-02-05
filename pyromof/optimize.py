@@ -15,7 +15,7 @@ DUMPING_SPACE = os.path.join(ROOT_PATH, "dumping_space")
 profiles = pd.read_excel("input_data.xlsx", sheet_name="profiles")
 sinks = pd.read_excel("input_data.xlsx", sheet_name="sink")
 sources = pd.read_excel("input_data.xlsx", sheet_name="source")
-transformers = pd.read_excel("input_data.xlsx", sheet_name="transformer")
+converters = pd.read_excel("input_data.xlsx", sheet_name="converter")
 storage = pd.read_excel("input_data.xlsx", sheet_name="storage")
 general = pd.read_excel("input_data.xlsx", sheet_name="general")
 
@@ -49,7 +49,7 @@ def matches_scenario(scenario_to_check, scenario_wanted):
 
 
 def extract_components_and_buses_from_input_data(
-    sinks, sources, transformers, storage, scenario_wanted
+    sinks, sources, converters, storage, scenario_wanted
 ):
     filtered_sinks = sinks[
         sinks["scenario"].apply(matches_scenario, args=(scenario_wanted,))
@@ -57,8 +57,8 @@ def extract_components_and_buses_from_input_data(
     filtered_sources = sources[
         sources["scenario"].apply(matches_scenario, args=(scenario_wanted,))
     ]
-    filtered_transformers = transformers[
-        transformers["scenario"].apply(matches_scenario, args=(scenario_wanted,))
+    filtered_converters = converters[
+        converters["scenario"].apply(matches_scenario, args=(scenario_wanted,))
     ]
     filtered_storage = storage[
         storage["scenario"].apply(matches_scenario, args=(scenario_wanted,))
@@ -67,14 +67,14 @@ def extract_components_and_buses_from_input_data(
     components = (
         filtered_sinks["label"].tolist()
         + filtered_sources["label"].tolist()
-        + filtered_transformers["label"].tolist()
+        + filtered_converters["label"].tolist()
         + filtered_storage["label"].tolist()
     )
 
     buses = (
         filtered_sinks["bus_in"].tolist()
         + filtered_sources["bus_out"].tolist()
-        + filtered_transformers[
+        + filtered_converters[
             ["bus_in_1", "bus_in_2", "bus_out_1", "bus_out_2", "bus_out_3"]
         ]
         .stack()
@@ -90,7 +90,7 @@ def extract_components_and_buses_from_input_data(
 
 
 buses, components = extract_components_and_buses_from_input_data(
-    sinks, sources, transformers, storage, scenario
+    sinks, sources, converters, storage, scenario
 )
 
 print("Adding the following buses to the energy system:")
@@ -199,10 +199,10 @@ if "heat_source" in components:
     )
     es.add(heat_source)
 
-# TRANSFORMERS
+# CONVERTERS
 
 if "conversion_orc" in components:
-    row = transformers.loc[transformers.label == "conversion_orc"]
+    row = converters.loc[converters.label == "conversion_orc"]
     if row.investment.item() is True:
         investment = True
         print(
@@ -210,7 +210,7 @@ if "conversion_orc" in components:
         )
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
         print("epc for conversion_orc: ", epc)
-        conversion_orc = solph.components.Transformer(
+        conversion_orc = solph.components.Converter(
             label="conversion_orc_invest",
             inputs={busd[row.bus_in_1.item()]: solph.Flow()},
             outputs={
@@ -224,7 +224,7 @@ if "conversion_orc" in components:
             },
         )
     elif row.investment.item() is False:
-        conversion_orc = solph.components.Transformer(
+        conversion_orc = solph.components.Converter(
             label="conversion_orc",
             inputs={busd[row.bus_in_1.item()]: solph.Flow()},
             outputs={
@@ -240,12 +240,12 @@ if "conversion_orc" in components:
     es.add(conversion_orc)
 
 if "pyrolysis" in components:
-    row = transformers.loc[transformers.label == "pyrolysis"]
+    row = converters.loc[converters.label == "pyrolysis"]
     if row.investment.item() is True:
         investment = True
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
         print("epc for pyrolysis: ", epc)
-        pyrolysis = solph.components.Transformer(
+        pyrolysis = solph.components.Converter(
             label="pyrolysis_invest",
             inputs={
                 busd[row.bus_in_1.item()]: solph.Flow(),
@@ -267,7 +267,7 @@ if "pyrolysis" in components:
             },
         )
     elif row.investment.item() is False:
-        pyrolysis = solph.components.Transformer(
+        pyrolysis = solph.components.Converter(
             label="pyrolysis",
             inputs={
                 busd[row.bus_in_1.item()]: solph.Flow(),
@@ -289,13 +289,13 @@ if "pyrolysis" in components:
     es.add(pyrolysis)
 
 if "combustor_hot" in components:
-    row = transformers.loc[transformers.label == "combustor_hot"]
+    row = converters.loc[converters.label == "combustor_hot"]
     if row.investment.item() is True:
         investment = True
         print(
             "Warning: Investment optimisation is not yet implemented for combustor_hot."
         )
-        combustor_hot = solph.components.Transformer(
+        combustor_hot = solph.components.Converter(
             label="combustor_hot",
             inputs={
                 busd[row.bus_in_1.item()]: solph.Flow(),
@@ -309,7 +309,7 @@ if "combustor_hot" in components:
             },
         )
     elif row.investment.item() is False:
-        combustor_hot = solph.components.Transformer(
+        combustor_hot = solph.components.Converter(
             label="combustor_hot",
             inputs={
                 busd[row.bus_in_1.item()]: solph.Flow(),
