@@ -33,7 +33,7 @@ def convert_result_sequences_to_df(results_data):
     one for scalars) with the flow names as columnnames and a datetime index.
     """
     results = processing.convert_keys_to_strings(results_data)
-    flows = [x for x in results.keys() if x[1] != 'None']
+    flows = [x for x in results.keys() if x[1] != "None"]
     df_sequences = pd.DataFrame(columns=flows)
     for flow in flows:
         df_sequences[flow] = results[flow]["sequences"]
@@ -102,12 +102,30 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
         )
         # The unit here should be kWh per timestep. It is kW because the timesteps are hours.
         # Multiplied with the epc for pyrolysis, this yields the annuity for investment costs.
+        # TODO: Add investment in storage capacity to scalar results
     return scalar_results
+
+
+def check_scalar_costs_consistency(scalar_data):
+    # Check whether the sum of the monetary scalar results is equal to the objective variable and print a warning if not
+    scalar_costs = helpers.filter_cost_items_from_scalar_data(scalar_results)
+    objective = scalar_results.loc[
+        scalar_results["variable"] == "objective", "value"
+    ].item()
+    if scalar_costs.value.sum() is not objective:
+        print(
+            "Warning: Some cost or revenue scalars must be missing in the scalar results. "
+            "The sum of the cost and revenue data is ",
+            scalar_costs.value.sum(),
+            "whereas the objective is ",
+            objective,
+        )
 
 
 if __name__ == "__main__":
 
-    scenario = input("Which scenario shall be postprocessed? ")
+    # scenario = input("Which scenario shall be postprocessed? ")
+    scenario = "syngasstorage"
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
@@ -156,6 +174,8 @@ if __name__ == "__main__":
     scalar_results = add_investment_amount_to_scalar_results(
         investment, scalars, scalar_results
     )
+
+    check_scalar_costs_consistency(scalar_results)
 
     # Save scalar results when all are collected
     scalar_results.to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")

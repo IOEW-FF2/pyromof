@@ -92,10 +92,7 @@ def prepare_cost_scalars_for_plotting():
     scalar_data = pd.read_csv(
         os.path.join(RESULTS, "scalar_results.csv"), sep=";", index_col=0
     )
-    scalcosts = scalar_data[
-        (~scalar_data["type"].str.contains("objective \\[Euros\\]", regex=True))
-        & scalar_data["type"].str.contains("Euros", regex=False)
-    ]
+    scalcosts = helpers.filter_cost_items_from_scalar_data(scalar_data)
     scalcosts.loc[:, "value"] = scalcosts.loc[:, "value"] * -1
     scalcosts.loc[:, "scenario"] = [scenario] * len(scalcosts)
     # TODO: merge 'variable' and 'type' into a single practical label
