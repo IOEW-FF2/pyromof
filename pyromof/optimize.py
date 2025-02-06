@@ -228,16 +228,13 @@ if "conversion_orc" in components:
     row = converters.loc[converters.label == "conversion_orc"]
     if row.investment.item() is True:
         investment = True
-        print(
-            "Warning: Investment optimisation is not yet implemented for conversion_orc."
-        )
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
         print("epc for conversion_orc: ", epc)
         conversion_orc = solph.components.Converter(
             label="conversion_orc_invest",
             inputs={busd[row.bus_in_1.item()]: solph.Flow()},
             outputs={
-                busd[row.bus_out_1.item()]: solph.Flow(),
+                busd[row.bus_out_1.item()]: solph.Flow(nominal_value=solph.Investment(ep_costs=epc)),
                 busd[row.bus_out_2.item()]: solph.Flow(),
             },
             conversion_factors={
@@ -315,16 +312,15 @@ if "combustor_hot" in components:
     row = converters.loc[converters.label == "combustor_hot"]
     if row.investment.item() is True:
         investment = True
-        print(
-            "Warning: Investment optimisation is not yet implemented for combustor_hot."
-        )
+        epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        print("epc for combustor_hot: ", epc)
         combustor_hot = solph.components.Converter(
             label="combustor_hot",
             inputs={
                 busd[row.bus_in_1.item()]: solph.Flow(),
             },
             outputs={
-                busd[row.bus_out_1.item()]: solph.Flow(),
+                busd[row.bus_out_1.item()]: solph.Flow(nominal_value=solph.Investment(ep_costs=epc)),
             },
             conversion_factors={
                 busd[row.bus_in_1.item()]: row.eff_in_1.item(),
