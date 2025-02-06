@@ -99,17 +99,21 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
     The scalars df should be composed of the scalars of all flows taken from the raw results
     data: results[flow]["scalars"]
     """
-    if investment is True:
-        scalars = scalars.dropna(axis=1)
-        dict = {}
-        for columnName, columnData in scalars.items():
-            dict[columnName] = columnData["invest"]
-        scalar_results = add_items_to_scalar_results(
-            dict, "built capacity [kW]", scalar_results
-        )
-        # The unit here should be kWh per timestep. It is kW because the timesteps are hours.
-        # Multiplied with the epc for pyrolysis, this yields the annuity for investment costs.
-
+    scalars = scalars.dropna(axis=1)
+    dict = {}
+    for columnName, columnData in scalars.items():
+        dict[columnName] = columnData["invest"]
+    scalar_results = add_items_to_scalar_results(
+        dict, "built capacity [kW]", scalar_results
+    )
+    epcs = pd.read_csv(os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";")
+    investmentcost_dict = {}
+    for key, value in dict.items():
+        investmentcost_dict[key] = dict[key] * epcs.loc[epcs["object"] == key, "value"].item()
+    scalar_results = add_items_to_scalar_results(
+        investmentcost_dict, "amount invested [Euros]", scalar_results
+    )
+    # The unit here should be kWh per timestep. It is kW because the timesteps are hours.
     return scalar_results
 
 
@@ -121,7 +125,7 @@ def check_scalar_costs_consistency(scalar_data):
     objective = scalar_results.loc[
         scalar_results["variable"] == "objective", "value"
     ].item()
-    if scalar_costs.value.sum() is not objective:
+    if scalar_costs.value.sum() - objective > 0.1:
         print(
             "Warning: Some cost or revenue scalars must be missing in the scalar results. "
             "The sum of the cost and revenue data is ",
@@ -183,9 +187,10 @@ if __name__ == "__main__":
     scalar_results = add_sums_to_scalar_results(
         effective_variable_costs, sequences, scalar_results
     )
-    scalar_results = add_investment_amount_to_scalar_results(
-        investment, scalars, scalar_results
-    )
+    if investment is True:
+        scalar_results = add_investment_amount_to_scalar_results(
+            investment, scalars, scalar_results
+        )
 
     check_scalar_costs_consistency(scalar_results)
 

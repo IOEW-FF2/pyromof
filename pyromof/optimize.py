@@ -41,8 +41,8 @@ time = pd.date_range("2023-01-02", periods=145, freq="h")
 # Read in wacc for investment optimization
 wacc = general.loc[general["item"] == "wacc", "value"].item()
 
-# Initiate dataframe to store annuities
-
+# Initiate dict to store annuities
+epcs = {}
 
 # Model definition
 es = solph.EnergySystem(timeindex=time)
@@ -229,6 +229,7 @@ if "conversion_orc" in components:
     if row.investment.item() is True:
         investment = True
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        epcs["conversion_orc_invest to " + row.bus_out_1.item()] = epc
         print("epc for conversion_orc: ", epc)
         conversion_orc = solph.components.Converter(
             label="conversion_orc_invest",
@@ -264,6 +265,7 @@ if "pyrolysis" in components:
     if row.investment.item() is True:
         investment = True
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        epcs["pyrolysis_invest to " + row.bus_out_1.item()] = epc
         print("epc for pyrolysis: ", epc)
         pyrolysis = solph.components.Converter(
             label="pyrolysis_invest",
@@ -313,9 +315,10 @@ if "combustor_hot" in components:
     if row.investment.item() is True:
         investment = True
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        epcs["combustor_hot_invest to " + row.bus_out_1.item()] = epc
         print("epc for combustor_hot: ", epc)
         combustor_hot = solph.components.Converter(
-            label="combustor_hot",
+            label="combustor_hot_invest",
             inputs={
                 busd[row.bus_in_1.item()]: solph.Flow(),
             },
@@ -348,8 +351,9 @@ if "combustor_hot" in components:
 if "storage_syngas" in components:
     row = storage.loc[storage.label == "storage_syngas"]
     if row.investment.item() is True:
-        epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
-        print("epc for syngas storage: ", epc)
+        epc_nominal_storage_capacity = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        epcs["storage_syngas_invest to None"] = epc_nominal_storage_capacity
+        print("epc for syngas storage: ", epc_nominal_storage_capacity)
         investment = True
         storage_syngas = solph.components.GenericStorage(
             label="storage_syngas_invest",
@@ -359,7 +363,7 @@ if "storage_syngas" in components:
             initial_storage_level=row.initial_storage_level.item(),
             inflow_conversion_factor=row.inflow_conversion_factor.item(),
             outflow_conversion_factor=row.outflow_conversion_factor.item(),
-            nominal_storage_capacity=solph.Investment(ep_costs=epc)
+            nominal_storage_capacity=solph.Investment(ep_costs=epc_nominal_storage_capacity)
         )
     elif row.investment.item() is False:
         storage_syngas = solph.components.GenericStorage(
@@ -408,6 +412,12 @@ for col in df.columns:
 variable_costs = helpers.convert_tuple_columnnames_to_strings(df)
 variable_costs.to_csv(
     os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";"
+)
+
+# Save the dictionary with ep_costs:
+epcs = pd.DataFrame(epcs.items(), columns=['object', 'value'])
+epcs.to_csv(
+    os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";"
 )
 
 # dump the EnergySystem
