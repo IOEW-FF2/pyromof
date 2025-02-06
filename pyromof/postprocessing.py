@@ -29,20 +29,25 @@ def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
 def convert_result_sequences_to_df(results_data):
     """
     This function extracts all the sequences and all scalars from the flows
-    from the results data and stores them in two dataframes (one for sequences,
-    one for scalars) with the flow names as columnnames and a datetime index.
+    from the results data and stores them in three dataframes: one for sequences,
+    one for scalars, and a separate one for the storage content sequences.
+    Sequences are saved with the flow names as columnnames and a datetime index.
     """
     results = processing.convert_keys_to_strings(results_data)
     flows = [x for x in results.keys() if x[1] != "None"]
+    nodes = [x for x in results.keys() if x[1] == "None"]
     df_sequences = pd.DataFrame(columns=flows)
+    df_scalars = pd.DataFrame(columns=flows)
+    df_storage_content = pd.DataFrame()
     for flow in flows:
         df_sequences[flow] = results[flow]["sequences"]
-    df_scalars = pd.DataFrame(columns=flows)
-    for flow in flows:
         df_scalars[flow] = results[flow]["scalars"]
+    for node in nodes:
+        df_scalars[node] = results[node]["scalars"]
+        df_storage_content[node] = results[node]["sequences"]
     df_sequences.columns = [" to ".join(x) for x in df_sequences.columns]
     df_scalars.columns = [" to ".join(x) for x in df_scalars.columns]
-    return df_sequences, df_scalars
+    return df_sequences, df_scalars, df_storage_content
 
 
 def calculate_variable_costs_per_flow_per_timestep(path_sequences, path_varcosts):
@@ -90,7 +95,9 @@ def add_sums_to_scalar_results(effective_variable_costs, sequences, scalar_resul
 
 def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_results):
     """
-    Extract non-NaN-values from the scalars df and append them to the scalar results
+    Extract non-NaN-values from the scalars df and append them to the scalar results.
+    The scalars df should be composed of the scalars of all flows taken from the raw results
+    data: results[flow]["scalars"]
     """
     if investment is True:
         scalars = scalars.dropna(axis=1)
@@ -102,12 +109,14 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
         )
         # The unit here should be kWh per timestep. It is kW because the timesteps are hours.
         # Multiplied with the epc for pyrolysis, this yields the annuity for investment costs.
-        # TODO: Add investment in storage capacity to scalar results
+
     return scalar_results
 
 
 def check_scalar_costs_consistency(scalar_data):
-    # Check whether the sum of the monetary scalar results is equal to the objective variable and print a warning if not
+    """
+    Check whether the sum of the monetary scalar results is equal to the objective variable and print a warning if not
+    """
     scalar_costs = helpers.filter_cost_items_from_scalar_data(scalar_results)
     objective = scalar_results.loc[
         scalar_results["variable"] == "objective", "value"
@@ -157,8 +166,11 @@ if __name__ == "__main__":
 
     nodes = [x for x in es.results.keys() if x[1] is None]  # This is only storage
 
-    sequences, scalars = convert_result_sequences_to_df(results_data=es.results)
+    sequences, scalars, storage_contents = convert_result_sequences_to_df(
+        results_data=es.results
+    )
     sequences.to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
+    storage_contents.to_csv(os.path.join(RESULTS, "storage_contents.csv"), sep=";")
 
     effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
         os.path.join(RESULTS, "sequences.csv"),
