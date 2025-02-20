@@ -39,15 +39,20 @@ def convert_result_sequences_to_df(results_data):
     df_sequences = pd.DataFrame(columns=flows)
     df_scalars = pd.DataFrame(columns=flows)
     df_storage_content = pd.DataFrame()
+    df_storage_losses = pd.DataFrame()
     for flow in flows:
-        df_sequences[flow] = results[flow]["sequences"]
+        df_sequences[flow] = results[flow]["sequences"][
+            "flow"
+        ]  # Besides the "flow" column there can be columns "positive_gradient" etc.
         df_scalars[flow] = results[flow]["scalars"]
     for node in nodes:
         df_scalars[node] = results[node]["scalars"]
-        df_storage_content[node] = results[node]["sequences"]
-    df_sequences.columns = [" to ".join(x) for x in df_sequences.columns]
-    df_scalars.columns = [" to ".join(x) for x in df_scalars.columns]
-    return df_sequences, df_scalars, df_storage_content
+        df_storage_content[node] = results[node]["sequences"]["storage_content"]
+    #       df_storage_losses[node] = results[node]["sequences"]["storage_losses"]
+    #       Storage losses are stored in this format only in dispatch mode.
+    for df in [df_sequences, df_scalars, df_storage_content, df_storage_losses]:
+        df.columns = [" to ".join(x) for x in df.columns]
+    return df_sequences, df_scalars, df_storage_content, df_storage_losses
 
 
 def calculate_variable_costs_per_flow_per_timestep(path_sequences, path_varcosts):
@@ -106,10 +111,14 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
     scalar_results = add_items_to_scalar_results(
         dict, "built capacity [kW]", scalar_results
     )
-    epcs = pd.read_csv(os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";")
+    epcs = pd.read_csv(
+        os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";"
+    )
     investmentcost_dict = {}
     for key, value in dict.items():
-        investmentcost_dict[key] = dict[key] * epcs.loc[epcs["object"] == key, "value"].item()
+        investmentcost_dict[key] = (
+            dict[key] * epcs.loc[epcs["object"] == key, "value"].item()
+        )
     scalar_results = add_items_to_scalar_results(
         investmentcost_dict, "amount invested [Euros]", scalar_results
     )
@@ -119,7 +128,8 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
 
 def check_scalar_costs_consistency(scalar_data):
     """
-    Check whether the sum of the monetary scalar results is equal to the objective variable and print a warning if not
+    Check whether the sum of the monetary scalar results is equal to the objective variable
+    and print a warning if not
     """
     scalar_costs = helpers.filter_cost_items_from_scalar_data(scalar_results)
     objective = scalar_results.loc[
@@ -137,8 +147,7 @@ def check_scalar_costs_consistency(scalar_data):
 
 if __name__ == "__main__":
 
-    # scenario = input("Which scenario shall be postprocessed? ")
-    scenario = "syngasstorage"
+    scenario = input("Which scenario shall be postprocessed? ")
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
@@ -170,11 +179,12 @@ if __name__ == "__main__":
 
     nodes = [x for x in es.results.keys() if x[1] is None]  # This is only storage
 
-    sequences, scalars, storage_contents = convert_result_sequences_to_df(
-        results_data=es.results
+    sequences, scalars, storage_contents, storage_losses = (
+        convert_result_sequences_to_df(results_data=es.results)
     )
     sequences.to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
     storage_contents.to_csv(os.path.join(RESULTS, "storage_contents.csv"), sep=";")
+    storage_losses.to_csv(os.path.join(RESULTS, "storage_losses.csv"), sep=";")
 
     effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
         os.path.join(RESULTS, "sequences.csv"),
