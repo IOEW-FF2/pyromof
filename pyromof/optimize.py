@@ -2,7 +2,6 @@ from oemof import solph
 import pandas as pd
 
 import os
-import sys
 from pathlib import Path
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
