@@ -16,8 +16,7 @@ storage = pd.read_excel("input_data.xlsx", sheet_name="storage")
 general = pd.read_excel("input_data.xlsx", sheet_name="general")
 
 # Read in the scenario and set investment variable
-scenario = general.loc[general["item"] == "scenario", "value"].item()
-print("Selected scenario: " + scenario)
+scenario = input("Which scenario shall be optimized? ")
 
 ROOT_PATH = Path(__file__).parent.parent
 RESULTS = os.path.join(ROOT_PATH, "results")
@@ -41,8 +40,8 @@ time = pd.date_range("2023-01-02", periods=145, freq="h")
 # Read in wacc for investment optimization
 wacc = general.loc[general["item"] == "wacc", "value"].item()
 
-# Initiate dataframe to store annuities
-
+# Initiate dict to store annuities
+epcs = {}
 
 # Model definition
 es = solph.EnergySystem(timeindex=time)
@@ -57,6 +56,20 @@ def matches_scenario(scenario_to_check, scenario_wanted):
     return scenario_to_check == "all" or scenario_wanted in scenario_to_check
 
 
+def filter_input_data_by_scenario(sinks, sources, converters, storage, scenario_wanted):
+    dfs = {
+        "sinks": sinks,
+        "sources": sources,
+        "converters": converters,
+        "storage": storage,
+    }
+    dfs = {
+        name: df[df["scenario"].apply(matches_scenario, args=(scenario_wanted,))]
+        for name, df in dfs.items()
+    }
+    return dfs["sinks"], dfs["sources"], dfs["converters"], dfs["storage"]
+
+
 def extract_components_and_buses_from_input_data(
     sinks, sources, converters, storage, scenario_wanted
 ):
@@ -66,38 +79,23 @@ def extract_components_and_buses_from_input_data(
     to these components. The buses are returned as a dataframe with one column named
     "label" and the components are returned as a list.
     """
-    # Filter input data sheets by scenario
-    filtered_sinks = sinks[
-        sinks["scenario"].apply(matches_scenario, args=(scenario_wanted,))
-    ]
-    filtered_sources = sources[
-        sources["scenario"].apply(matches_scenario, args=(scenario_wanted,))
-    ]
-    filtered_converters = converters[
-        converters["scenario"].apply(matches_scenario, args=(scenario_wanted,))
-    ]
-    filtered_storage = storage[
-        storage["scenario"].apply(matches_scenario, args=(scenario_wanted,))
-    ]
 
     # Create component list for the selected scenario
     components = (
-        filtered_sinks["label"].tolist()
-        + filtered_sources["label"].tolist()
-        + filtered_converters["label"].tolist()
-        + filtered_storage["label"].tolist()
+        sinks["label"].tolist()
+        + sources["label"].tolist()
+        + converters["label"].tolist()
+        + storage["label"].tolist()
     )
 
     # Create list of unique buses for the selected scenario
     buses = (
-        filtered_sinks["bus_in"].tolist()
-        + filtered_sources["bus_out"].tolist()
-        + filtered_converters[
-            ["bus_in_1", "bus_in_2", "bus_out_1", "bus_out_2", "bus_out_3"]
-        ]
+        sinks["bus_in"].tolist()
+        + sources["bus_out"].tolist()
+        + converters[["bus_in_1", "bus_in_2", "bus_out_1", "bus_out_2", "bus_out_3"]]
         .stack()
         .tolist()
-        + filtered_storage[["bus_in", "bus_out"]].stack().tolist()
+        + storage[["bus_in", "bus_out"]].stack().tolist()
     )
     # Filter unique values
     buses = set(buses)
@@ -108,6 +106,9 @@ def extract_components_and_buses_from_input_data(
     return buses_df, components
 
 
+sinks, sources, converters, storage = filter_input_data_by_scenario(
+    sinks, sources, converters, storage, scenario
+)
 buses, components = extract_components_and_buses_from_input_data(
     sinks, sources, converters, storage, scenario
 )
@@ -196,6 +197,18 @@ if "heat_demand_lt" in components:
     )
     es.add(heat_demand_lt)
 
+if "oil_market" in components:
+    row = sinks.loc[sinks.label == "oil_market", :]
+    oil_market = solph.components.Sink(
+        label="oil_market",
+        inputs={
+            busd[row.bus_in.item()]: solph.Flow(
+                variable_costs=row.variable_costs.item(),
+            )
+        },
+    )
+    es.add(oil_market)
+
 # SOURCES
 if "biomass" in components:
     row = sources.loc[sources.label == "biomass", :]
@@ -224,20 +237,20 @@ if "heat_source" in components:
 
 # CONVERTERS
 
-if "conversion_orc" in components:
-    row = converters.loc[converters.label == "conversion_orc"]
+if "orc" in components:
+    row = converters.loc[converters.label == "orc"]
     if row.investment.item() is True:
         investment = True
-        print(
-            "Warning: Investment optimisation is not yet implemented for conversion_orc."
-        )
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
-        print("epc for conversion_orc: ", epc)
-        conversion_orc = solph.components.Converter(
-            label="conversion_orc_invest",
+        epcs["orc_invest to " + row.bus_out_1.item()] = epc
+        print("epc for orc: ", epc)
+        orc = solph.components.Converter(
+            label="orc_invest",
             inputs={busd[row.bus_in_1.item()]: solph.Flow()},
             outputs={
-                busd[row.bus_out_1.item()]: solph.Flow(),
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=solph.Investment(ep_costs=epc)
+                ),
                 busd[row.bus_out_2.item()]: solph.Flow(),
             },
             conversion_factors={
@@ -247,8 +260,8 @@ if "conversion_orc" in components:
             },
         )
     elif row.investment.item() is False:
-        conversion_orc = solph.components.Converter(
-            label="conversion_orc",
+        orc = solph.components.Converter(
+            label="orc",
             inputs={busd[row.bus_in_1.item()]: solph.Flow()},
             outputs={
                 busd[row.bus_out_1.item()]: solph.Flow(),
@@ -260,13 +273,14 @@ if "conversion_orc" in components:
                 busd[row.bus_out_2.item()]: row.eff_out_2.item(),
             },
         )
-    es.add(conversion_orc)
+    es.add(orc)
 
 if "pyrolysis" in components:
     row = converters.loc[converters.label == "pyrolysis"]
     if row.investment.item() is True:
         investment = True
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        epcs["pyrolysis_invest to " + row.bus_out_1.item()] = epc
         print("epc for pyrolysis: ", epc)
         pyrolysis = solph.components.Converter(
             label="pyrolysis_invest",
@@ -276,7 +290,10 @@ if "pyrolysis" in components:
             },
             outputs={
                 busd[row.bus_out_1.item()]: solph.Flow(
-                    nominal_value=solph.Investment(ep_costs=epc)
+                    nominal_value=solph.Investment(
+                        ep_costs=epc, maximum=150
+                    ),  # A maximum is required for linearization
+                    # min=0.5,
                 ),
                 busd[row.bus_out_2.item()]: solph.Flow(),
                 busd[row.bus_out_3.item()]: solph.Flow(),
@@ -297,7 +314,14 @@ if "pyrolysis" in components:
                 busd[row.bus_in_2.item()]: solph.Flow(),
             },
             outputs={
-                busd[row.bus_out_1.item()]: solph.Flow(),
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    #                    nominal_value=1000,
+                    #                    positive_gradient_limit=row.positive_gradient_limit.item(),
+                    #                    min=0.5,
+                    #                   # Only has an effect if the plant shuts down:
+                    #                    nonconvex=solph.NonConvex(minimum_downtime=5, initial_status=1),
+                    #
+                ),
                 busd[row.bus_out_2.item()]: solph.Flow(),
                 busd[row.bus_out_3.item()]: solph.Flow(),
             },
@@ -315,16 +339,18 @@ if "combustor_hot" in components:
     row = converters.loc[converters.label == "combustor_hot"]
     if row.investment.item() is True:
         investment = True
-        print(
-            "Warning: Investment optimisation is not yet implemented for combustor_hot."
-        )
+        epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        epcs["combustor_hot_invest to " + row.bus_out_1.item()] = epc
+        print("epc for combustor_hot: ", epc)
         combustor_hot = solph.components.Converter(
-            label="combustor_hot",
+            label="combustor_hot_invest",
             inputs={
                 busd[row.bus_in_1.item()]: solph.Flow(),
             },
             outputs={
-                busd[row.bus_out_1.item()]: solph.Flow(),
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=solph.Investment(ep_costs=epc)
+                ),
             },
             conversion_factors={
                 busd[row.bus_in_1.item()]: row.eff_in_1.item(),
@@ -346,6 +372,96 @@ if "combustor_hot" in components:
             },
         )
     es.add(combustor_hot)
+
+if "combustor_cold" in components:
+    row = converters.loc[converters.label == "combustor_cold"]
+    combustor_cold = solph.components.Converter(
+        label="combustor_cold",
+        inputs={
+            busd[row.bus_in_1.item()]: solph.Flow(),
+        },
+        outputs={
+            busd[row.bus_out_1.item()]: solph.Flow(),
+        },
+        conversion_factors={
+            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+        },
+    )
+    es.add(combustor_cold)
+
+if "condensor" in components:
+    row = converters.loc[converters.label == "condensor"]
+    condensor = solph.components.Converter(
+        label="condensor",
+        inputs={
+            busd[row.bus_in_1.item()]: solph.Flow(),
+        },
+        outputs={
+            busd[row.bus_out_1.item()]: solph.Flow(),
+            busd[row.bus_out_2.item()]: solph.Flow(),
+        },
+        conversion_factors={
+            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+        },
+    )
+    es.add(condensor)
+
+# STORAGE
+
+
+def instantiate_storage(storage, investment):
+    """
+    Instantiates all the storage types provided in the dataframe "storage".
+    The investment variable is set to True in case one of the storage types has
+    investment optimization and is returned.
+    """
+    for row in storage.rows:
+        print(row)
+        if row.investment.item() is True:
+            label = row.label.item() + "_invest"
+            epc_nominal_storage_capacity = economics.annuity(
+                row.capex.item(), row.lifetime.item(), wacc
+            )
+            epcs[label + " to None"] = epc_nominal_storage_capacity
+            print("epc for ", label, " : ", epc_nominal_storage_capacity)
+            investment = True
+            storage = solph.components.GenericStorage(
+                label=label,
+                inputs={
+                    busd[row.bus_in.item()]: solph.Flow(),
+                },  # The flows could also be constrained by a nominal capacity or variable costs.
+                outputs={
+                    busd[row.bus_out.item()]: solph.Flow(),
+                },
+                loss_rate=row.loss_rate.item(),
+                initial_storage_level=row.initial_storage_level.item(),
+                inflow_conversion_factor=row.inflow_conversion_factor.item(),
+                outflow_conversion_factor=row.outflow_conversion_factor.item(),
+                nominal_storage_capacity=solph.Investment(
+                    ep_costs=epc_nominal_storage_capacity
+                ),
+            )
+        elif row.investment.item() is False:
+            storage = solph.components.GenericStorage(
+                label=row.label.item(),
+                inputs={
+                    busd[row.bus_in.item()]: solph.Flow(),
+                },
+                outputs={
+                    busd[row.bus_out.item()]: solph.Flow(),
+                },
+                loss_rate=row.loss_rate.item(),
+                initial_storage_level=row.initial_storage_level.item(),
+                inflow_conversion_factor=row.inflow_conversion_factor.item(),
+                outflow_conversion_factor=row.outflow_conversion_factor.item(),
+                nominal_storage_capacity=row.nominal_storage_capacity.item(),
+            )
+        es.add(storage)
+
+    return investment
 
 
 # Initialise the operational model
@@ -383,6 +499,10 @@ variable_costs = helpers.convert_tuple_columnnames_to_strings(df)
 variable_costs.to_csv(
     os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";"
 )
+
+# Save the dictionary with ep_costs:
+epcs = pd.DataFrame(epcs.items(), columns=["object", "value"])
+epcs.to_csv(os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";")
 
 # dump the EnergySystem
 es.dump(dpath=DUMPING_SPACE, filename="es_dump.oemof")
