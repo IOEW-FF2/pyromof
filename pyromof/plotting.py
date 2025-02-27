@@ -87,9 +87,9 @@ def plot_cost_sequences(df_dict, scenario):
 
 
 def plot_cost_scalars(scalcosts, scenario):
-    total = scalcosts["value"].sum()
+    total = scalcosts[scenario].sum()
 
-    fig = px.bar(scalcosts, x="type", y="value", color="variable", barmode="stack")
+    fig = px.bar(scalcosts, x="type", y=scenario, color="variable", barmode="stack")
 
     # Add point for total
     fig.add_trace(

@@ -33,8 +33,8 @@ def prepare_cost_scalars_for_plotting(folder_name, file_name, scenario):
         os.path.join(folder_name, file_name), sep=";", index_col=0
     )
     scalcosts = filter_cost_items_from_scalar_data(scalar_data)
-    scalcosts.loc[:, "value"] = scalcosts.loc[:, "value"] * -1
-    scalcosts.loc[:, "scenario"] = [scenario] * len(scalcosts)
+    scalcosts.loc[:, scenario] = scalcosts.loc[:, "value"] * -1
+    scalcosts.drop("value", axis=1, inplace=True)
     # TODO: Differentiate between annuity, epc and upfront investment costs and
     # clarify in the plot what is meant
     return scalcosts
