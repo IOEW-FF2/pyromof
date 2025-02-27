@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import os
+import sys
 import helpers
 from pathlib import Path
 from oemof.solph import EnergySystem, views
@@ -28,7 +29,7 @@ def plot_figures_for(element: dict, filename):
     axes.set_ylabel("kWh")
     figure.subplots_adjust(top=0.8)
     figure.savefig(os.path.join(RESULTS, filename))
-    element["sequences"].to_csv(os.path.join(RESULTS, filename + ".csv"))
+    # element["sequences"].to_csv(os.path.join(RESULTS, filename + ".csv"))
 
 
 def prepare_cost_sequences_for_plotting():
@@ -95,27 +96,28 @@ def prepare_cost_scalars_for_plotting():
     scalcosts = helpers.filter_cost_items_from_scalar_data(scalar_data)
     scalcosts.loc[:, "value"] = scalcosts.loc[:, "value"] * -1
     scalcosts.loc[:, "scenario"] = [scenario] * len(scalcosts)
-    # TODO: merge 'variable' and 'type' into a single practical label
-    # TODO: join scalars from different scenarios
+    # TODO: join scalars from different scenarios -> in compare_scenarios.py
+    # TODO: Differentiate between annuity, epc and upfront investment costs and
+    # clarify in the plot what is meant
     return scalcosts
 
 
 def plot_cost_scalars(scalcosts, scenario):
     total = scalcosts["value"].sum()
 
-    fig = px.bar(scalcosts, x="scenario", y="value", color="variable", barmode="stack")
+    fig = px.bar(scalcosts, x="type", y="value", color="variable", barmode="stack")
 
     # Add point for total
     fig.add_trace(
         go.Scatter(
-            x=[scalcosts["scenario"][1]],
+            x=["total"],
             y=[total],
             mode="markers",
             marker_symbol="diamond",
             marker_color="black",
             marker=dict(size=15),
             hoverinfo="text+y",
-            text=["Total"],
+            text=["Sum of cash flow and epc"],
             name="Total",
         )
     )
@@ -136,6 +138,7 @@ def plot(scenario):
 if __name__ == "__main__":
 
     scenario = input("For which scenario shall the results be plotted? ")
+    # scenario = sys.argv[1]
 
     ROOT_PATH = Path(__file__).parent.parent
     RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")
@@ -144,17 +147,20 @@ if __name__ == "__main__":
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
     scenario, investment = helpers.retreive_scenario_from_results(es)
+    es.results = es.results["main"]
     # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
     if investment is True:
-        results_pyrolysis_energy = views.node(es.results, "conversion_orc_invest")
+        results_pyrolysis_energy = views.node(es.results, "orc_invest")
+        # TODO: investment can be true for single components which changes their names.
         results_pyrolysis = views.node(es.results, "pyrolysis_invest")
     else:
-        results_pyrolysis_energy = views.node(es.results, "conversion_orc")
+        results_pyrolysis_energy = views.node(es.results, "orc")
         results_pyrolysis = views.node(es.results, "pyrolysis")
     results_heat_demand = views.node(es.results, "heat_demand_ht")
 
+    print("Plotting scenario " + scenario)
     # plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
-    # plot_figures_for(results_pyrolysis, "pyrolysis.png")
+    plot_figures_for(results_pyrolysis, "pyrolysis.png")
     # plot_figures_for(results_heat_demand, "results_heat_demand.png")
 
     scalcosts = prepare_cost_scalars_for_plotting()
