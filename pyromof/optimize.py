@@ -2,6 +2,7 @@ from oemof import solph
 import pandas as pd
 
 import os
+import sys
 from pathlib import Path
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
@@ -16,8 +17,7 @@ storage = pd.read_excel("input_data.xlsx", sheet_name="storage")
 general = pd.read_excel("input_data.xlsx", sheet_name="general")
 
 # Read in the scenario and set investment variable
-scenario = general.loc[general["item"] == "scenario", "value"].item()
-print("Selected scenario: " + scenario)
+scenario = input("Which scenario shall be optimized? ")
 
 ROOT_PATH = Path(__file__).parent.parent
 RESULTS = os.path.join(ROOT_PATH, "results")
@@ -238,17 +238,15 @@ if "heat_source" in components:
 
 # CONVERTERS
 
-# TODO: Rename conversion_orc to orc
-
-if "conversion_orc" in components:
-    row = converters.loc[converters.label == "conversion_orc"]
+if "orc" in components:
+    row = converters.loc[converters.label == "orc"]
     if row.investment.item() is True:
         investment = True
         epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
-        epcs["conversion_orc_invest to " + row.bus_out_1.item()] = epc
-        print("epc for conversion_orc: ", epc)
-        conversion_orc = solph.components.Converter(
-            label="conversion_orc_invest",
+        epcs["orc_invest to " + row.bus_out_1.item()] = epc
+        print("epc for orc: ", epc)
+        orc = solph.components.Converter(
+            label="orc_invest",
             inputs={busd[row.bus_in_1.item()]: solph.Flow()},
             outputs={
                 busd[row.bus_out_1.item()]: solph.Flow(
@@ -263,8 +261,8 @@ if "conversion_orc" in components:
             },
         )
     elif row.investment.item() is False:
-        conversion_orc = solph.components.Converter(
-            label="conversion_orc",
+        orc = solph.components.Converter(
+            label="orc",
             inputs={busd[row.bus_in_1.item()]: solph.Flow()},
             outputs={
                 busd[row.bus_out_1.item()]: solph.Flow(),
@@ -276,7 +274,7 @@ if "conversion_orc" in components:
                 busd[row.bus_out_2.item()]: row.eff_out_2.item(),
             },
         )
-    es.add(conversion_orc)
+    es.add(orc)
 
 if "pyrolysis" in components:
     row = converters.loc[converters.label == "pyrolysis"]
@@ -296,7 +294,7 @@ if "pyrolysis" in components:
                     nominal_value=solph.Investment(
                         ep_costs=epc, maximum=150
                     ),  # A maximum is required for linearization
-                    min=0.5,
+                    # min=0.5,
                 ),
                 busd[row.bus_out_2.item()]: solph.Flow(),
                 busd[row.bus_out_3.item()]: solph.Flow(),
@@ -361,7 +359,6 @@ if "combustor_hot" in components:
             },
         )
     elif row.investment.item() is False:
-        print(row)
         combustor_hot = solph.components.Converter(
             label="combustor_hot",
             inputs={
@@ -396,7 +393,6 @@ if "combustor_cold" in components:
 
 if "condensor" in components:
     row = converters.loc[converters.label == "condensor"]
-    print(row)
     condensor = solph.components.Converter(
         label="condensor",
         inputs={
