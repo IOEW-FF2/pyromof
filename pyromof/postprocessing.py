@@ -120,7 +120,9 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
             dict[key] * epcs.loc[epcs["object"] == key, "value"].item()
         )
     scalar_results = add_items_to_scalar_results(
-        investmentcost_dict, "equivalent periodical costs of investment [Euros]", scalar_results
+        investmentcost_dict,
+        "equivalent periodical costs of investment [Euros]",
+        scalar_results,
     )
     # The unit here should be kWh per timestep. It is kW because the timesteps are hours.
     return scalar_results
