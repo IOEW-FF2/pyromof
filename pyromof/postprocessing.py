@@ -120,7 +120,7 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
             dict[key] * epcs.loc[epcs["object"] == key, "value"].item()
         )
     scalar_results = add_items_to_scalar_results(
-        investmentcost_dict, "amount invested [Euros]", scalar_results
+        investmentcost_dict, "equivalent periodical costs of investment [Euros]", scalar_results
     )
     # The unit here should be kWh per timestep. It is kW because the timesteps are hours.
     return scalar_results
@@ -147,7 +147,7 @@ def check_scalar_costs_consistency(scalar_data):
 
 if __name__ == "__main__":
 
-    scenario = input("Which scenario shall be postprocessed? ")
+    scenario = input("For which scenario shall the results be postprocessed? ")
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
