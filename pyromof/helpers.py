@@ -1,3 +1,6 @@
+import os
+import pandas as pd
+
 def check_type(object, type_wanted):
     if not isinstance(object, type_wanted):
         raise TypeError(
@@ -21,3 +24,17 @@ def filter_cost_items_from_scalar_data(scalar_data):
         & scalar_data["type"].str.contains("Euros", regex=False)
     ]
     return filtered
+
+def prepare_cost_scalars_for_plotting(folder_name, file_name, scenario):
+    """
+    Reads in the scalars from a csv file, filters for cost components and multiplies by -1
+    """
+    scalar_data = pd.read_csv(
+        os.path.join(folder_name, file_name), sep=";", index_col=0
+    )
+    scalcosts = filter_cost_items_from_scalar_data(scalar_data)
+    scalcosts.loc[:, "value"] = scalcosts.loc[:, "value"] * -1
+    scalcosts.loc[:, "scenario"] = [scenario] * len(scalcosts)
+    # TODO: Differentiate between annuity, epc and upfront investment costs and
+    # clarify in the plot what is meant
+    return scalcosts

@@ -86,22 +86,6 @@ def plot_cost_sequences(df_dict, scenario):
     fig.write_html(os.path.join(RESULTS, "cost_sequences_{}.html".format(scenario)))
 
 
-def prepare_cost_scalars_for_plotting():
-    """
-    Reads in the scalars from a csv file, filters for cost components and multiplies by -1
-    """
-    scalar_data = pd.read_csv(
-        os.path.join(RESULTS, "scalar_results.csv"), sep=";", index_col=0
-    )
-    scalcosts = helpers.filter_cost_items_from_scalar_data(scalar_data)
-    scalcosts.loc[:, "value"] = scalcosts.loc[:, "value"] * -1
-    scalcosts.loc[:, "scenario"] = [scenario] * len(scalcosts)
-    # TODO: join scalars from different scenarios -> in compare_scenarios.py
-    # TODO: Differentiate between annuity, epc and upfront investment costs and
-    # clarify in the plot what is meant
-    return scalcosts
-
-
 def plot_cost_scalars(scalcosts, scenario):
     total = scalcosts["value"].sum()
 
@@ -131,7 +115,7 @@ def plot_cost_scalars(scalcosts, scenario):
 def plot(scenario):
     df_dict = prepare_cost_sequences_for_plotting()
     plot_cost_sequences(df_dict, scenario)
-    scalcosts = prepare_cost_scalars_for_plotting()
+    scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
     plot_cost_scalars(scalcosts, scenario)
 
 
@@ -162,7 +146,5 @@ if __name__ == "__main__":
     # plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
     plot_figures_for(results_pyrolysis, "pyrolysis.png")
     # plot_figures_for(results_heat_demand, "results_heat_demand.png")
-
-    scalcosts = prepare_cost_scalars_for_plotting()
 
     plot(scenario)
