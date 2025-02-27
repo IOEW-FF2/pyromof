@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+import re
+
 
 def check_type(object, type_wanted):
     if not isinstance(object, type_wanted):
@@ -18,12 +20,14 @@ def convert_tuple_columnnames_to_strings(df):
     df.columns = [" to ".join(x) for x in df.columns]
     return df
 
+
 def filter_cost_items_from_scalar_data(scalar_data):
     filtered = scalar_data[
         (~scalar_data["type"].str.contains("objective \\[Euros\\]", regex=True))
         & scalar_data["type"].str.contains("Euros", regex=False)
     ]
     return filtered
+
 
 def prepare_cost_scalars_for_plotting(folder_name, file_name, scenario):
     """
@@ -38,3 +42,9 @@ def prepare_cost_scalars_for_plotting(folder_name, file_name, scenario):
     # TODO: Differentiate between annuity, epc and upfront investment costs and
     # clarify in the plot what is meant
     return scalcosts
+
+
+def filter_bus_in_string(string):
+    pattern = r"b_[^ ]+"  # Matches 'b_' followed by one or more non-space characters
+    match = re.search(pattern, string)
+    return match.group(0) if match else None

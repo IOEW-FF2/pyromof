@@ -1,35 +1,94 @@
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import os
-import sys
 import helpers
 from pathlib import Path
-from oemof.solph import EnergySystem, views
+from plotly.subplots import make_subplots
+from oemof.solph import EnergySystem
 
 
-def plot_figures_for(element: dict, filename):
-    figure, axes = plt.subplots(figsize=(10, 5))
-    element["sequences"].plot(ax=axes, kind="line", drawstyle="steps-post")
-    plt.legend(
-        loc="upper center",
-        prop={"size": 8},
-        bbox_to_anchor=(0.5, 1.25),
-        ncol=2,
+def prepare_amount_sequences_for_plotting():
+    """
+    Reads the csv file with the sequences from the optimization results and splits it into
+    2 according to the unit of the flows.
+    # TODO: Save input data in optimize.py and retreive units from the input data
+    # instead of specifying them in the script.
+    """
+    amount_sequences = pd.read_csv(
+        os.path.join(RESULTS, "sequences.csv"), sep=";", index_col=0, parse_dates=True
     )
-    # labels = [element["sequences"].columns[i][0][0] for i in range(len(element["sequences"].columns))]
-    # # Would be nice to shorten the labels, but it's not always the first element that is relevant.
-    # This depends on whether the bus is an in- or outflow.
-    labels = [
-        element["sequences"].columns[i][0]
-        for i in range(len(element["sequences"].columns))
-    ]
-    axes.legend(labels=labels)
-    axes.set_ylabel("kWh")
-    figure.subplots_adjust(top=0.8)
-    figure.savefig(os.path.join(RESULTS, filename))
-    # element["sequences"].to_csv(os.path.join(RESULTS, filename + ".csv"))
+    units = {
+        "b_biochar": "t",
+        "b_co2": "t",
+        "b_electricity_2": "kWh",
+        "b_heat_ht": "kWh",
+        "b_heat_lt": "kWh",
+        "b_oil": "t",
+        "b_biomass": "t",
+        "b_heat_in": "kWh",
+        "b_syngas_hot": "kWh",
+    }
+    sequences_in_t = pd.DataFrame(index=amount_sequences.index)
+    sequences_in_kWh = pd.DataFrame(index=amount_sequences.index)
+    for flow in amount_sequences.columns:
+        bus = helpers.filter_bus_in_string(flow)
+        if bus not in units.keys():
+            print(
+                "The unit for "
+                + flow
+                + " is not defined. Therefore it will not be plotted in the amount sequences."
+            )
+        elif units[bus] == "t":
+            sequences_in_t[flow] = amount_sequences[flow]
+        elif units[bus] == "kWh":
+            sequences_in_kWh[flow] = amount_sequences[flow]
+        else:
+            print(
+                "The unit for "
+                + flow
+                + " is neither t nor kWh. Therefore it will not be plotted in the amount sequences."
+            )
+    # TODO: Remove one of the two columns for every bus by comparing the flow names and the numbers.
+    return sequences_in_t, sequences_in_kWh
+
+
+def plot_amount_sequences(sequences_in_t, sequences_in_kWh, scenario):
+    """
+    Takes two dataframes, one with flow sequences in tonnes and one in kWh,
+    and plots them as line plots one below the other.
+    """
+    fig = make_subplots(rows=2, cols=1)
+
+    for col in sequences_in_t.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=sequences_in_t.index,
+                y=sequences_in_t[col],
+                mode="lines",
+                line=dict(dash="solid"),
+                name=col,
+            ),
+            row=1,
+            col=1,
+        )
+    for col in sequences_in_kWh.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=sequences_in_kWh.index,
+                y=sequences_in_kWh[col],
+                mode="lines",
+                line=dict(dash="solid"),
+                name=col,
+            ),
+            row=2,
+            col=1,
+        )
+
+    fig.update_yaxes(title_text="t/hour", row=1)
+    fig.update_yaxes(title_text="kWh/hour", row=2)
+    fig.update_layout(hoverlabel_namelength=-1)
+    fig.write_html(os.path.join(RESULTS, "amount_sequences_{}.html".format(scenario)))
 
 
 def prepare_cost_sequences_for_plotting():
@@ -113,16 +172,19 @@ def plot_cost_scalars(scalcosts, scenario):
 
 
 def plot(scenario):
-    df_dict = prepare_cost_sequences_for_plotting()
-    plot_cost_sequences(df_dict, scenario)
-    scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
-    plot_cost_scalars(scalcosts, scenario)
+    # df_dict = prepare_cost_sequences_for_plotting()
+    # plot_cost_sequences(df_dict, scenario)
+    # scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
+    # plot_cost_scalars(scalcosts, scenario)
+    sequences_in_t, sequences_in_kWh = prepare_amount_sequences_for_plotting()
+    plot_amount_sequences(sequences_in_t, sequences_in_kWh, scenario)
 
 
 if __name__ == "__main__":
 
-    scenario = input("For which scenario shall the results be plotted? ")
+    # scenario = input("For which scenario shall the results be plotted? ")
     # scenario = sys.argv[1]
+    scenario = "pyrolysis_dispatch_min_downtime"
 
     ROOT_PATH = Path(__file__).parent.parent
     RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")
@@ -131,20 +193,5 @@ if __name__ == "__main__":
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
     scenario, investment = helpers.retreive_scenario_from_results(es)
-    es.results = es.results["main"]
-    # These are dictionaries with "sequences" as key and the relevant sequences for each node in a dataframe:
-    if investment is True:
-        results_pyrolysis_energy = views.node(es.results, "orc_invest")
-        # TODO: investment can be true for single components which changes their names.
-        results_pyrolysis = views.node(es.results, "pyrolysis_invest")
-    else:
-        results_pyrolysis_energy = views.node(es.results, "orc")
-        results_pyrolysis = views.node(es.results, "pyrolysis")
-    results_heat_demand = views.node(es.results, "heat_demand_ht")
-
-    print("Plotting scenario " + scenario)
-    # plot_figures_for(results_pyrolysis_energy, "pyrolysis_outputs_energy.png")
-    plot_figures_for(results_pyrolysis, "pyrolysis.png")
-    # plot_figures_for(results_heat_demand, "results_heat_demand.png")
 
     plot(scenario)
