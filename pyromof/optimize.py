@@ -35,7 +35,7 @@ DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
 investment = False
 
 # Definition of the time period
-time = pd.date_range("2023-01-02", periods=145, freq="h")
+time = pd.date_range("2023-01-02", periods=3, freq="h")
 
 # Read in wacc for investment optimization
 wacc = general.loc[general["item"] == "wacc", "value"].item()
@@ -392,6 +392,7 @@ if "combustor_cold" in components:
 
 if "condensor" in components:
     row = converters.loc[converters.label == "condensor"]
+    print(row)
     condensor = solph.components.Converter(
         label="condensor",
         inputs={
@@ -411,58 +412,57 @@ if "condensor" in components:
 
 # STORAGE
 
-
-def instantiate_storage(storage, investment):
+def instantiate_storage(row, investment):
     """
-    Instantiates all the storage types provided in the dataframe "storage".
+    Instantiates the storage type provided in the given row of the dataframe "storage".
     The investment variable is set to True in case one of the storage types has
     investment optimization and is returned.
     """
-    for row in storage.rows:
-        print(row)
-        if row.investment.item() is True:
-            label = row.label.item() + "_invest"
-            epc_nominal_storage_capacity = economics.annuity(
-                row.capex.item(), row.lifetime.item(), wacc
-            )
-            epcs[label + " to None"] = epc_nominal_storage_capacity
-            print("epc for ", label, " : ", epc_nominal_storage_capacity)
-            investment = True
-            storage = solph.components.GenericStorage(
-                label=label,
-                inputs={
-                    busd[row.bus_in.item()]: solph.Flow(),
-                },  # The flows could also be constrained by a nominal capacity or variable costs.
-                outputs={
-                    busd[row.bus_out.item()]: solph.Flow(),
-                },
-                loss_rate=row.loss_rate.item(),
-                initial_storage_level=row.initial_storage_level.item(),
-                inflow_conversion_factor=row.inflow_conversion_factor.item(),
-                outflow_conversion_factor=row.outflow_conversion_factor.item(),
-                nominal_storage_capacity=solph.Investment(
-                    ep_costs=epc_nominal_storage_capacity
-                ),
-            )
-        elif row.investment.item() is False:
-            storage = solph.components.GenericStorage(
-                label=row.label.item(),
-                inputs={
-                    busd[row.bus_in.item()]: solph.Flow(),
-                },
-                outputs={
-                    busd[row.bus_out.item()]: solph.Flow(),
-                },
-                loss_rate=row.loss_rate.item(),
-                initial_storage_level=row.initial_storage_level.item(),
-                inflow_conversion_factor=row.inflow_conversion_factor.item(),
-                outflow_conversion_factor=row.outflow_conversion_factor.item(),
-                nominal_storage_capacity=row.nominal_storage_capacity.item(),
-            )
-        es.add(storage)
+    print(row)
+    if row.investment is True:
+        label = row.label + "_invest"
+        epc_nominal_storage_capacity = economics.annuity(
+            row.capex, row.lifetime, wacc
+        )
+        epcs[label + " to None"] = epc_nominal_storage_capacity
+        print("epc for ", label, " : ", epc_nominal_storage_capacity)
+        investment = True
+        storage = solph.components.GenericStorage(
+            label=label,
+            inputs={
+                busd[row.bus_in]: solph.Flow(),
+            },  # The flows could also be constrained by a nominal capacity or variable costs.
+            outputs={
+                busd[row.bus_out]: solph.Flow(),
+            },
+            loss_rate=row.loss_rate,
+            initial_storage_level=row.initial_storage_level,
+            inflow_conversion_factor=row.inflow_conversion_factor,
+            outflow_conversion_factor=row.outflow_conversion_factor,
+            nominal_storage_capacity=solph.Investment(
+                ep_costs=epc_nominal_storage_capacity
+            ),
+        )
+    elif row.investment is False:
+        storage = solph.components.GenericStorage(
+            label=row.label,
+            inputs={
+                busd[row.bus_in]: solph.Flow(),
+            },
+            outputs={
+                busd[row.bus_out]: solph.Flow(),
+            },
+            loss_rate=row.loss_rate,
+            initial_storage_level=row.initial_storage_level,
+            inflow_conversion_factor=row.inflow_conversion_factor,
+            outflow_conversion_factor=row.outflow_conversion_factor,
+            nominal_storage_capacity=row.nominal_storage_capacity,
+        )
+    es.add(storage)
 
     return investment
 
+investment = storage.apply(instantiate_storage, investment=investment, axis=1)
 
 # Initialise the operational model
 om = solph.Model(es)
@@ -482,6 +482,7 @@ om.solve(solver="cbc")
 # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
 filename = os.path.join(META_INFO, "es_graph.graphml")
 graph = create_nx_graph(es, filename=filename)
+# TODO: Use tool from Fraunhofer to draw actually useful graph
 
 # get results from the solved model
 es.params = solph.processing.parameter_as_dict(es)
