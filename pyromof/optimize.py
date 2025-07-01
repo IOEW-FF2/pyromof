@@ -129,7 +129,9 @@ for i, b in buses.iterrows():
 
 
 # Create other components
-print("Adding the following components to the energysystem:")
+print(
+    "Adding the following components to the energysystem (if they are all implemented in the code):"
+)
 print(components)
 
 # SINKS
@@ -209,6 +211,30 @@ if "oil_market" in components:
     )
     es.add(oil_market)
 
+if "h2_market" in components:
+    row = sinks.loc[sinks.label == "h2_market", :]
+    h2_market = solph.components.Sink(
+        label="h2_market",
+        inputs={
+            busd[row.bus_in.item()]: solph.Flow(
+                variable_costs=row.variable_costs.item(),
+            )
+        },
+    )
+    es.add(h2_market)
+
+if "torch" in components:
+    row = sinks.loc[sinks.label == "torch", :]
+    torch = solph.components.Sink(
+        label="torch",
+        inputs={
+            busd[row.bus_in.item()]: solph.Flow(
+                variable_costs=row.variable_costs.item(),
+            )
+        },
+    )
+    es.add(torch)
+
 # SOURCES
 if "biomass" in components:
     row = sources.loc[sources.label == "biomass", :]
@@ -275,6 +301,122 @@ if "orc" in components:
         )
     es.add(orc)
 
+if "chp" in components:
+    row = converters.loc[converters.label == "chp"]
+    if row.investment.item() is True:
+        investment = True
+        epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        epcs["chp_invest to " + row.bus_out_1.item()] = epc
+        print("epc for chp: ", epc)
+        chp = solph.components.Converter(
+            label="chp_invest",
+            inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=solph.Investment(ep_costs=epc)
+                ),
+                busd[row.bus_out_2.item()]: solph.Flow(),
+                busd[row.bus_out_3.item()]: solph.Flow(),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+                busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+                busd[row.bus_out_3.item()]: row.eff_out_3.item(),
+            },
+        )
+    elif row.investment.item() is False:
+        chp = solph.components.Converter(
+            label="chp",
+            inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=row.capacity.item()
+                ),
+                busd[row.bus_out_2.item()]: solph.Flow(),
+                busd[row.bus_out_3.item()]: solph.Flow(),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+                busd[row.bus_out_2.item()]: row.eff_out_2.item(),
+                busd[row.bus_out_3.item()]: row.eff_out_3.item(),
+            },
+        )
+    es.add(chp)
+
+if "power_to_heat" in components:
+    row = converters.loc[converters.label == "power_to_heat"]
+    if row.investment.item() is True:
+        investment = True
+        epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        epcs["power_to_heat_invest to " + row.bus_out_1.item()] = epc
+        print("epc for power_to_heat: ", epc)
+        power_to_heat = solph.components.Converter(
+            label="power_to_heat_invest",
+            inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=solph.Investment(ep_costs=epc)
+                ),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            },
+        )
+    elif row.investment.item() is False:
+        power_to_heat = solph.components.Converter(
+            label="power_to_heat",
+            inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=row.capacity.item()
+                ),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            },
+        )
+    es.add(power_to_heat)
+
+if "h2_filtration" in components:
+    row = converters.loc[converters.label == "h2_filtration"]
+    if row.investment.item() is True:
+        investment = True
+        epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+        epcs["h2_filtration_invest to " + row.bus_out_1.item()] = epc
+        print("epc for h2_filtration: ", epc)
+        h2_filtration = solph.components.Converter(
+            label="h2_filtration_invest",
+            inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=solph.Investment(ep_costs=epc)
+                ),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            },
+        )
+    elif row.investment.item() is False:
+        h2_filtration = solph.components.Converter(
+            label="h2_filtration",
+            inputs={busd[row.bus_in_1.item()]: solph.Flow()},
+            outputs={
+                busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=row.capacity.item()
+                ),
+            },
+            conversion_factors={
+                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+            },
+        )
+    es.add(h2_filtration)
+
 if "pyrolysis" in components:
     row = converters.loc[converters.label == "pyrolysis"]
     if row.investment.item() is True:
@@ -315,6 +457,7 @@ if "pyrolysis" in components:
             },
             outputs={
                 busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_value=row.capacity.item()
                     #                    nominal_value=1000,
                     #                    positive_gradient_limit=row.positive_gradient_limit.item(),
                     #                    min=0.5,
@@ -410,7 +553,29 @@ if "condensor" in components:
     )
     es.add(condensor)
 
+if "biomass_dryer" in components:
+    row = converters.loc[converters.label == "biomass_dryer"]
+    print(row)
+    biomass_dryer = solph.components.Converter(
+        label="biomass_dryer",
+        inputs={
+            busd[row.bus_in_1.item()]: solph.Flow(),
+            busd[row.bus_in_2.item()]: solph.Flow(),
+        },
+        outputs={
+            busd[row.bus_out_1.item()]: solph.Flow(),
+        },
+        conversion_factors={
+            busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+            busd[row.bus_in_2.item()]: row.eff_in_2.item(),
+            busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+        },
+    )
+    es.add(biomass_dryer)
+
+
 # STORAGE
+
 
 def instantiate_storage(row, investment):
     """
@@ -421,9 +586,7 @@ def instantiate_storage(row, investment):
     print(row)
     if row.investment is True:
         label = row.label + "_invest"
-        epc_nominal_storage_capacity = economics.annuity(
-            row.capex, row.lifetime, wacc
-        )
+        epc_nominal_storage_capacity = economics.annuity(row.capex, row.lifetime, wacc)
         epcs[label + " to None"] = epc_nominal_storage_capacity
         print("epc for ", label, " : ", epc_nominal_storage_capacity)
         investment = True
@@ -461,6 +624,7 @@ def instantiate_storage(row, investment):
     es.add(storage)
 
     return investment
+
 
 investment = storage.apply(instantiate_storage, investment=investment, axis=1)
 

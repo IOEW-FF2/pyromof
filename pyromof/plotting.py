@@ -21,6 +21,7 @@ def prepare_amount_sequences_for_plotting():
     units = {
         "b_biochar": "t",
         "b_co2": "t",
+        "b_electricity": "kWh",
         "b_electricity_2": "kWh",
         "b_heat_ht": "kWh",
         "b_heat_lt": "kWh",
@@ -28,6 +29,7 @@ def prepare_amount_sequences_for_plotting():
         "b_biomass": "t",
         "b_heat_in": "kWh",
         "b_syngas_hot": "kWh",
+        "b_h2": "kWh",
     }
     sequences_in_t = pd.DataFrame(index=amount_sequences.index)
     sequences_in_kWh = pd.DataFrame(index=amount_sequences.index)
@@ -172,19 +174,20 @@ def plot_cost_scalars(scalcosts, scenario):
 
 
 def plot(scenario):
-    # df_dict = prepare_cost_sequences_for_plotting()
-    # plot_cost_sequences(df_dict, scenario)
-    # scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
-    # plot_cost_scalars(scalcosts, scenario)
+    df_dict = prepare_cost_sequences_for_plotting()
+    plot_cost_sequences(df_dict, scenario)
+    scalcosts = helpers.prepare_cost_scalars_for_plotting(
+        RESULTS, "scalar_results.csv", scenario
+    )
+    plot_cost_scalars(scalcosts, scenario)
     sequences_in_t, sequences_in_kWh = prepare_amount_sequences_for_plotting()
     plot_amount_sequences(sequences_in_t, sequences_in_kWh, scenario)
 
 
 if __name__ == "__main__":
 
-    # scenario = input("For which scenario shall the results be plotted? ")
+    scenario = input("For which scenario shall the results be plotted? ")
     # scenario = sys.argv[1]
-    scenario = "pyrolysis_dispatch_min_downtime"
 
     ROOT_PATH = Path(__file__).parent.parent
     RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")
