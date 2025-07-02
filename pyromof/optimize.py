@@ -648,7 +648,7 @@ om.solve(solver="cbc")
 # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
 filename = os.path.join(META_INFO, "es_graph.graphml")
 graph = create_nx_graph(es, filename=filename)
-# TODO: Use tool from Fraunhofer to draw actually useful graph
+# Use tool from Fraunhofer to create more useful network graph
 if input("Visualize network in dash app? (yes/no) ") == "yes":
     from visualize_network import make_network, shownetwork
 
