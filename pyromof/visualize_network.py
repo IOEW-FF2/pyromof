@@ -69,9 +69,7 @@ def make_network(energysystem):
                 nominal_value = getattr(flow, "nominal_value", "No nominal value")
                 nominal_value = str(nominal_value)
                 variable_costs = getattr(flow, "variable_costs", "N/A")
-                variable_costs = str(
-                    variable_costs
-                )
+                variable_costs = str(variable_costs)
                 parameters["nominal_value"] = nominal_value
                 parameters["variable_costs"] = variable_costs
 
