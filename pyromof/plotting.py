@@ -27,6 +27,7 @@ def prepare_amount_sequences_for_plotting():
         "b_heat_lt": "kWh",
         "b_oil": "t",
         "b_biomass": "t",
+        "b_biomass_dry": "t",
         "b_heat_in": "kWh",
         "b_syngas_hot": "kWh",
         "b_h2": "kWh",

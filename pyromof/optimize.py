@@ -30,7 +30,7 @@ META_INFO = os.path.join(SCENARIO_PATH, "meta_info")
 Path(os.path.join(SCENARIO_PATH, "dumping_space")).mkdir(exist_ok=True)
 DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
 
-# Save current input data version in the scenario folder 
+# Save current input data version in the scenario folder
 # (filtering them for the data used in the scenario would be better but is too much for now)
 shutil.copy("input_data.xlsx", os.path.join(META_INFO, "input_data.xlsx"))
 
@@ -540,7 +540,6 @@ if "combustor_cold" in components:
 
 if "condensor" in components:
     row = converters.loc[converters.label == "condensor"]
-    print(row)
     condensor = solph.components.Converter(
         label="condensor",
         inputs={
@@ -560,7 +559,6 @@ if "condensor" in components:
 
 if "biomass_dryer" in components:
     row = converters.loc[converters.label == "biomass_dryer"]
-    print(row)
     biomass_dryer = solph.components.Converter(
         label="biomass_dryer",
         inputs={
@@ -588,7 +586,6 @@ def instantiate_storage(row, investment):
     The investment variable is set to True in case one of the storage types has
     investment optimization and is returned.
     """
-    print(row)
     if row.investment is True:
         label = row.label + "_invest"
         epc_nominal_storage_capacity = economics.annuity(row.capex, row.lifetime, wacc)
@@ -652,6 +649,11 @@ om.solve(solver="cbc")
 filename = os.path.join(META_INFO, "es_graph.graphml")
 graph = create_nx_graph(es, filename=filename)
 # TODO: Use tool from Fraunhofer to draw actually useful graph
+if input("Visualize network in dash app? (yes/no) ") == "yes":
+    from visualize_network import make_network, shownetwork
+
+    network = make_network(es)
+    shownetwork(network)
 
 # get results from the solved model
 es.params = solph.processing.parameter_as_dict(es)
