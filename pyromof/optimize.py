@@ -2,6 +2,7 @@ from oemof import solph
 import pandas as pd
 
 import os
+import shutil
 from pathlib import Path
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
@@ -28,6 +29,10 @@ Path(os.path.join(SCENARIO_PATH, "meta_info")).mkdir(exist_ok=True)
 META_INFO = os.path.join(SCENARIO_PATH, "meta_info")
 Path(os.path.join(SCENARIO_PATH, "dumping_space")).mkdir(exist_ok=True)
 DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
+
+# Save current input data version in the scenario folder 
+# (filtering them for the data used in the scenario would be better but is too much for now)
+shutil.copy("input_data.xlsx", os.path.join(META_INFO, "input_data.xlsx"))
 
 # Initiate an investment variable as False that will be overwritten
 # with True if any component with investment is added.
