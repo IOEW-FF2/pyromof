@@ -1,4 +1,5 @@
-# The following code has been written by Tobias Hörter and Andreas Wunsch and is available here: https://gitlab.cc-asp.fraunhofer.de/-/snippets/1016
+# The following code has been written by Tobias Hörter and Andreas Wunsch
+# and is available here: https://gitlab.cc-asp.fraunhofer.de/-/snippets/1016
 # It has been published under the GPLv3 licence.
 
 import dash
@@ -70,7 +71,7 @@ def make_network(energysystem):
                 variable_costs = getattr(flow, "variable_costs", "N/A")
                 variable_costs = str(
                     variable_costs
-                )  #';  '.join(map(str, variable_costs))
+                )
                 parameters["nominal_value"] = nominal_value
                 parameters["variable_costs"] = variable_costs
 
@@ -270,7 +271,8 @@ def shownetwork(network):
             return (False,)
 
     # -----automatically run app on a free port-----#
-    # for successful visualization plotly dash needs a free port, which means you cannot run this routine in two different notebooks on the same port.
+    # for successful visualization plotly dash needs a free port, which means
+    # you cannot run this routine in two different notebooks on the same port.
     # In the following we search for a free port within a certain range:
     def is_port_in_use(port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
