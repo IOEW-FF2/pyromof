@@ -40,7 +40,7 @@ shutil.copy("input_data.xlsx", os.path.join(META_INFO, "input_data.xlsx"))
 investment = False
 
 # Definition of the time period
-time = pd.date_range("2023-01-02", periods=3, freq="h")
+time = pd.date_range("2023-01-02", periods=10, freq="h")
 
 # Read in wacc for investment optimization
 wacc = general.loc[general["item"] == "wacc", "value"].item()
@@ -318,7 +318,8 @@ if "chp" in components:
             inputs={busd[row.bus_in_1.item()]: solph.Flow()},
             outputs={
                 busd[row.bus_out_1.item()]: solph.Flow(
-                    nominal_value=solph.Investment(ep_costs=epc)
+                    nominal_value=solph.Investment(ep_costs=epc,
+                                                   existing=row.existing.item()),
                 ),
                 busd[row.bus_out_2.item()]: solph.Flow(),
                 busd[row.bus_out_3.item()]: solph.Flow(),
@@ -437,10 +438,17 @@ if "pyrolysis" in components:
             },
             outputs={
                 busd[row.bus_out_1.item()]: solph.Flow(
+                    min=row.minimum.item(), # Minimal load
+                    max=1, # A maximum is required for linearization
+                    nonconvex=solph.NonConvex(
+                        startup_costs=row.startup_costs.item(),
+                        # positive_gradient_limit=row.positive_gradient_limit.item() not possible because nonlinear
+                        ),
                     nominal_value=solph.Investment(
-                        ep_costs=epc, maximum=150
-                    ),  # A maximum is required for linearization
-                    # min=0.5,
+                        ep_costs=epc,
+                        maximum=row.maximum.item(),
+                        existing=row.existing.item(),
+                    ),  
                 ),
                 busd[row.bus_out_2.item()]: solph.Flow(),
                 busd[row.bus_out_3.item()]: solph.Flow(),
