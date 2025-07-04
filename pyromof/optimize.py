@@ -1,5 +1,7 @@
 from oemof import solph
 import pandas as pd
+from typeguard import typechecked
+from typing import Tuple, List
 
 import os
 import shutil
@@ -8,17 +10,20 @@ from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
 from pyromof import helpers
 
-def define_and_create_folders(ROOT_PATH, scenario):
-    RESULTS = os.path.join(ROOT_PATH, "results")
+
+@typechecked
+def define_and_create_folders(ROOT_PATH: Path, scenario: str):
+    RESULTS = Path(os.path.join(ROOT_PATH, "results"))
     # Create folder for the scenario within the results folder if it doesn't exist yet
     Path(os.path.join(RESULTS, scenario)).mkdir(exist_ok=True)
-    SCENARIO_PATH = os.path.join(RESULTS, scenario)
+    SCENARIO_PATH = Path(os.path.join(RESULTS, scenario))
     # Create folders for meta_info and dumping_space
     Path(os.path.join(SCENARIO_PATH, "meta_info")).mkdir(exist_ok=True)
-    META_INFO = os.path.join(SCENARIO_PATH, "meta_info")
+    META_INFO = Path(os.path.join(SCENARIO_PATH, "meta_info"))
     Path(os.path.join(SCENARIO_PATH, "dumping_space")).mkdir(exist_ok=True)
-    DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
+    DUMPING_SPACE = Path(os.path.join(SCENARIO_PATH, "dumping_space"))
     return SCENARIO_PATH, META_INFO, DUMPING_SPACE
+
 
 def read_raw_data(relative_file_path):
     profiles = pd.read_excel(relative_file_path, sheet_name="profiles")
@@ -30,7 +35,8 @@ def read_raw_data(relative_file_path):
     return profiles, sinks, sources, converters, storage, general
 
 
-def matches_scenario(scenario_to_check, scenario_wanted):
+@typechecked
+def matches_scenario(scenario_to_check: str, scenario_wanted: str) -> bool:
     """
     Checks wether the string "scenario to check" is either "all" or includes the "scenario_wanted".
     "scenario_wanted" should be the scenario to be optimized, and "scenario_to_check" a scenario field
@@ -39,7 +45,14 @@ def matches_scenario(scenario_to_check, scenario_wanted):
     return scenario_to_check == "all" or scenario_wanted in scenario_to_check
 
 
-def filter_input_data_by_scenario(sinks, sources, converters, storage, scenario_wanted):
+@typechecked
+def filter_input_data_by_scenario(
+    sinks: pd.DataFrame,
+    sources: pd.DataFrame,
+    converters: pd.DataFrame,
+    storage: pd.DataFrame,
+    scenario_wanted: str,
+):
     dfs = {
         "sinks": sinks,
         "sources": sources,
@@ -53,8 +66,12 @@ def filter_input_data_by_scenario(sinks, sources, converters, storage, scenario_
     return dfs["sinks"], dfs["sources"], dfs["converters"], dfs["storage"]
 
 
+@typechecked
 def extract_components_and_buses_from_input_data(
-    sinks, sources, converters, storage, scenario_wanted
+    sinks: pd.DataFrame,
+    sources: pd.DataFrame,
+    converters: pd.DataFrame,
+    storage: pd.DataFrame,
 ):
     """
     Takes the dfs from the input data sheets and the selected scenario and extracts
@@ -88,7 +105,16 @@ def extract_components_and_buses_from_input_data(
     buses_df = pd.DataFrame(data={"label": buses})
     return buses_df, components
 
-def create_energysystem(profiles, sinks, sources, converters, storage, general):
+
+@typechecked
+def create_energysystem(
+    profiles: pd.DataFrame,
+    sinks: pd.DataFrame,
+    sources: pd.DataFrame,
+    converters: pd.DataFrame,
+    storage: pd.DataFrame,
+    general: pd.DataFrame,
+) -> Tuple[solph.EnergySystem, bool, dict]:
     # Initiate an investment variable as False that will be overwritten
     # with True if any component with investment is added.
     # This information is required for the postprocessing.
@@ -107,7 +133,7 @@ def create_energysystem(profiles, sinks, sources, converters, storage, general):
         sinks, sources, converters, storage, scenario
     )
     buses, components = extract_components_and_buses_from_input_data(
-        sinks, sources, converters, storage, scenario
+        sinks, sources, converters, storage
     )
 
     # Create Bus objects from buses table
@@ -123,7 +149,6 @@ def create_energysystem(profiles, sinks, sources, converters, storage, general):
         nodes.append(bus)
         busd[b["label"]] = bus
         es.add(bus)
-
 
     # Create other components
     print(
@@ -310,8 +335,9 @@ def create_energysystem(profiles, sinks, sources, converters, storage, general):
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=solph.Investment(ep_costs=epc,
-                                                    existing=row.existing.item()),
+                        nominal_value=solph.Investment(
+                            ep_costs=epc, existing=row.existing.item()
+                        ),
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                     busd[row.bus_out_3.item()]: solph.Flow(),
@@ -430,17 +456,17 @@ def create_energysystem(profiles, sinks, sources, converters, storage, general):
                 },
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        min=row.minimum.item(), # Minimal load
-                        max=1, # A maximum is required for linearization
+                        min=row.minimum.item(),  # Minimal load
+                        max=1,  # A maximum is required for linearization
                         nonconvex=solph.NonConvex(
                             startup_costs=row.startup_costs.item(),
                             # positive_gradient_limit=row.positive_gradient_limit.item() not possible because nonlinear
-                            ),
+                        ),
                         nominal_value=solph.Investment(
                             ep_costs=epc,
-                            maximum=row.maximum.item(), # necessary for linearization
+                            maximum=row.maximum.item(),  # necessary for linearization
                             existing=row.existing.item(),
-                        ),  
+                        ),
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                     busd[row.bus_out_3.item()]: solph.Flow(),
@@ -576,9 +602,7 @@ def create_energysystem(profiles, sinks, sources, converters, storage, general):
         )
         es.add(biomass_dryer)
 
-
     # STORAGE
-
 
     def instantiate_storage(row, investment):
         """
@@ -588,7 +612,9 @@ def create_energysystem(profiles, sinks, sources, converters, storage, general):
         """
         if row.investment is True:
             label = row.label + "_invest"
-            epc_nominal_storage_capacity = economics.annuity(row.capex, row.lifetime, wacc)
+            epc_nominal_storage_capacity = economics.annuity(
+                row.capex, row.lifetime, wacc
+            )
             epcs[label + " to None"] = epc_nominal_storage_capacity
             print("epc for ", label, " : ", epc_nominal_storage_capacity)
             investment = True
@@ -632,7 +658,9 @@ def create_energysystem(profiles, sinks, sources, converters, storage, general):
 
     return es, investment, epcs
 
-def create_and_solve_model(es, META_INFO):
+
+@typechecked
+def create_and_solve_model(es: solph.EnergySystem, META_INFO: Path) -> solph.Model:
     # Initialise the operational model
     om = solph.Model(es)
 
@@ -649,7 +677,15 @@ def create_and_solve_model(es, META_INFO):
     om.solve(solver="cbc")
     return om
 
-def save_results(es, om, investment, epcs, META_INFO):
+
+@typechecked
+def save_results(
+    es: solph.EnergySystem,
+    om: solph.Model,
+    investment: bool,
+    epcs: dict,
+    META_INFO: Path,
+):
     # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
     filename = os.path.join(META_INFO, "es_graph.graphml")
     graph = create_nx_graph(es, filename=filename)
@@ -678,25 +714,32 @@ def save_results(es, om, investment, epcs, META_INFO):
     )
 
     # Save the dictionary with ep_costs:
-    epcs = pd.DataFrame(epcs.items(), columns=["object", "value"])
-    epcs.to_csv(os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";")
+    epcs_df = pd.DataFrame(epcs.items(), columns=["object", "value"])
+    epcs_df.to_csv(os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";")
 
     # dump the EnergySystem
     es.dump(dpath=DUMPING_SPACE, filename="es_dump.oemof")
     print("The results have been saved.")
 
+
 if __name__ == "__main__":
-    profiles, sinks, sources, converters, storage, general = read_raw_data("input_data.xlsx")
+    profiles, sinks, sources, converters, storage, general = read_raw_data(
+        "input_data.xlsx"
+    )
     # scenario = input("Which scenario shall be optimized? ")
     scenario = "minimalexample"
     # Definition of the time period
     time = pd.date_range("2023-01-02", periods=10, freq="h")
 
-    SCENARIO_PATH, META_INFO, DUMPING_SPACE = define_and_create_folders(Path(__file__).parent.parent, scenario)
+    SCENARIO_PATH, META_INFO, DUMPING_SPACE = define_and_create_folders(
+        Path(__file__).parent.parent, scenario
+    )
     # Save current input data version in the scenario folder
     # (filtering them for the data used in the scenario would be better but is too much for now)
     shutil.copy("input_data.xlsx", os.path.join(META_INFO, "input_data.xlsx"))
 
-    es, investment, epcs = create_energysystem(profiles, sinks, sources, converters, storage, general)
+    es, investment, epcs = create_energysystem(
+        profiles, sinks, sources, converters, storage, general
+    )
     om = create_and_solve_model(es, META_INFO=META_INFO)
     save_results(es, om, investment, epcs, META_INFO)
