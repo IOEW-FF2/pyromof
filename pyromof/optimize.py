@@ -18,6 +18,7 @@ general = pd.read_excel("input_data.xlsx", sheet_name="general")
 
 # Read in the scenario and set investment variable
 scenario = input("Which scenario shall be optimized? ")
+# scenario = "minimalexample"
 
 ROOT_PATH = Path(__file__).parent.parent
 RESULTS = os.path.join(ROOT_PATH, "results")
@@ -183,7 +184,7 @@ if "heat_demand_ht" in components:
         inputs={
             busd[row.bus_in.item()]: solph.Flow(
                 nominal_value=row.amount.item(),
-                fix=profiles[row.profile.item()],
+                min=profiles[row.profile.item()],
                 variable_costs=row.variable_costs.item(),
             )
         },
@@ -446,7 +447,7 @@ if "pyrolysis" in components:
                         ),
                     nominal_value=solph.Investment(
                         ep_costs=epc,
-                        maximum=row.maximum.item(),
+                        maximum=row.maximum.item(), # necessary for linearization
                         existing=row.existing.item(),
                     ),  
                 ),
@@ -635,8 +636,8 @@ def instantiate_storage(row, investment):
 
     return investment
 
-
-investment = storage.apply(instantiate_storage, investment=investment, axis=1)
+if not storage.empty:
+    investment = storage.apply(instantiate_storage, investment=investment, axis=1)
 
 # Initialise the operational model
 om = solph.Model(es)
