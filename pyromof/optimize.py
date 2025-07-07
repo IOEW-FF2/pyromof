@@ -9,6 +9,7 @@ from pathlib import Path
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
 from pyromof import helpers
+from pyomo.environ import Constraint
 
 
 @typechecked
@@ -114,7 +115,8 @@ def create_energysystem(
     converters: pd.DataFrame,
     storage: pd.DataFrame,
     general: pd.DataFrame,
-) -> Tuple[solph.EnergySystem, bool, dict]:
+    time
+) -> Tuple[solph.EnergySystem, solph.Model, bool, dict]:
     # Initiate an investment variable as False that will be overwritten
     # with True if any component with investment is added.
     # This information is required for the postprocessing.
@@ -656,15 +658,24 @@ def create_energysystem(
     if not storage.empty:
         investment = storage.apply(instantiate_storage, investment=investment, axis=1)
 
-    return es, investment, epcs
 
-
-@typechecked
-def create_and_solve_model(es: solph.EnergySystem, META_INFO: Path) -> solph.Model:
     # Initialise the operational model
     om = solph.Model(es)
 
     print("The model has been constructed.")
+
+    def tradeoff_bounds_lower(om, t):
+        out1 = om.flow[pyrolysis, busd['b_heat_ht'], t] # Should later be b_syngas and taken from the input data
+        out2 = om.flow[pyrolysis, busd['b_biochar'], t]
+        return out1 >= 0.56 * out2 # Has to be adapted by calculating the conversion factor for the upper bound from input data
+
+    def tradeoff_bounds_upper(om, t):
+        out1 = om.flow[pyrolysis, busd['b_heat_ht'], t] # Should later be b_syngas and taken from the input data
+        out2 = om.flow[pyrolysis, busd['b_biochar'], t] # Has to be adapted by calculating the conversion factor for the upper bound from input data
+        return out1 <= out2
+    
+    om.output_tradeoff_lower = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
+    om.output_tradeoff_upper = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
 
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
@@ -675,7 +686,7 @@ def create_and_solve_model(es: solph.EnergySystem, META_INFO: Path) -> solph.Mod
 
     # Solve the system
     om.solve(solver="cbc")
-    return om
+    return es, om, investment, epcs
 
 
 @typechecked
@@ -729,7 +740,7 @@ if __name__ == "__main__":
     # scenario = input("Which scenario shall be optimized? ")
     scenario = "minimalexample"
     # Definition of the time period
-    time = pd.date_range("2023-01-02", periods=10, freq="h")
+    time = pd.date_range(start="2023-01-02", end="2023-01-03", freq="h", inclusive="both")
 
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = define_and_create_folders(
         Path(__file__).parent.parent, scenario
@@ -738,8 +749,7 @@ if __name__ == "__main__":
     # (filtering them for the data used in the scenario would be better but is too much for now)
     shutil.copy("input_data.xlsx", os.path.join(META_INFO, "input_data.xlsx"))
 
-    es, investment, epcs = create_energysystem(
-        profiles, sinks, sources, converters, storage, general
+    es, om, investment, epcs = create_energysystem(
+        profiles, sinks, sources, converters, storage, general, time
     )
-    om = create_and_solve_model(es, META_INFO=META_INFO)
     save_results(es, om, investment, epcs, META_INFO)
