@@ -115,7 +115,7 @@ def create_energysystem(
     converters: pd.DataFrame,
     storage: pd.DataFrame,
     general: pd.DataFrame,
-    time
+    time,
 ) -> Tuple[solph.EnergySystem, solph.Model, bool, dict]:
     # Initiate an investment variable as False that will be overwritten
     # with True if any component with investment is added.
@@ -658,22 +658,40 @@ def create_energysystem(
     if not storage.empty:
         investment = storage.apply(instantiate_storage, investment=investment, axis=1)
 
-
     # Initialise the operational model
     om = solph.Model(es)
 
     print("The model has been constructed.")
 
     def tradeoff_bounds_lower(om, t):
-        out1 = om.flow[pyrolysis, busd['b_heat_ht'], t] # Should later be b_syngas and taken from the input data
-        out2 = om.flow[pyrolysis, busd['b_biochar'], t]
-        return out1 >= 0.56 * out2 # Has to be adapted by calculating the conversion factor for the upper bound from input data
+        row = converters.loc[converters.label == "pyrolysis"]
+        out1 = om.flow[
+            pyrolysis, busd[row.bus_out_1.item()], t
+        ]  # Should later be b_syngas and taken from the input data
+        out2 = om.flow[pyrolysis, busd[row.bus_out_2.item()], t]
+        min_ratio = (
+            row.eff_out_1.item() + row.eff_out_1.item() * row.out_1_max_decrease.item()
+        ) / (
+            row.eff_out_2.item()
+            + row.eff_out_2.item() * row.out_2_corresponding_increase.item()
+        )
+        print("min ratio for pyrolysis: ", min_ratio)
+        return (
+            out1 >= min_ratio * out2
+        )  # Has to be adapted by calculating the conversion factor for the upper bound from input data
 
     def tradeoff_bounds_upper(om, t):
-        out1 = om.flow[pyrolysis, busd['b_heat_ht'], t] # Should later be b_syngas and taken from the input data
-        out2 = om.flow[pyrolysis, busd['b_biochar'], t] # Has to be adapted by calculating the conversion factor for the upper bound from input data
-        return out1 <= out2
-    
+        row = converters.loc[converters.label == "pyrolysis"]
+        out1 = om.flow[
+            pyrolysis, busd[row.bus_out_1.item()], t
+        ]  # Should later be b_syngas and taken from the input data
+        out2 = om.flow[
+            pyrolysis, busd[row.bus_out_1.item()], t
+        ]  # Has to be adapted by calculating the conversion factor for the upper bound from input data
+        max_ratio = row.eff_out_1.item() / row.eff_out_2.item()
+        print("max ratio for pyrolysis: ", max_ratio)
+        return out1 <= max_ratio * out2
+
     om.output_tradeoff_lower = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
     om.output_tradeoff_upper = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
 
@@ -740,7 +758,9 @@ if __name__ == "__main__":
     # scenario = input("Which scenario shall be optimized? ")
     scenario = "minimalexample"
     # Definition of the time period
-    time = pd.date_range(start="2023-01-02", end="2023-01-03", freq="h", inclusive="both")
+    time = pd.date_range(
+        start="2023-01-02", end="2023-01-03", freq="h", inclusive="both"
+    )
 
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = define_and_create_folders(
         Path(__file__).parent.parent, scenario
