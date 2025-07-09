@@ -55,12 +55,11 @@ def convert_result_sequences_to_df(results_data):
     return df_sequences, df_scalars, df_storage_content, df_storage_losses
 
 
-def calculate_variable_costs_per_flow_per_timestep(path_sequences, path_varcosts):
+def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
     """
     This function takes the result sequences (flows per timestep) and the variable costs from csv files and
     multiplies them. The results are returned as a dataframe.
     """
-    sequences = pd.read_csv(path_sequences, sep=";", index_col=0)
     varcosts = pd.read_csv(path_varcosts, sep=";", index_col=0)
     varcosts = varcosts.set_index(
         sequences.index[:-1]
@@ -98,7 +97,7 @@ def add_sums_to_scalar_results(effective_variable_costs, sequences, scalar_resul
     return scalar_results
 
 
-def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_results):
+def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_results, DUMPING_SPACE):
     """
     Extract non-NaN-values from the scalars df and append them to the scalar results.
     The scalars df should be composed of the scalars of all flows taken from the raw results
@@ -128,7 +127,7 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
     return scalar_results
 
 
-def check_scalar_costs_consistency(scalar_data):
+def check_scalar_costs_consistency(scalar_results):
     """
     Check whether the sum of the monetary scalar results is equal to the objective variable
     and print a warning if not
@@ -146,25 +145,7 @@ def check_scalar_costs_consistency(scalar_data):
             objective,
         )
 
-
-if __name__ == "__main__":
-
-    # scenario = input("For which scenario shall the results be postprocessed? ")
-    scenario = "stromflex_h2"
-
-    ROOT_PATH = Path(__file__).parent.parent
-    SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
-    DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
-    # Create a results folder if it doesn't exist yet
-    Path(os.path.join(SCENARIO_PATH, "results")).mkdir(exist_ok=True)
-    RESULTS = os.path.join(SCENARIO_PATH, "results")
-
-    es = EnergySystem()
-    es.restore(DUMPING_SPACE, "es_dump.oemof")
-
-    # Read in the scenario and set investment variable
-    scenario, investment = helpers.retreive_scenario_from_results(es)
-
+def postprocess(es, DUMPING_SPACE, investment):
     # Create an empty dataframe for the scalar results:
 
     scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
@@ -185,27 +166,54 @@ if __name__ == "__main__":
     sequences, scalars, storage_contents, storage_losses = (
         convert_result_sequences_to_df(results_data=es.results)
     )
-    sequences.to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
-    storage_contents.to_csv(os.path.join(RESULTS, "storage_contents.csv"), sep=";")
-    storage_losses.to_csv(os.path.join(RESULTS, "storage_losses.csv"), sep=";")
 
     effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
-        os.path.join(RESULTS, "sequences.csv"),
+        sequences,
         os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"),
     )
-    # Save the result as csv
-    effective_variable_costs.to_csv(
-        os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
-    )
+
     scalar_results = add_sums_to_scalar_results(
         effective_variable_costs, sequences, scalar_results
     )
     if investment is True:
         scalar_results = add_investment_amount_to_scalar_results(
-            investment, scalars, scalar_results
+            investment, scalars, scalar_results, DUMPING_SPACE
         )
+    return {
+        "sequences": sequences,
+        "storage_contents": storage_contents,
+        "storage_losses": storage_losses,
+        "effective_variable_costs": effective_variable_costs,
+        "scalar_results": scalar_results
+    }
 
-    check_scalar_costs_consistency(scalar_results)
+if __name__ == "__main__":
 
-    # Save scalar results when all are collected
-    scalar_results.to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")
+    # scenario = input("For which scenario shall the results be postprocessed? ")
+    scenario = "minimalexample"
+
+    ROOT_PATH = Path(__file__).parent.parent
+    SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
+    DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
+    # Create a results folder if it doesn't exist yet
+    Path(os.path.join(SCENARIO_PATH, "results")).mkdir(exist_ok=True)
+    RESULTS = os.path.join(SCENARIO_PATH, "results")
+
+    es = EnergySystem()
+    es.restore(DUMPING_SPACE, "es_dump.oemof")
+
+    # Read in the scenario and set investment variable
+    scenario, investment = helpers.retreive_scenario_from_results(es)
+
+    result_dfs = postprocess(es, DUMPING_SPACE, investment)
+
+    check_scalar_costs_consistency(result_dfs["scalar_results"])
+
+    # Save all results
+    result_dfs["effective_variable_costs"].to_csv(
+    os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
+    )
+    result_dfs["sequences"].to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
+    result_dfs["storage_contents"].to_csv(os.path.join(RESULTS, "storage_contents.csv"), sep=";")
+    result_dfs["storage_losses"].to_csv(os.path.join(RESULTS, "storage_losses.csv"), sep=";")
+    result_dfs["scalar_results"].to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")
