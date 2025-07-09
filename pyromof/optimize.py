@@ -458,12 +458,15 @@ def create_energysystem(
                 },
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        min=row.minimum.item(),  # Minimal load
+                        min=row.min_load_share.item(),  # Minimal load
                         max=1,  # A maximum is required for linearization
+                        # positive_gradient_limit=row.positive_gradient_limit.item(),
+                        # Apparently a positive gradient limit isn't possible in investment
+                        # optimization. If it is activated, nominal_value becomes a NoneType object.
                         nonconvex=solph.NonConvex(
                             startup_costs=row.startup_costs.item(),
-                            # positive_gradient_limit=row.positive_gradient_limit.item()
-                            # not possible because nonlinear
+                            minimum_downtime=int(row.minimum_downtime.item()),
+                            initial_status=1,
                         ),
                         nominal_value=solph.Investment(
                             ep_costs=epc,
@@ -491,13 +494,14 @@ def create_energysystem(
                 },
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=row.capacity.item()
-                        #                    nominal_value=1000,
-                        #                    positive_gradient_limit=row.positive_gradient_limit.item(),
-                        #                    min=0.5,
-                        #                   # Only has an effect if the plant shuts down:
-                        #                    nonconvex=solph.NonConvex(minimum_downtime=5, initial_status=1),
-                        #
+                        nominal_value=row.capacity.item(),
+                        positive_gradient_limit=row.positive_gradient_limit.item(),
+                        min=row.min_load_share.item(),
+                        nonconvex=solph.NonConvex(
+                            startup_costs=row.startup_costs.item(),
+                            minimum_downtime=int(row.minimum_downtime.item()),
+                            initial_status=1,
+                        ),
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                     busd[row.bus_out_3.item()]: solph.Flow(),
@@ -761,7 +765,7 @@ if __name__ == "__main__":
         "input_data.xlsx"
     )
     # scenario = input("Which scenario shall be optimized? ")
-    scenario = "stromflex_h2"
+    scenario = "minimalexample"
     # Definition of the time period
     time = pd.date_range(
         start="2023-01-02", end="2023-01-03", freq="h", inclusive="both"
