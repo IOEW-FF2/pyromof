@@ -9,17 +9,18 @@ import postprocessing
 
 if __name__ == "__main__":
 
+    # Insert here the parameters. Only two decimal places are possible!
     parameters = {
-        "component_type": "sinks",
-        "component": "biochar_market",
-        "variable": "variable_costs",
-        "min": -1000,
-        "max": 0,
-        "step": 200,
+        "component_type": "converters", # must be plural
+        "component": "pyrolysis",
+        "variable": "min_load_share",
+        "min": 0.1,
+        "max": 0.9,
+        "step": 0.1,
     }
 
-    # scenario = input("For which scenario shall the results be postprocessed? ")
-    scenario = "minimalexample"
+    # scenario = input("For which scenario shall the sensitivity be analyzed? ")
+    scenario = "stromflex_h2"
 
     profiles, sinks, sources, converters, storage, general = optimize.read_raw_data(
         "input_data.xlsx"
@@ -56,9 +57,11 @@ if __name__ == "__main__":
 
     # Loop over the steps below, changing the sensitivity parameter in the raw data each time
     all_dfs = []
-    for parameter_value in range(
-        parameters["min"], parameters["max"] + parameters["step"], parameters["step"]
-    ):
+    range = [x / 100 for x in range(
+        int(parameters["min"]*100), int(parameters["max"]*100) + int(parameters["step"]*100), int(parameters["step"]*100)
+    )]
+    # Somewhat complicated workaround because "range" only accepts integers
+    for parameter_value in range:
         print(parameter_value)
         df_name = parameters["component_type"]
         input_data[df_name].loc[
@@ -67,16 +70,17 @@ if __name__ == "__main__":
         ] = parameter_value
 
         # OPTIMIZATION
+        # TODO: Use dict for input data everywhere instead of this loose list of dfs
         es, om, investment, epcs = optimize.create_energysystem(
-            META_INFO,
-            profiles,
-            sinks,
-            sources,
-            converters,
-            storage,
-            general,
-            time,
-            scenario,
+            META_INFO=META_INFO,
+            profiles=input_data["profiles"],
+            sinks=input_data["sinks"],
+            sources=input_data["sources"],
+            converters=input_data["converters"],
+            storage=input_data["storage"],
+            general=input_data["general"],
+            time=time,
+            scenario=scenario,
         )
         optimize.save_results(
             es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario
@@ -84,47 +88,14 @@ if __name__ == "__main__":
 
         # POSTPROCESSING
 
-        # Create an empty dataframe for the scalar results:
-        scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
+        result_dfs = postprocessing.postprocess(es, DUMPING_SPACE, investment)
 
-        # From the meta information, only the objective value is interesting for the results.
-        # Store this value in the scalar results remove the meta part from the results:
+        postprocessing.check_scalar_costs_consistency(result_dfs["scalar_results"])
 
-        scalar_results = postprocessing.add_items_to_scalar_results(
-            {"objective": es.results["meta"]["objective"]},
-            "objective [Euros]",
-            scalar_results,
-        )
+        result_dfs["scalar_results"].rename(columns={"value": parameter_value}, inplace=True)
+        print(result_dfs["scalar_results"])
 
-        es.results = es.results["main"]
-
-        nodes = [x for x in es.results.keys() if x[1] is None]  # This is only storage
-
-        sequences, scalars, storage_contents, storage_losses = (
-            postprocessing.convert_result_sequences_to_df(results_data=es.results)
-        )
-
-        effective_variable_costs = (
-            postprocessing.calculate_variable_costs_per_flow_per_timestep(
-                sequences,
-                os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"),
-            )
-        )
-
-        scalar_results = postprocessing.add_sums_to_scalar_results(
-            effective_variable_costs, sequences, scalar_results
-        )
-        if investment is True:
-            scalar_results = postprocessing.add_investment_amount_to_scalar_results(
-                investment, scalars, scalar_results, DUMPING_SPACE
-            )
-
-        postprocessing.check_scalar_costs_consistency(scalar_results)
-
-        scalar_results.rename(columns={"value": parameter_value}, inplace=True)
-        print(scalar_results)
-
-        all_dfs.append(scalar_results)
+        all_dfs.append(result_dfs["scalar_results"])
 
     merged_df = reduce(
         lambda left, right: pd.merge(left, right, on=["variable", "type"], how="outer"),
