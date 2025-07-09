@@ -109,6 +109,7 @@ def extract_components_and_buses_from_input_data(
 
 @typechecked
 def create_energysystem(
+    META_INFO,
     profiles: pd.DataFrame,
     sinks: pd.DataFrame,
     sources: pd.DataFrame,
@@ -116,6 +117,7 @@ def create_energysystem(
     storage: pd.DataFrame,
     general: pd.DataFrame,
     time,
+    scenario: str
 ) -> Tuple[solph.EnergySystem, solph.Model, bool, dict]:
     # Initiate an investment variable as False that will be overwritten
     # with True if any component with investment is added.
@@ -123,7 +125,7 @@ def create_energysystem(
     investment = False
 
     # Read in wacc for investment optimization
-    wacc = general.loc[general["item"] == "wacc", "value"].item()
+    wacc = general.loc[general["label"] == "wacc", "value"].item()
 
     # Initiate dict to store annuities
     epcs = {}
@@ -715,6 +717,12 @@ def create_energysystem(
     om.solve(solver="cbc")
     return es, om, investment, epcs
 
+def visualize_network_in_dash(es:solph.EnergySystem):
+    if input("Visualize network in dash app? (yes/no) ") == "yes":
+        from visualize_network import make_network, shownetwork
+
+        network = make_network(es)
+        shownetwork(network)
 
 @typechecked
 def save_results(
@@ -723,16 +731,14 @@ def save_results(
     investment: bool,
     epcs: dict,
     META_INFO: Path,
+    DUMPING_SPACE: Path,
+    scenario: str
 ):
     # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
     filename = os.path.join(META_INFO, "es_graph.graphml")
     create_nx_graph(es, filename=filename)
     # Use tool from Fraunhofer to create more useful network graph
-    if input("Visualize network in dash app? (yes/no) ") == "yes":
-        from visualize_network import make_network, shownetwork
-
-        network = make_network(es)
-        shownetwork(network)
+    
 
     # get results from the solved model
     es.params = solph.processing.parameter_as_dict(es)
@@ -781,4 +787,5 @@ if __name__ == "__main__":
     es, om, investment, epcs = create_energysystem(
         profiles, sinks, sources, converters, storage, general, time
     )
-    save_results(es, om, investment, epcs, META_INFO)
+    visualize_network_in_dash(es)
+    save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario)
