@@ -1,7 +1,7 @@
 from oemof import solph
 import pandas as pd
 from typeguard import typechecked
-from typing import Tuple, List
+from typing import Tuple
 
 import os
 import shutil
@@ -462,7 +462,8 @@ def create_energysystem(
                         max=1,  # A maximum is required for linearization
                         nonconvex=solph.NonConvex(
                             startup_costs=row.startup_costs.item(),
-                            # positive_gradient_limit=row.positive_gradient_limit.item() not possible because nonlinear
+                            # positive_gradient_limit=row.positive_gradient_limit.item()
+                            # not possible because nonlinear
                         ),
                         nominal_value=solph.Investment(
                             ep_costs=epc,
@@ -656,7 +657,13 @@ def create_energysystem(
         return investment
 
     if not storage.empty:
-        investment = storage.apply(instantiate_storage, investment=investment, axis=1)
+        investment = storage.apply(
+            lambda row: instantiate_storage(row, investment=investment), axis=1
+        ).any()
+        investment = bool(
+            investment
+        )  # Necessary because the function returns numpy.bool
+        # which is different from bool and therefore creates a typeguard error.
 
     # Initialise the operational model
     om = solph.Model(es)
@@ -675,7 +682,6 @@ def create_energysystem(
             row.eff_out_2.item()
             + row.eff_out_2.item() * row.out_2_corresponding_increase.item()
         )
-        print("min ratio for pyrolysis: ", min_ratio)
         return (
             out1 >= min_ratio * out2
         )  # Has to be adapted by calculating the conversion factor for the upper bound from input data
@@ -689,7 +695,6 @@ def create_energysystem(
             pyrolysis, busd[row.bus_out_1.item()], t
         ]  # Has to be adapted by calculating the conversion factor for the upper bound from input data
         max_ratio = row.eff_out_1.item() / row.eff_out_2.item()
-        print("max ratio for pyrolysis: ", max_ratio)
         return out1 <= max_ratio * out2
 
     om.output_tradeoff_lower = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
@@ -717,7 +722,7 @@ def save_results(
 ):
     # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
     filename = os.path.join(META_INFO, "es_graph.graphml")
-    graph = create_nx_graph(es, filename=filename)
+    create_nx_graph(es, filename=filename)
     # Use tool from Fraunhofer to create more useful network graph
     if input("Visualize network in dash app? (yes/no) ") == "yes":
         from visualize_network import make_network, shownetwork
@@ -756,7 +761,7 @@ if __name__ == "__main__":
         "input_data.xlsx"
     )
     # scenario = input("Which scenario shall be optimized? ")
-    scenario = "minimalexample"
+    scenario = "stromflex_h2"
     # Definition of the time period
     time = pd.date_range(
         start="2023-01-02", end="2023-01-03", freq="h", inclusive="both"

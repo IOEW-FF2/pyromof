@@ -149,7 +149,8 @@ def check_scalar_costs_consistency(scalar_data):
 
 if __name__ == "__main__":
 
-    scenario = input("For which scenario shall the results be postprocessed? ")
+    # scenario = input("For which scenario shall the results be postprocessed? ")
+    scenario = "stromflex_h2"
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
