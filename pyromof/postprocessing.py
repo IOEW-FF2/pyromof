@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 from pathlib import Path
 from pyromof import helpers
 from oemof.solph import (
@@ -132,18 +133,27 @@ def check_scalar_costs_consistency(scalar_results):
     Check whether the sum of the monetary scalar results is equal to the objective variable
     and print a warning if not
     """
+    print("Checking the completeness of the cost scalars")
     scalar_costs = helpers.filter_cost_items_from_scalar_data(scalar_results)
     objective = scalar_results.loc[
         scalar_results["variable"] == "objective", "value"
     ].item()
-    if scalar_costs.value.sum() - objective > 0.1:
+    sum = scalar_costs.value.sum().item()
+    assert type(sum - objective) == type(0.1), "The data types are not coherent, a consistency check is not possible."
+    if objective - sum > 0.1:
         print(
-            "Warning: Some cost or revenue scalars must be missing in the scalar results. "
+            "Some cost or revenue scalars must be missing in the scalar results. "
             "The sum of the cost and revenue data is ",
             scalar_costs.value.sum(),
             "whereas the objective is ",
             objective,
+            ". The difference of ", objective - sum,
+            " will be added as undefined costs to the scalar results."
         )
+        scalar_results = add_items_to_scalar_results(
+        {"unallocated costs": objective - sum}, "sum of unallocated costs [Euros]", scalar_results
+    )
+    return scalar_results
 
 def postprocess(es, DUMPING_SPACE, investment):
     # Create an empty dataframe for the scalar results:
@@ -190,7 +200,7 @@ def postprocess(es, DUMPING_SPACE, investment):
 if __name__ == "__main__":
 
     # scenario = input("For which scenario shall the results be postprocessed? ")
-    scenario = "minimalexample"
+    scenario = "stromflex_h2"
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
@@ -207,7 +217,7 @@ if __name__ == "__main__":
 
     result_dfs = postprocess(es, DUMPING_SPACE, investment)
 
-    check_scalar_costs_consistency(result_dfs["scalar_results"])
+    result_dfs["scalar_results"] = check_scalar_costs_consistency(result_dfs["scalar_results"])
 
     # Save all results
     result_dfs["effective_variable_costs"].to_csv(
