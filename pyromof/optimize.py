@@ -117,7 +117,7 @@ def create_energysystem(
     storage: pd.DataFrame,
     general: pd.DataFrame,
     time,
-    scenario: str
+    scenario: str,
 ) -> Tuple[solph.EnergySystem, solph.Model, bool, dict]:
     # Initiate an investment variable as False that will be overwritten
     # with True if any component with investment is added.
@@ -181,7 +181,7 @@ def create_energysystem(
                 busd[row.bus_in.item()]: solph.Flow(
                     nominal_value=row.amount.item(),
                     min=row.minimum.item(),
-                    variable_costs=row.variable_costs.item()
+                    variable_costs=row.variable_costs.item(),
                 )
             },
         )
@@ -195,7 +195,7 @@ def create_energysystem(
                 busd[row.bus_in.item()]: solph.Flow(
                     nominal_value=row.amount.item(),
                     min=profiles[row.profile.item()],
-                    variable_costs=row.variable_costs.item()
+                    variable_costs=row.variable_costs.item(),
                 )
             },
         )
@@ -274,7 +274,7 @@ def create_energysystem(
                     variable_costs=row.variable_costs.item(),
                 )
             },
-            )
+        )
         es.add(heat_lt_excess)
 
     # SOURCES
@@ -485,7 +485,7 @@ def create_energysystem(
                             startup_costs=row.startup_costs.item(),
                             minimum_downtime=int(row.minimum_downtime.item()),
                             initial_status=1,
-                         ),
+                        ),
                         nominal_value=solph.Investment(
                             ep_costs=epc,
                             maximum=row.maximum.item(),  # necessary for linearization
@@ -694,9 +694,7 @@ def create_energysystem(
 
     def tradeoff_bounds_lower(om, t):
         row = converters.loc[converters.label == "pyrolysis"]
-        out1 = om.flow[
-            pyrolysis, busd[row.bus_out_1.item()], t
-        ]
+        out1 = om.flow[pyrolysis, busd[row.bus_out_1.item()], t]
         out2 = om.flow[pyrolysis, busd[row.bus_out_2.item()], t]
         min_ratio = (
             row.eff_out_1.item() + row.eff_out_1.item() * row.out_1_max_decrease.item()
@@ -704,21 +702,18 @@ def create_energysystem(
             row.eff_out_2.item()
             + row.eff_out_2.item() * row.out_2_corresponding_increase.item()
         )
-        print("definition of tradeoff_bounds_lower: ", out1, ">=", min_ratio, "*", out2)
-        return (
-            out1 >= min_ratio * out2
-        )  # Has to be adapted by calculating the conversion factor for the upper bound from input data
+        # print("definition of tradeoff_bounds_lower: ", out1, ">=", min_ratio, "*", out2)
+        return out1 >= min_ratio * out2
 
     def tradeoff_bounds_upper(om, t):
         row = converters.loc[converters.label == "pyrolysis"]
         out1 = om.flow[
             pyrolysis, busd[row.bus_out_1.item()], t
         ]  # Should later be b_syngas and taken from the input data
-        out2 = om.flow[
-            pyrolysis, busd[row.bus_out_2.item()], t
-        ]  # Has to be adapted by calculating the conversion factor for the upper bound from input data
+        out2 = om.flow[pyrolysis, busd[row.bus_out_2.item()], t]
+        # The bound is equal to the default
         max_ratio = row.eff_out_1.item() / row.eff_out_2.item()
-        print("definition of tradeoff_bounds_lower: ", out1, "<=", max_ratio, "*", out2)
+        # print("definition of tradeoff_bounds_lower: ", out1, "<=", max_ratio, "*", out2)
         return out1 <= max_ratio * out2
 
     om.output_tradeoff_lower = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
@@ -735,12 +730,14 @@ def create_energysystem(
     om.solve(solver="cbc")
     return es, om, investment, epcs
 
-def visualize_network_in_dash(es:solph.EnergySystem):
+
+def visualize_network_in_dash(es: solph.EnergySystem):
     if input("Visualize network in dash app? (yes/no) ") == "yes":
         from visualize_network import make_network, shownetwork
 
         network = make_network(es)
         shownetwork(network)
+
 
 @typechecked
 def save_results(
@@ -750,13 +747,12 @@ def save_results(
     epcs: dict,
     META_INFO: Path,
     DUMPING_SPACE: Path,
-    scenario: str
+    scenario: str,
 ):
     # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
     filename = os.path.join(META_INFO, "es_graph.graphml")
     create_nx_graph(es, filename=filename)
     # Use tool from Fraunhofer to create more useful network graph
-    
 
     # get results from the solved model
     es.params = solph.processing.parameter_as_dict(es)
@@ -803,15 +799,15 @@ if __name__ == "__main__":
     shutil.copy("input_data.xlsx", os.path.join(META_INFO, "input_data.xlsx"))
 
     es, om, investment, epcs = create_energysystem(
-        META_INFO=META_INFO, 
-        profiles=profiles, 
-        sinks=sinks, 
-        sources=sources, 
-        converters=converters, 
-        storage=storage, 
-        general=general, 
-        time=time, 
-        scenario=scenario
+        META_INFO=META_INFO,
+        profiles=profiles,
+        sinks=sinks,
+        sources=sources,
+        converters=converters,
+        storage=storage,
+        general=general,
+        time=time,
+        scenario=scenario,
     )
     visualize_network_in_dash(es)
     save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario)

@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-import numpy as np
 from pathlib import Path
 from pyromof import helpers
 from oemof.solph import (
@@ -44,7 +43,8 @@ def convert_result_sequences_to_df(results_data):
     for flow in flows:
         df_sequences[flow] = results[flow]["sequences"][
             "flow"
-        ]  # Besides the "flow" column there can be columns "positive_gradient" etc.
+        ]  # Besides the "flow" column there can be columns "positive_gradient"
+        # etc. if these are set on the flow.
         df_scalars[flow] = results[flow]["scalars"]
     for node in nodes:
         df_scalars[node] = results[node]["scalars"]
@@ -98,7 +98,9 @@ def add_sums_to_scalar_results(effective_variable_costs, sequences, scalar_resul
     return scalar_results
 
 
-def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_results, DUMPING_SPACE):
+def add_investment_amount_to_scalar_results(
+    investment: bool, scalars, scalar_results, DUMPING_SPACE
+):
     """
     Extract non-NaN-values from the scalars df and append them to the scalar results.
     The scalars df should be composed of the scalars of all flows taken from the raw results
@@ -139,7 +141,9 @@ def check_scalar_costs_consistency(scalar_results):
         scalar_results["variable"] == "objective", "value"
     ].item()
     sum = scalar_costs.value.sum().item()
-    assert type(sum - objective) == type(0.1), "The data types are not coherent, a consistency check is not possible."
+    assert type(sum - objective) is type(
+        0.1
+    ), "The data types are not coherent, a consistency check is not possible."
     if objective - sum > 0.1:
         print(
             "Some cost or revenue scalars must be missing in the scalar results. "
@@ -147,13 +151,17 @@ def check_scalar_costs_consistency(scalar_results):
             scalar_costs.value.sum(),
             "whereas the objective is ",
             objective,
-            ". The difference of ", objective - sum,
-            " will be added as undefined costs to the scalar results."
+            ". The difference of ",
+            objective - sum,
+            " will be added as undefined costs to the scalar results.",
         )
         scalar_results = add_items_to_scalar_results(
-        {"unallocated costs": objective - sum}, "sum of unallocated costs [Euros]", scalar_results
-    )
+            {"unallocated costs": objective - sum},
+            "sum of unallocated costs [Euros]",
+            scalar_results,
+        )
     return scalar_results
+
 
 def postprocess(es, DUMPING_SPACE, investment):
     # Create an empty dataframe for the scalar results:
@@ -170,8 +178,6 @@ def postprocess(es, DUMPING_SPACE, investment):
     )
 
     es.results = es.results["main"]
-
-    nodes = [x for x in es.results.keys() if x[1] is None]  # This is only storage
 
     sequences, scalars, storage_contents, storage_losses = (
         convert_result_sequences_to_df(results_data=es.results)
@@ -194,8 +200,9 @@ def postprocess(es, DUMPING_SPACE, investment):
         "storage_contents": storage_contents,
         "storage_losses": storage_losses,
         "effective_variable_costs": effective_variable_costs,
-        "scalar_results": scalar_results
+        "scalar_results": scalar_results,
     }
+
 
 if __name__ == "__main__":
 
@@ -217,13 +224,21 @@ if __name__ == "__main__":
 
     result_dfs = postprocess(es, DUMPING_SPACE, investment)
 
-    result_dfs["scalar_results"] = check_scalar_costs_consistency(result_dfs["scalar_results"])
+    result_dfs["scalar_results"] = check_scalar_costs_consistency(
+        result_dfs["scalar_results"]
+    )
 
     # Save all results
     result_dfs["effective_variable_costs"].to_csv(
-    os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
+        os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
     )
     result_dfs["sequences"].to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
-    result_dfs["storage_contents"].to_csv(os.path.join(RESULTS, "storage_contents.csv"), sep=";")
-    result_dfs["storage_losses"].to_csv(os.path.join(RESULTS, "storage_losses.csv"), sep=";")
-    result_dfs["scalar_results"].to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")
+    result_dfs["storage_contents"].to_csv(
+        os.path.join(RESULTS, "storage_contents.csv"), sep=";"
+    )
+    result_dfs["storage_losses"].to_csv(
+        os.path.join(RESULTS, "storage_losses.csv"), sep=";"
+    )
+    result_dfs["scalar_results"].to_csv(
+        os.path.join(RESULTS, "scalar_results.csv"), sep=";"
+    )

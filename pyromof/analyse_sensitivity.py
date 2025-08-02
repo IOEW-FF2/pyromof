@@ -11,12 +11,12 @@ if __name__ == "__main__":
 
     # Insert here the parameters. Only two decimal places are possible!
     parameters = {
-        "component_type": "converters", # must be plural
-        "component": "pyrolysis",
-        "variable": "min_load_share",
+        "component_type": "sources",  # must be plural
+        "component": "heat_source",
+        "variable": "variable_costs",
         "min": 0.1,
-        "max": 0.9,
-        "step": 0.1,
+        "max": 1000.1,
+        "step": 100,
     }
 
     # scenario = input("For which scenario shall the sensitivity be analyzed? ")
@@ -57,9 +57,14 @@ if __name__ == "__main__":
 
     # Loop over the steps below, changing the sensitivity parameter in the raw data each time
     all_dfs = []
-    range = [x / 100 for x in range(
-        int(parameters["min"]*100), int(parameters["max"]*100) + int(parameters["step"]*100), int(parameters["step"]*100)
-    )]
+    range = [
+        x / 100
+        for x in range(
+            int(parameters["min"] * 100),
+            int(parameters["max"] * 100) + int(parameters["step"] * 100),
+            int(parameters["step"] * 100),
+        )
+    ]
     # Somewhat complicated workaround because "range" only accepts integers
     for parameter_value in range:
         print(parameter_value)
@@ -92,7 +97,9 @@ if __name__ == "__main__":
 
         postprocessing.check_scalar_costs_consistency(result_dfs["scalar_results"])
 
-        result_dfs["scalar_results"].rename(columns={"value": parameter_value}, inplace=True)
+        result_dfs["scalar_results"].rename(
+            columns={"value": parameter_value}, inplace=True
+        )
         print(result_dfs["scalar_results"])
 
         all_dfs.append(result_dfs["scalar_results"])
