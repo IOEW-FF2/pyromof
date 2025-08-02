@@ -43,7 +43,8 @@ def convert_result_sequences_to_df(results_data):
     for flow in flows:
         df_sequences[flow] = results[flow]["sequences"][
             "flow"
-        ]  # Besides the "flow" column there can be columns "positive_gradient" etc.
+        ]  # Besides the "flow" column there can be columns "positive_gradient"
+        # etc. if these are set on the flow.
         df_scalars[flow] = results[flow]["scalars"]
     for node in nodes:
         df_scalars[node] = results[node]["scalars"]
@@ -55,12 +56,11 @@ def convert_result_sequences_to_df(results_data):
     return df_sequences, df_scalars, df_storage_content, df_storage_losses
 
 
-def calculate_variable_costs_per_flow_per_timestep(path_sequences, path_varcosts):
+def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
     """
     This function takes the result sequences (flows per timestep) and the variable costs from csv files and
     multiplies them. The results are returned as a dataframe.
     """
-    sequences = pd.read_csv(path_sequences, sep=";", index_col=0)
     varcosts = pd.read_csv(path_varcosts, sep=";", index_col=0)
     varcosts = varcosts.set_index(
         sequences.index[:-1]
@@ -98,7 +98,9 @@ def add_sums_to_scalar_results(effective_variable_costs, sequences, scalar_resul
     return scalar_results
 
 
-def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_results):
+def add_investment_amount_to_scalar_results(
+    investment: bool, scalars, scalar_results, DUMPING_SPACE
+):
     """
     Extract non-NaN-values from the scalars df and append them to the scalar results.
     The scalars df should be composed of the scalars of all flows taken from the raw results
@@ -128,23 +130,78 @@ def add_investment_amount_to_scalar_results(investment: bool, scalars, scalar_re
     return scalar_results
 
 
-def check_scalar_costs_consistency(scalar_data):
+def check_scalar_costs_consistency(scalar_results):
     """
     Check whether the sum of the monetary scalar results is equal to the objective variable
     and print a warning if not
     """
+    print("Checking the completeness of the cost scalars")
     scalar_costs = helpers.filter_cost_items_from_scalar_data(scalar_results)
     objective = scalar_results.loc[
         scalar_results["variable"] == "objective", "value"
     ].item()
-    if scalar_costs.value.sum() - objective > 0.1:
+    sum = scalar_costs.value.sum().item()
+    assert type(sum - objective) is type(
+        0.1
+    ), "The data types are not coherent, a consistency check is not possible."
+    if objective - sum > 0.1:
         print(
-            "Warning: Some cost or revenue scalars must be missing in the scalar results. "
+            "Some cost or revenue scalars must be missing in the scalar results. "
             "The sum of the cost and revenue data is ",
             scalar_costs.value.sum(),
             "whereas the objective is ",
             objective,
+            ". The difference of ",
+            objective - sum,
+            " will be added as undefined costs to the scalar results.",
         )
+        scalar_results = add_items_to_scalar_results(
+            {"unallocated costs": objective - sum},
+            "sum of unallocated costs [Euros]",
+            scalar_results,
+        )
+    return scalar_results
+
+
+def postprocess(es, DUMPING_SPACE, investment):
+    # Create an empty dataframe for the scalar results:
+
+    scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
+
+    # From the meta information, only the objective value is interesting for the results.
+    # Store this value in the scalar results remove the meta part from the results:
+
+    scalar_results = add_items_to_scalar_results(
+        {"objective": es.results["meta"]["objective"]},
+        "objective [Euros]",
+        scalar_results,
+    )
+
+    es.results = es.results["main"]
+
+    sequences, scalars, storage_contents, storage_losses = (
+        convert_result_sequences_to_df(results_data=es.results)
+    )
+
+    effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
+        sequences,
+        os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"),
+    )
+
+    scalar_results = add_sums_to_scalar_results(
+        effective_variable_costs, sequences, scalar_results
+    )
+    if investment is True:
+        scalar_results = add_investment_amount_to_scalar_results(
+            investment, scalars, scalar_results, DUMPING_SPACE
+        )
+    return {
+        "sequences": sequences,
+        "storage_contents": storage_contents,
+        "storage_losses": storage_losses,
+        "effective_variable_costs": effective_variable_costs,
+        "scalar_results": scalar_results,
+    }
 
 
 if __name__ == "__main__":
@@ -165,47 +222,23 @@ if __name__ == "__main__":
     # Read in the scenario and set investment variable
     scenario, investment = helpers.retreive_scenario_from_results(es)
 
-    # Create an empty dataframe for the scalar results:
+    result_dfs = postprocess(es, DUMPING_SPACE, investment)
 
-    scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
-
-    # From the meta information, only the objective value is interesting for the results.
-    # Store this value in the scalar results remove the meta part from the results:
-
-    scalar_results = add_items_to_scalar_results(
-        {"objective": es.results["meta"]["objective"]},
-        "objective [Euros]",
-        scalar_results,
+    result_dfs["scalar_results"] = check_scalar_costs_consistency(
+        result_dfs["scalar_results"]
     )
 
-    es.results = es.results["main"]
-
-    nodes = [x for x in es.results.keys() if x[1] is None]  # This is only storage
-
-    sequences, scalars, storage_contents, storage_losses = (
-        convert_result_sequences_to_df(results_data=es.results)
-    )
-    sequences.to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
-    storage_contents.to_csv(os.path.join(RESULTS, "storage_contents.csv"), sep=";")
-    storage_losses.to_csv(os.path.join(RESULTS, "storage_losses.csv"), sep=";")
-
-    effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
-        os.path.join(RESULTS, "sequences.csv"),
-        os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"),
-    )
-    # Save the result as csv
-    effective_variable_costs.to_csv(
+    # Save all results
+    result_dfs["effective_variable_costs"].to_csv(
         os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
     )
-    scalar_results = add_sums_to_scalar_results(
-        effective_variable_costs, sequences, scalar_results
+    result_dfs["sequences"].to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
+    result_dfs["storage_contents"].to_csv(
+        os.path.join(RESULTS, "storage_contents.csv"), sep=";"
     )
-    if investment is True:
-        scalar_results = add_investment_amount_to_scalar_results(
-            investment, scalars, scalar_results
-        )
-
-    check_scalar_costs_consistency(scalar_results)
-
-    # Save scalar results when all are collected
-    scalar_results.to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")
+    result_dfs["storage_losses"].to_csv(
+        os.path.join(RESULTS, "storage_losses.csv"), sep=";"
+    )
+    result_dfs["scalar_results"].to_csv(
+        os.path.join(RESULTS, "scalar_results.csv"), sep=";"
+    )

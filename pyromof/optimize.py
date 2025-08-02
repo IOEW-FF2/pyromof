@@ -109,6 +109,7 @@ def extract_components_and_buses_from_input_data(
 
 @typechecked
 def create_energysystem(
+    META_INFO,
     profiles: pd.DataFrame,
     sinks: pd.DataFrame,
     sources: pd.DataFrame,
@@ -116,6 +117,7 @@ def create_energysystem(
     storage: pd.DataFrame,
     general: pd.DataFrame,
     time,
+    scenario: str,
 ) -> Tuple[solph.EnergySystem, solph.Model, bool, dict]:
     # Initiate an investment variable as False that will be overwritten
     # with True if any component with investment is added.
@@ -123,7 +125,7 @@ def create_energysystem(
     investment = False
 
     # Read in wacc for investment optimization
-    wacc = general.loc[general["item"] == "wacc", "value"].item()
+    wacc = general.loc[general["label"] == "wacc", "value"].item()
 
     # Initiate dict to store annuities
     epcs = {}
@@ -177,7 +179,9 @@ def create_energysystem(
             label="co2_market",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    variable_costs=row.variable_costs.item()
+                    nominal_value=row.amount.item(),
+                    min=row.minimum.item(),
+                    variable_costs=row.variable_costs.item(),
                 )
             },
         )
@@ -189,7 +193,9 @@ def create_energysystem(
             label="electricity_grid",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    variable_costs=row.variable_costs.item()
+                    nominal_value=row.amount.item(),
+                    min=profiles[row.profile.item()],
+                    variable_costs=row.variable_costs.item(),
                 )
             },
         )
@@ -258,6 +264,18 @@ def create_energysystem(
             },
         )
         es.add(torch)
+
+    if "heat_lt_excess" in components:
+        row = sinks.loc[sinks.label == "heat_lt_excess", :]
+        heat_lt_excess = solph.components.Sink(
+            label="heat_lt_excess",
+            inputs={
+                busd[row.bus_in.item()]: solph.Flow(
+                    variable_costs=row.variable_costs.item(),
+                )
+            },
+        )
+        es.add(heat_lt_excess)
 
     # SOURCES
     if "biomass" in components:
@@ -676,9 +694,7 @@ def create_energysystem(
 
     def tradeoff_bounds_lower(om, t):
         row = converters.loc[converters.label == "pyrolysis"]
-        out1 = om.flow[
-            pyrolysis, busd[row.bus_out_1.item()], t
-        ]  # Should later be b_syngas and taken from the input data
+        out1 = om.flow[pyrolysis, busd[row.bus_out_1.item()], t]
         out2 = om.flow[pyrolysis, busd[row.bus_out_2.item()], t]
         min_ratio = (
             row.eff_out_1.item() + row.eff_out_1.item() * row.out_1_max_decrease.item()
@@ -686,19 +702,18 @@ def create_energysystem(
             row.eff_out_2.item()
             + row.eff_out_2.item() * row.out_2_corresponding_increase.item()
         )
-        return (
-            out1 >= min_ratio * out2
-        )  # Has to be adapted by calculating the conversion factor for the upper bound from input data
+        # print("definition of tradeoff_bounds_lower: ", out1, ">=", min_ratio, "*", out2)
+        return out1 >= min_ratio * out2
 
     def tradeoff_bounds_upper(om, t):
         row = converters.loc[converters.label == "pyrolysis"]
         out1 = om.flow[
             pyrolysis, busd[row.bus_out_1.item()], t
         ]  # Should later be b_syngas and taken from the input data
-        out2 = om.flow[
-            pyrolysis, busd[row.bus_out_1.item()], t
-        ]  # Has to be adapted by calculating the conversion factor for the upper bound from input data
+        out2 = om.flow[pyrolysis, busd[row.bus_out_2.item()], t]
+        # The bound is equal to the default
         max_ratio = row.eff_out_1.item() / row.eff_out_2.item()
+        # print("definition of tradeoff_bounds_lower: ", out1, "<=", max_ratio, "*", out2)
         return out1 <= max_ratio * out2
 
     om.output_tradeoff_lower = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
@@ -716,6 +731,14 @@ def create_energysystem(
     return es, om, investment, epcs
 
 
+def visualize_network_in_dash(es: solph.EnergySystem):
+    if input("Visualize network in dash app? (yes/no) ") == "yes":
+        from visualize_network import make_network, shownetwork
+
+        network = make_network(es)
+        shownetwork(network)
+
+
 @typechecked
 def save_results(
     es: solph.EnergySystem,
@@ -723,16 +746,13 @@ def save_results(
     investment: bool,
     epcs: dict,
     META_INFO: Path,
+    DUMPING_SPACE: Path,
+    scenario: str,
 ):
     # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
     filename = os.path.join(META_INFO, "es_graph.graphml")
     create_nx_graph(es, filename=filename)
     # Use tool from Fraunhofer to create more useful network graph
-    if input("Visualize network in dash app? (yes/no) ") == "yes":
-        from visualize_network import make_network, shownetwork
-
-        network = make_network(es)
-        shownetwork(network)
 
     # get results from the solved model
     es.params = solph.processing.parameter_as_dict(es)
@@ -765,10 +785,10 @@ if __name__ == "__main__":
         "input_data.xlsx"
     )
     # scenario = input("Which scenario shall be optimized? ")
-    scenario = "minimalexample"
+    scenario = "stromflex_h2"
     # Definition of the time period
     time = pd.date_range(
-        start="2023-01-02", end="2023-01-03", freq="h", inclusive="both"
+        start="2023-01-02 02:00", end="2023-01-08 05:00", freq="h", inclusive="both"
     )
 
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = define_and_create_folders(
@@ -779,6 +799,15 @@ if __name__ == "__main__":
     shutil.copy("input_data.xlsx", os.path.join(META_INFO, "input_data.xlsx"))
 
     es, om, investment, epcs = create_energysystem(
-        profiles, sinks, sources, converters, storage, general, time
+        META_INFO=META_INFO,
+        profiles=profiles,
+        sinks=sinks,
+        sources=sources,
+        converters=converters,
+        storage=storage,
+        general=general,
+        time=time,
+        scenario=scenario,
     )
-    save_results(es, om, investment, epcs, META_INFO)
+    visualize_network_in_dash(es)
+    save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario)
