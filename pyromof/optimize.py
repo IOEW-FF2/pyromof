@@ -179,7 +179,7 @@ def create_energysystem(
             label="co2_market",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    nominal_value=row.amount.item(),
+                    nominal_value=row.nominal_capacity.item(),
                     min=row.minimum.item(),
                     variable_costs=row.variable_costs.item(),
                 )
@@ -193,7 +193,7 @@ def create_energysystem(
             label="electricity_grid",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    nominal_value=row.amount.item(),
+                    nominal_value=row.nominal_capacity.item(),
                     min=profiles[row.profile.item()],
                     variable_costs=row.variable_costs.item(),
                 )
@@ -207,7 +207,7 @@ def create_energysystem(
             label="heat_demand_ht",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    nominal_value=row.amount.item(),
+                    nominal_value=row.nominal_capacity.item(),
                     min=profiles[row.profile.item()],
                     variable_costs=row.variable_costs.item(),
                 )
@@ -221,7 +221,7 @@ def create_energysystem(
             label="heat_demand_lt",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    nominal_value=row.amount.item(),
+                    nominal_value=row.nominal_capacity.item(),
                     fix=profiles[row.profile.item()],
                     variable_costs=row.variable_costs.item(),
                 )
@@ -284,7 +284,7 @@ def create_energysystem(
             label="biomass",
             outputs={
                 busd[row.bus_out.item()]: solph.Flow(
-                    nominal_value=row.amount.item(),
+                    nominal_value=row.nominal_capacity.item(),
                     variable_costs=row.variable_costs.item(),
                 )
             },
@@ -375,7 +375,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=row.capacity.item()
+                        nominal_value=row.nominal_capacity.item()
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                     busd[row.bus_out_3.item()]: solph.Flow(),
@@ -415,7 +415,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=row.capacity.item()
+                        nominal_value=row.nominal_capacity.item()
                     ),
                 },
                 conversion_factors={
@@ -451,7 +451,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=row.capacity.item()
+                        nominal_value=row.nominal_capacity.item()
                     ),
                 },
                 conversion_factors={
@@ -512,7 +512,7 @@ def create_energysystem(
                 },
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=row.capacity.item(),
+                        nominal_value=row.nominal_capacity.item(),
                         positive_gradient_limit=row.positive_gradient_limit.item(),
                         min=row.min_load_share.item(),
                         nonconvex=solph.NonConvex(
