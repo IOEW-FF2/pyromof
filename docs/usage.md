@@ -47,7 +47,9 @@ In investment mode, the nominal storage capacity is calculated from capex, lifet
 For an explanation of the attributes you may read the [documentation of oemof solph](https://oemof-solph.readthedocs.io/en/stable/reference/oemof.solph.flow.html).
 
 Two costum attributes have been added for the pyrolysis component in this model: out 1 max decrease and out max 2 corresponding increase. The two values together are used to define a minimum ratio between outputs 1 and 2:
-$$ratio_{min} = \frac{eff(out1) + eff(out1)*\text{out\_1\_max\_decrease}}{eff(out2) + eff(out2) *\text{out\_2\_corresponding\_increase}}$$
+```math
+ratio_{min} = \frac{eff(out1) + eff(out1)*\text{out\_1\_max\_decrease}}{eff(out2) + eff(out2) *\text{out\_2\_corresponding\_increase}}
+```
 $ratio_{max}$ is given by the unchanged relation between the two output efficiencies.
 
 The scenario in the input data can be a single scenario, multiple scenarios separated by commas or the word *all*. In any case there must be a string in the scenario column for every row that has a label, otherwise the model will throw an error.
