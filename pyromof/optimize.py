@@ -766,8 +766,13 @@ def save_results(
     columns = [a for a, b in flows.items()]
     df = pd.DataFrame(columns=columns)
     for col in df.columns:
-        series = [b for a, b in flows.items() if a == col][0].variable_costs
+        series = list([b for a, b in flows.items() if a == col][0].variable_costs)
+        print(len(time))
         df[col] = series[:len(time)]
+        print(col)
+        print(series)
+        print(df[col])
+    print(df)
     variable_costs = helpers.convert_tuple_columnnames_to_strings(df)
     variable_costs.to_csv(
         os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";"
@@ -811,5 +816,5 @@ if __name__ == "__main__":
         time=time,
         scenario=scenario,
     )
-    visualize_network_in_dash(es)
+    # visualize_network_in_dash(es)
     save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
