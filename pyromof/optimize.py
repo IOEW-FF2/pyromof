@@ -179,7 +179,7 @@ def create_energysystem(
             label="co2_market",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    nominal_value=row.nominal_capacity.item(),
+                    nominal_capacity=row.nominal_capacity.item(),
                     min=row.minimum.item(),
                     variable_costs=row.variable_costs.item(),
                 )
@@ -193,7 +193,7 @@ def create_energysystem(
             label="electricity_grid",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    nominal_value=row.nominal_capacity.item(),
+                    nominal_capacity=row.nominal_capacity.item(),
                     min=profiles[row.profile.item()],
                     variable_costs=profiles[row.variable_costs.item()],
                 )
@@ -207,7 +207,7 @@ def create_energysystem(
             label="heat_demand_ht",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    nominal_value=row.nominal_capacity.item(),
+                    nominal_capacity=row.nominal_capacity.item(),
                     min=profiles[row.profile.item()],
                     variable_costs=row.variable_costs.item(),
                 )
@@ -221,7 +221,7 @@ def create_energysystem(
             label="heat_demand_lt",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    nominal_value=row.nominal_capacity.item(),
+                    nominal_capacity=row.nominal_capacity.item(),
                     fix=profiles[row.profile.item()],
                     variable_costs=row.variable_costs.item(),
                 )
@@ -284,7 +284,7 @@ def create_energysystem(
             label="biomass",
             outputs={
                 busd[row.bus_out.item()]: solph.Flow(
-                    nominal_value=row.nominal_capacity.item(),
+                    nominal_capacity=row.nominal_capacity.item(),
                     variable_costs=row.variable_costs.item(),
                 )
             },
@@ -317,7 +317,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=solph.Investment(ep_costs=epc)
+                        nominal_capacity=solph.Investment(ep_costs=epc)
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                 },
@@ -355,7 +355,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=solph.Investment(
+                        nominal_capacity=solph.Investment(
                             ep_costs=epc, existing=row.existing.item()
                         ),
                     ),
@@ -375,7 +375,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=row.nominal_capacity.item()
+                        nominal_capacity=row.nominal_capacity.item()
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                     busd[row.bus_out_3.item()]: solph.Flow(),
@@ -401,7 +401,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=solph.Investment(ep_costs=epc)
+                        nominal_capacity=solph.Investment(ep_costs=epc)
                     ),
                 },
                 conversion_factors={
@@ -415,7 +415,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=row.nominal_capacity.item()
+                        nominal_capacity=row.nominal_capacity.item()
                     ),
                 },
                 conversion_factors={
@@ -437,7 +437,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=solph.Investment(ep_costs=epc)
+                        nominal_capacity=solph.Investment(ep_costs=epc)
                     ),
                 },
                 conversion_factors={
@@ -451,7 +451,7 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=row.nominal_capacity.item()
+                        nominal_capacity=row.nominal_capacity.item()
                     ),
                 },
                 conversion_factors={
@@ -480,13 +480,13 @@ def create_energysystem(
                         max=1,  # A maximum is required for linearization
                         # positive_gradient_limit=row.positive_gradient_limit.item(),
                         # Apparently a positive gradient limit isn't possible in investment
-                        # optimization. If it is activated, nominal_value becomes a NoneType object.
+                        # optimization. If it is activated, nominal_capacity becomes a NoneType object.
                         nonconvex=solph.NonConvex(
                             startup_costs=row.startup_costs.item(),
                             minimum_downtime=int(row.minimum_downtime.item()),
                             initial_status=1,
                         ),
-                        nominal_value=solph.Investment(
+                        nominal_capacity=solph.Investment(
                             ep_costs=epc,
                             maximum=row.maximum.item(),  # necessary for linearization
                             existing=row.existing.item(),
@@ -512,7 +512,7 @@ def create_energysystem(
                 },
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=row.nominal_capacity.item(),
+                        nominal_capacity=row.nominal_capacity.item(),
                         positive_gradient_limit=row.positive_gradient_limit.item(),
                         min=row.min_load_share.item(),
                         nonconvex=solph.NonConvex(
@@ -548,7 +548,7 @@ def create_energysystem(
                 },
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_value=solph.Investment(ep_costs=epc)
+                        nominal_capacity=solph.Investment(ep_costs=epc)
                     ),
                 },
                 conversion_factors={
@@ -767,12 +767,7 @@ def save_results(
     df = pd.DataFrame(columns=columns)
     for col in df.columns:
         series = list([b for a, b in flows.items() if a == col][0].variable_costs)
-        print(len(time))
-        df[col] = series[:len(time)]
-        print(col)
-        print(series)
-        print(df[col])
-    print(df)
+        df[col] = series[:len(time)-1]
     variable_costs = helpers.convert_tuple_columnnames_to_strings(df)
     variable_costs.to_csv(
         os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";"
