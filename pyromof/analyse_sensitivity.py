@@ -22,6 +22,11 @@ if __name__ == "__main__":
     # scenario = input("For which scenario shall the sensitivity be analyzed? ")
     scenario = "stromflex_h2"
 
+    # Definition of the time period
+    time = pd.date_range(
+        start="2023-01-02", end="2023-01-03", freq="h", inclusive="both"
+    )
+
     profiles, sinks, sources, converters, storage, general = optimize.read_raw_data(
         "input_data.xlsx"
     )
@@ -42,11 +47,6 @@ if __name__ == "__main__":
     Path(os.path.join(RESULTS, "sensitivity")).mkdir(exist_ok=True)
     Path(os.path.join(RESULTS, "sensitivity", parameter_name)).mkdir(exist_ok=True)
     THIS_SENSITIVITY = Path(os.path.join(RESULTS, "sensitivity", parameter_name))
-
-    # Definition of the time period
-    time = pd.date_range(
-        start="2023-01-02", end="2023-01-03", freq="h", inclusive="both"
-    )
 
     # These folders will be deleted again in the end
     # Create folders for meta_info and dumping_space

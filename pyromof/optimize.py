@@ -748,7 +748,7 @@ def save_results(
     META_INFO: Path,
     DUMPING_SPACE: Path,
     scenario: str,
-    time: pd.date_range
+    time: pd.date_range,
 ):
     # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
     filename = os.path.join(META_INFO, "es_graph.graphml")
@@ -767,7 +767,7 @@ def save_results(
     df = pd.DataFrame(columns=columns)
     for col in df.columns:
         series = list([b for a, b in flows.items() if a == col][0].variable_costs)
-        df[col] = series[:len(time)-1]
+        df[col] = series[: len(time) - 1]
     variable_costs = helpers.convert_tuple_columnnames_to_strings(df)
     variable_costs.to_csv(
         os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";"
