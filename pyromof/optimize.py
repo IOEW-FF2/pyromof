@@ -195,7 +195,7 @@ def create_energysystem(
                 busd[row.bus_in.item()]: solph.Flow(
                     nominal_value=row.nominal_capacity.item(),
                     min=profiles[row.profile.item()],
-                    variable_costs=row.variable_costs.item(),
+                    variable_costs=profiles[row.variable_costs.item()],
                 )
             },
         )
@@ -748,6 +748,7 @@ def save_results(
     META_INFO: Path,
     DUMPING_SPACE: Path,
     scenario: str,
+    time: pd.date_range
 ):
     # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
     filename = os.path.join(META_INFO, "es_graph.graphml")
@@ -765,7 +766,8 @@ def save_results(
     columns = [a for a, b in flows.items()]
     df = pd.DataFrame(columns=columns)
     for col in df.columns:
-        df[col] = [b for a, b in flows.items() if a == col][0].variable_costs
+        series = [b for a, b in flows.items() if a == col][0].variable_costs
+        df[col] = series[:len(time)]
     variable_costs = helpers.convert_tuple_columnnames_to_strings(df)
     variable_costs.to_csv(
         os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";"
@@ -810,4 +812,4 @@ if __name__ == "__main__":
         scenario=scenario,
     )
     visualize_network_in_dash(es)
-    save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario)
+    save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
