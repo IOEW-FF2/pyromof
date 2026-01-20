@@ -181,6 +181,7 @@ def create_energysystem(
                 busd[row.bus_in.item()]: solph.Flow(
                     nominal_capacity=row.nominal_capacity.item(),
                     min=row.minimum.item(),
+                    max=row.maximum.item(),
                     variable_costs=row.variable_costs.item(),
                 )
             },
