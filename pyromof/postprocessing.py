@@ -29,31 +29,41 @@ def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
 def convert_result_sequences_to_df(results_data):
     """
     This function extracts all the sequences and all scalars from the flows
-    from the results data and stores them in three dataframes: one for sequences,
-    one for scalars, and a separate one for the storage content sequences.
-    Sequences are saved with the flow names as columnnames and a datetime index.
+    from the results data and stores them in dataframes.
+    Also captures additional columns like positive_gradient, biochar_status, etc.
     """
     results = processing.convert_keys_to_strings(results_data)
     flows = [x for x in results.keys() if x[1] != "None"]
     nodes = [x for x in results.keys() if x[1] == "None"]
-    df_sequences = pd.DataFrame(columns=flows)
+    
+    df_sequences = pd.DataFrame()
+    df_additional_columns = pd.DataFrame()
     df_scalars = pd.DataFrame(columns=flows)
     df_storage_content = pd.DataFrame()
     df_storage_losses = pd.DataFrame()
+    
     for flow in flows:
-        df_sequences[flow] = results[flow]["sequences"][
-            "flow"
-        ]  # Besides the "flow" column there can be columns "positive_gradient"
-        # etc. if these are set on the flow.
-        df_scalars[flow] = results[flow]["scalars"]
+        flow_name = " to ".join(flow)
+        sequences_data = results[flow]["sequences"]
+        
+        # Add the flow column
+        if "flow" in sequences_data.columns:
+            df_sequences[flow_name] = sequences_data["flow"]
+        
+        # Capture all other columns (positive_gradient, biochar_status, etc.)
+        additional_cols = [col for col in sequences_data.columns if col != "flow"]
+        for col in additional_cols:
+            col_name = f"{flow_name} ({col})"
+            df_additional_columns[col_name] = sequences_data[col]
+        
+        df_scalars[flow_name] = results[flow]["scalars"]
+    
     for node in nodes:
-        df_scalars[node] = results[node]["scalars"]
-        df_storage_content[node] = results[node]["sequences"]["storage_content"]
-    #       df_storage_losses[node] = results[node]["sequences"]["storage_losses"]
-    #       Storage losses are stored in this format only in dispatch mode.
-    for df in [df_sequences, df_scalars, df_storage_content, df_storage_losses]:
-        df.columns = [" to ".join(x) for x in df.columns]
-    return df_sequences, df_scalars, df_storage_content, df_storage_losses
+        node_name = " to ".join(node)
+        df_scalars[node_name] = results[node]["scalars"]
+        df_storage_content[node_name] = results[node]["sequences"]["storage_content"]
+    
+    return df_sequences, df_scalars, df_storage_content, df_storage_losses, df_additional_columns
 
 
 def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
@@ -179,7 +189,7 @@ def postprocess(es, DUMPING_SPACE, investment):
 
     es.results = es.results["main"]
 
-    sequences, scalars, storage_contents, storage_losses = (
+    sequences, scalars, storage_contents, storage_losses, additional_columns = (
         convert_result_sequences_to_df(results_data=es.results)
     )
 
@@ -201,13 +211,14 @@ def postprocess(es, DUMPING_SPACE, investment):
         "storage_losses": storage_losses,
         "effective_variable_costs": effective_variable_costs,
         "scalar_results": scalar_results,
+        "additional_columns": additional_columns,
     }
 
 
 if __name__ == "__main__":
 
     # scenario = input("For which scenario shall the results be postprocessed? ")
-    scenario = "stromflex_h2"
+    scenario = "minimalexample"
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
@@ -241,4 +252,7 @@ if __name__ == "__main__":
     )
     result_dfs["scalar_results"].to_csv(
         os.path.join(RESULTS, "scalar_results.csv"), sep=";"
+    )
+    result_dfs["additional_columns"].to_csv(
+        os.path.join(RESULTS, "additional_columns.csv"), sep=";"
     )
