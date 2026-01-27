@@ -1,10 +1,12 @@
 from oemof import solph
 import pandas as pd
+import pyomo.environ as po
 from typeguard import typechecked
 from typing import Tuple
 
 import os
 import shutil
+import numpy as np
 from pathlib import Path
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
@@ -140,6 +142,8 @@ def create_energysystem(
         sinks, sources, converters, storage
     )
 
+    buses.loc[len(buses.index)] = ["b_valuable_biochar"]
+    
     # Create Bus objects from buses table
 
     print("Adding the following buses to the energy system:")
@@ -163,14 +167,25 @@ def create_energysystem(
     # SINKS
     if "biochar_market" in components:
         row = sinks.loc[sinks.label == "biochar_market", :]
-        biochar_market = solph.components.Sink(
-            label="biochar_market",
-            inputs={
-                busd[row.bus_in.item()]: solph.Flow(
-                    variable_costs=row.variable_costs.item()
-                )
-            },
-        )
+        pyrolysis_row = converters.loc[converters.label == "pyrolysis"]
+        if pyrolysis_row.investment.item() is True:  
+            biochar_market = solph.components.Sink(
+                label="biochar_market",
+                inputs={
+                    busd[row.bus_in.item()]: solph.Flow(
+                        variable_costs=row.variable_costs.item()
+                    )
+                },
+            )
+        else:
+            biochar_market = solph.components.Sink(
+                label="biochar_market",
+                inputs={
+                    busd["b_valuable_biochar"]: solph.Flow(
+                        variable_costs=row.variable_costs.item()
+                    ),
+                },
+            )
         es.add(biochar_market)
 
     if "co2_market" in components:
@@ -179,9 +194,9 @@ def create_energysystem(
             label="co2_market",
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
-                    nominal_capacity=row.nominal_capacity.item(),
-                    min=row.minimum.item(),
-                    max=row.maximum.item(),
+                    # nominal_capacity=row.nominal_capacity.item(),
+                    # min=row["min"].item(),
+                    # max=row["max"].item(),
                     variable_costs=row.variable_costs.item(),
                 )
             },
@@ -210,6 +225,8 @@ def create_energysystem(
                 busd[row.bus_in.item()]: solph.Flow(
                     nominal_capacity=row.nominal_capacity.item(),
                     min=profiles[row.profile.item()],
+                    max=1,
+                    # min=0,
                     variable_costs=row.variable_costs.item(),
                 )
             },
@@ -505,6 +522,7 @@ def create_energysystem(
                 },
             )
         elif row.investment.item() is False:
+            print(row.nominal_capacity.item())
             pyrolysis = solph.components.Converter(
                 label="pyrolysis",
                 inputs={
@@ -515,9 +533,9 @@ def create_energysystem(
                     busd[row.bus_out_1.item()]: solph.Flow(
                         nominal_capacity=row.nominal_capacity.item(),
                         positive_gradient_limit=row.positive_gradient_limit.item(),
-                        min=row.min_load_share.item(),
+                        # min=row.min_load_share.item(),
+                        max=1,
                         nonconvex=solph.NonConvex(
-                            startup_costs=row.startup_costs.item(),
                             minimum_downtime=int(row.minimum_downtime.item()),
                             initial_status=1,
                         ),
@@ -533,7 +551,44 @@ def create_energysystem(
                     busd[row.bus_out_3.item()]: row.eff_out_3.item(),
                 },
             )
+            # Add a PiecewiseLinearTransformer which consumes biochar if little is produced (i.e. it has lower quality)
+            cap = row.nominal_capacity.item()
+            threshold = row.min_load_share.item()
+            breakpoints = np.array([0, 0.2*cap, 0.3*cap, 0.4*cap, cap])
+            x0 = 0.3*cap
+            x1 = 0.4*cap
+            m = x1 / (x1 - x0)
+            rates = np.array([0.0, 0.0, m, 1.0])
+
+            # Calculate function values at breakpoints
+            values = [0.0]
+            for i in range(len(rates)):
+                dx = breakpoints[i+1] - breakpoints[i]
+                values.append(values[-1] + rates[i] * dx)
+            values = np.array(values)
+            # values = np.array([0,0,0,0.4*cap,cap])
+            print(values)
+
+            def conversion_function(x):
+                return np.interp(x, breakpoints, values)
+
+            biochar_valuator = solph.components.experimental.PiecewiseLinearConverter(
+                label="biochar_valuator",
+                inputs={busd[row.bus_out_1.item()]: solph.Flow(
+                    nominal_capacity=row.nominal_capacity.item(),
+                    variable_costs=0
+                )},
+                outputs={busd["b_valuable_biochar"]: solph.Flow()},
+                in_breakpoints=[0, cap * 0.2, cap*0.4, cap*0.6,
+                            cap*0.8, cap],
+
+                conversion_function=lambda x: conversion_function(x),
+                pw_repn='CC'
+            )
+            es.add(biochar_valuator)
         es.add(pyrolysis)
+
+        
 
     if "combustor_hot" in components:
         row = converters.loc[converters.label == "combustor_hot"]
@@ -688,37 +743,48 @@ def create_energysystem(
         )  # Necessary because the function returns numpy.bool
         # which is different from bool and therefore creates a typeguard error.
 
+    
+
     # Initialise the operational model
     om = solph.Model(es)
 
     print("The model has been constructed.")
 
-    def tradeoff_bounds_lower(om, t):
-        row = converters.loc[converters.label == "pyrolysis"]
-        out1 = om.flow[pyrolysis, busd[row.bus_out_1.item()], t]
-        out2 = om.flow[pyrolysis, busd[row.bus_out_2.item()], t]
-        min_ratio = (
-            row.eff_out_1.item() + row.eff_out_1.item() * row.out_1_max_decrease.item()
-        ) / (
-            row.eff_out_2.item()
-            + row.eff_out_2.item() * row.out_2_corresponding_increase.item()
-        )
-        # print("definition of tradeoff_bounds_lower: ", out1, ">=", min_ratio, "*", out2)
-        return out1 >= min_ratio * out2
 
-    def tradeoff_bounds_upper(om, t):
+    if "pyrolysis" in components:
+        om.biochar_status = po.Var(om.TIMESTEPS, domain=po.Binary, initialize=1)
+        print("Creating costum constraints for pyrolysis")
         row = converters.loc[converters.label == "pyrolysis"]
-        out1 = om.flow[
-            pyrolysis, busd[row.bus_out_1.item()], t
-        ]  # Should later be b_syngas and taken from the input data
-        out2 = om.flow[pyrolysis, busd[row.bus_out_2.item()], t]
-        # The bound is equal to the default
-        max_ratio = row.eff_out_1.item() / row.eff_out_2.item()
-        # print("definition of tradeoff_bounds_lower: ", out1, "<=", max_ratio, "*", out2)
-        return out1 <= max_ratio * out2
+        
+        pyrolysis_component = pyrolysis
+        bus_out_1 = busd[row.bus_out_1.item()]
+        bus_out_2 = busd[row.bus_out_2.item()]
+        eff_out_1 = row.eff_out_1.item()
+        nominal_cap = row.nominal_capacity.item()
+        threshold = 0.9  # 20% threshold
 
-    om.output_tradeoff_lower = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
-    om.output_tradeoff_upper = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
+
+        def tradeoff_bounds_lower(om, t):
+            out1 = om.flow[pyrolysis_component, bus_out_1, t]
+            out2 = om.flow[pyrolysis_component, bus_out_2, t]
+            min_ratio = (
+                eff_out_1 + eff_out_1 * row.out_1_max_decrease.item()
+            ) / (
+                row.eff_out_2.item()
+                + row.eff_out_2.item() * row.out_2_corresponding_increase.item()
+            )
+            # Only enforce when biochar is active
+            return out1 >= min_ratio * out2 - (1 - om.biochar_status[t]) * nominal_cap
+
+        def tradeoff_bounds_upper(om, t):
+            out1 = om.flow[pyrolysis_component, bus_out_1, t]
+            out2 = om.flow[pyrolysis_component, bus_out_2, t]
+            max_ratio = eff_out_1 / row.eff_out_2.item()
+            return out1 <= max_ratio * out2 + (1 - om.biochar_status[t]) * nominal_cap
+        
+
+        om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
+        om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
 
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
@@ -788,7 +854,7 @@ if __name__ == "__main__":
         "input_data.xlsx"
     )
     # scenario = input("Which scenario shall be optimized? ")
-    scenario = "stromflex_h2"
+    scenario = "minimalexample"
     # Definition of the time period
     time = pd.date_range(
         start="2023-01-02 02:00", end="2023-01-08 05:00", freq="h", inclusive="both"
