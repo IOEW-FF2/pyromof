@@ -116,7 +116,7 @@ def add_investment_amount_to_scalar_results(
     The scalars df should be composed of the scalars of all flows taken from the raw results
     data: results[flow]["scalars"]
     """
-    scalars = scalars.dropna(axis=1)
+    scalars = scalars.dropna(axis=1, how="all")
     dict = {}
     for columnName, columnData in scalars.items():
         dict[columnName] = columnData["invest"]
@@ -218,7 +218,7 @@ def postprocess(es, DUMPING_SPACE, investment):
 if __name__ == "__main__":
 
     # scenario = input("For which scenario shall the results be postprocessed? ")
-    scenario = "minimalexample"
+    scenario = "stromflex_h2"
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
