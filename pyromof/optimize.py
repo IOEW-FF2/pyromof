@@ -164,7 +164,11 @@ def create_energysystem(
         "Adding the following components to the energysystem (if they are all implemented in the code):"
     )
     print(components)
-
+    
+    def get_value_or_profile(row, column_name, profiles):
+        value = row[column_name].item()
+        return profiles[value] if isinstance(value, str) else value
+    
     # SINKS
     if "biochar_market" in components:
         row = sinks.loc[sinks.label == "biochar_market", :]
@@ -211,9 +215,9 @@ def create_energysystem(
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
                     nominal_capacity=row.nominal_capacity.item(),
-                    min=profiles[row.profile.item()],
-                    # min = 0,
-                    variable_costs=profiles[row.variable_costs.item()],
+                    min= get_value_or_profile(row, "min", profiles),
+                    max= get_value_or_profile(row, "max", profiles),
+                    variable_costs=get_value_or_profile(row, "variable_costs", profiles),
                 )
             },
         )
@@ -226,11 +230,9 @@ def create_energysystem(
             inputs={
                 busd[row.bus_in.item()]: solph.Flow(
                     nominal_capacity=row.nominal_capacity.item(),
-                    # min=profiles[row.profile.item()],
-                    # max=profiles[row.profile.item()],
-                    # max=1,
-                    min=0,
-                    variable_costs=row.variable_costs.item(),
+                    min= get_value_or_profile(row, "min", profiles),
+                    max= get_value_or_profile(row, "max", profiles),
+                    variable_costs=get_value_or_profile(row, "variable_costs", profiles),
                 )
             },
         )
