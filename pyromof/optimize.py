@@ -563,8 +563,9 @@ def create_energysystem(
                         # optimization. If it is activated, nominal_capacity becomes a NoneType object.
                         nonconvex=solph.NonConvex(
                             startup_costs=row.startup_costs.item(),
-                            # minimum_downtime=int(row.minimum_downtime.item()),
-                            initial_status=1,
+                            minimum_downtime=int(row.minimum_downtime.item()),
+                            initial_status=0,
+                            maximum_startups=row.maximum_startups.item(),
                         ),
                         nominal_capacity=solph.Investment(
                             ep_costs=epc,
@@ -595,11 +596,12 @@ def create_energysystem(
                     busd[row.bus_out_1.item()]: solph.Flow(
                         nominal_capacity=row.nominal_capacity.item(),
                         positive_gradient_limit=row.positive_gradient_limit.item(),
-                        # min=row.min_load_share.item(),
+                        min=row.min_load_share.item(),
                         max=1,
                         nonconvex=solph.NonConvex(
                             minimum_downtime=int(row.minimum_downtime.item()),
-                            initial_status=1,
+                            initial_status=0,
+                            maximum_startups=row.maximum_startups.item(),
                         ),
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
@@ -873,7 +875,7 @@ def create_energysystem(
 
     print("The model has been constructed.")
 
-
+    
     if "pyrolysis" in components:
         print("Creating costum constraints for pyrolysis")
         row = converters.loc[converters.label == "pyrolysis"]
@@ -905,7 +907,7 @@ def create_energysystem(
 
         om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
         om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
-
+        
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
 
@@ -913,39 +915,52 @@ def create_energysystem(
     file_path = os.path.join(META_INFO, "lp_file.lp")
     om.write(file_path, io_options={"symbolic_solver_labels": True})
 
-    # Solve the system
-    results = om.solve(solver="cbc")
+    # Solve the system with error handling
+    from pyomo.opt import SolverStatus, TerminationCondition
+    
+    try:
+        results = om.solve(solver="cbc")
+    except Exception as e:
+        print("\n=== SOLVER ENCOUNTERED AN ERROR ===")
+        print(f"Error: {e}")
 
     # Check solver status
-    from pyomo.opt import SolverStatus, TerminationCondition
-    if results.solver.status == SolverStatus.error or results.solver.termination_condition == TerminationCondition.infeasible:
+    if om.solver_results.Solver.Status == SolverStatus.warning or om.solver_results.Solver.termination_condition == TerminationCondition.infeasible:
         print("\n=== MODEL IS INFEASIBLE ===")
-        print(f"Solver Status: {results.solver.status}")
-        print(f"Termination Condition: {results.solver.termination_condition}")
+        print(f"Solver Status: {om.solver_results.Solver.Status}")
+        print(f"Termination Condition: {om.solver_results.Solver.termination_condition}")
         
         # Find conflicting constraints
         print("\n=== CONFLICTING CONSTRAINTS ===")
         infeasible_constraints = []
         for constraint in om.component_objects(Constraint):
-            for index in constraint:
-                try:
-                    c = constraint[index]
-                    if c.slack() is None or abs(c.slack()) < 1e-6:
-                        infeasible_constraints.append({
-                            'name': f"{constraint.name}[{index}]",
-                            'lower': c.lower(),
-                            'body': c.body(),
-                            'upper': c.upper(),
-                        })
-                except:
-                    pass
+            try:
+                c = constraint
+                slack = c.slack()
+                if slack is None or (isinstance(slack, (int, float)) and abs(slack) < 1e-6):
+                    infeasible_constraints.append({
+                        'name': f"{constraint.name}",
+                        'lower': c.lower(),
+                        'body': float(c.body()),
+                        'upper': c.upper(),
+                        'slack': slack,
+                    })
+            except Exception as e:
+                pass
         
-        # Print top 20 conflicting constraints
-        for i, constr in enumerate(sorted(infeasible_constraints, key=lambda x: str(x['name']))[:20]):
-            print(f"{i+1}. {constr['name']}: {constr['lower']} <= {constr['body']} <= {constr['upper']}")
+        # Print top 10 conflicting constraints sorted by name
+        sorted_constraints = sorted(infeasible_constraints, key=lambda x: str(x['name']))
+        for i, constr in enumerate(sorted_constraints[:10]):
+            print(f"{i+1}. {constr['name']}")
+            print(f"   Bounds: {constr['lower']} <= value <= {constr['upper']}")
+            print(f"   Body value: {constr['body']}")
+            print(f"   Slack: {constr['slack']}\n")
     
-    elif results.solver.termination_condition == TerminationCondition.optimal:
+    elif om.solver_results.Solver.termination_condition == TerminationCondition.optimal:
         print("\n=== MODEL SOLVED SUCCESSFULLY ===")
+    else:
+        print("Model solving failed. Check the error above.")
+        return es, om, investment, epcs
     
     return es, om, investment, epcs
 
@@ -1006,7 +1021,7 @@ if __name__ == "__main__":
         "input_data.xlsx"
     )
     # scenario = input("Which scenario shall be optimized? ")
-    scenario = "stromflex_h2"
+    scenario = "minimalexample"
     # Definition of the time period
     time = pd.date_range(
         start="2025-01-01 00:00", end="2025-01-08 05:00", freq="h", inclusive="both"
