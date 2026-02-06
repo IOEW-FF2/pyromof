@@ -144,6 +144,7 @@ def create_energysystem(
 
     buses.loc[len(buses.index)] = ["b_valuable_biochar"]
     buses.loc[len(buses.index)] = ["b_chp_cap"]
+    buses.loc[len(buses.index)] = ["b_syngas_cold"]
     
     # Create Bus objects from buses table
 
@@ -690,28 +691,60 @@ def create_energysystem(
             )
         es.add(heat_exchanger)  
 
-    if "combustor_hot" in components:
-        row = converters.loc[converters.label == "combustor_hot"]
+    if "combustor" in components:
+        row = converters.loc[converters.label == "combustor"]
         if row.investment.item() is True:
             investment = True
             epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
-            epcs["combustor_hot_invest to " + row.bus_out_1.item()] = epc
-            print("epc for combustor_hot: ", epc)
+            epcs["combustor_invest to " + row.bus_out_1.item()] = epc
+            print("epc for combustor: ", epc)
             combustor_hot = solph.components.Converter(
                 label="combustor_hot_invest",
                 inputs={
                     busd[row.bus_in_1.item()]: solph.Flow(),
                 },
                 outputs={
-                    busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc)
-                    ),
+                    busd["b_combustor_cap"]: solph.Flow(),
                 },
                 conversion_factors={
                     busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-                    busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+                    busd["b_combustor_cap"]: row.eff_out_1.item(),
                 },
             )
+            combustor_cold = solph.components.Converter(
+                label="combustor_cold_invest",
+                inputs={
+                    busd[row.bus_in_1_alternative.item()]: solph.Flow(),
+                },
+                outputs={
+                    busd["b_combustor_cap"]: solph.Flow(),
+                },
+                conversion_factors={
+                    busd[row.bus_in_1_alternative.item()]: row.eff_in_1.item(),
+                    busd["b_combustor_cap"]: row.eff_out_1.item(),
+                },
+            )
+            # Create a virtual converter with investment that collects the first outputs
+            # from combustor_hot and combustor_cold and converts them into the actual first output
+            combustor_to_out1 = solph.components.Converter(
+                label="combustor_to_out1",
+                inputs={
+                    busd["b_combustor_cap"]: solph.Flow(
+                        nominal_capacity=solph.Investment(
+                        ep_costs=epc, existing=row.existing.item()
+                        ),
+                    ),
+                },
+                outputs={
+                    busd[row.bus_out_1.item()]: solph.Flow(),
+                },
+                conversion_factors={
+                    busd["b_combustor_cap"]: 1,
+                    busd[row.bus_out_1.item()]: 1,
+                },
+            )
+            es.add(combustor_hot, combustor_cold, combustor_to_out1)
+
         elif row.investment.item() is False:
             combustor_hot = solph.components.Converter(
                 label="combustor_hot",
@@ -726,24 +759,21 @@ def create_energysystem(
                     busd[row.bus_out_1.item()]: row.eff_out_1.item(),
                 },
             )
-        es.add(combustor_hot)
+            combustor_cold = solph.components.Converter(
+                label="combustor_cold",
+                inputs={
+                    busd[row.bus_in_1.item()]: solph.Flow(),
+                },
+                outputs={
+                    busd[row.bus_out_1.item()]: solph.Flow(),
+                },
+                conversion_factors={
+                    busd[row.bus_in_1.item()]: row.eff_in_1.item(),
+                    busd[row.bus_out_1.item()]: row.eff_out_1.item(),
+                },
+            )
+            es.add(combustor_hot, combustor_cold)
 
-    if "combustor_cold" in components:
-        row = converters.loc[converters.label == "combustor_cold"]
-        combustor_cold = solph.components.Converter(
-            label="combustor_cold",
-            inputs={
-                busd[row.bus_in_1.item()]: solph.Flow(),
-            },
-            outputs={
-                busd[row.bus_out_1.item()]: solph.Flow(),
-            },
-            conversion_factors={
-                busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-                busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-            },
-        )
-        es.add(combustor_cold)
 
     if "condensor" in components:
         row = converters.loc[converters.label == "condensor"]
