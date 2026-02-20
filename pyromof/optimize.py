@@ -142,9 +142,6 @@ def create_energysystem(
         sinks, sources, converters, storage
     )
 
-    buses.loc[len(buses.index)] = ["b_valuable_biochar"]
-    buses.loc[len(buses.index)] = ["b_chp_cap"]
-    buses.loc[len(buses.index)] = ["b_syngas_cold"]
     buses.loc[len(buses.index)] = ["b_combustor_cap"]
     
     # Create Bus objects from buses table
@@ -188,7 +185,7 @@ def create_energysystem(
             biochar_market = solph.components.Sink(
                 label="biochar_market",
                 inputs={
-                    busd["b_valuable_biochar"]: solph.Flow(
+                    busd[row.bus_in.item()]: solph.Flow(
                         variable_costs=row.variable_costs.item()
                     ),
                 },
@@ -302,6 +299,18 @@ def create_energysystem(
         )
         es.add(heat_lt_excess)
 
+    if "heat_ht_excess" in components:
+        row = sinks.loc[sinks.label == "heat_ht_excess", :]
+        heat_ht_excess = solph.components.Sink(
+            label="heat_ht_excess",
+            inputs={
+                busd[row.bus_in.item()]: solph.Flow(
+                    variable_costs=row.variable_costs.item(),
+                )
+            },
+        )
+        es.add(heat_ht_excess)    
+
     # SOURCES
     if "biomass" in components:
         row = sources.loc[sources.label == "biomass", :]
@@ -377,84 +386,33 @@ def create_energysystem(
         if row.investment.item() is True:
             investment = True
             epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
-            epcs["b_chp_cap to chp_to_out1"] = epc
+            epcs["chp_cold_invest to " + row.bus_out_1.item()] = epc
             print("epc for chp: ", epc)
-            # Create chp for hot gas with b_chp_cap instead of first output
-            chp_hot = solph.components.Converter(
-                label="chp_hot_invest",
+            chp_cold = solph.components.Converter(
+                label="chp_cold_invest",
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
-                    busd["b_chp_cap"]: solph.Flow(),
+                    busd[row.bus_out_1.item()]: solph.Flow(
+                        nominal_capacity=solph.Investment(
+                        ep_costs=epc, 
+                        minimum=row.minimum.item()),
+                        ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                     busd[row.bus_out_3.item()]: solph.Flow(),
                 },
                 conversion_factors={
                     busd[row.bus_in_1.item()]: row.eff_in_1.item(),
-                    busd["b_chp_cap"]: row.eff_out_1.item(),
+                    busd[row.bus_out_1.item()]: row.eff_out_1.item(),
                     busd[row.bus_out_2.item()]: row.eff_out_2.item(),
                     busd[row.bus_out_3.item()]: row.eff_out_3.item(),
                 },
             )
-            # Create chp for cold gas with b_chp_cap instead of first output
-            chp_cold = solph.components.Converter(
-                label="chp_cold_invest",
-                inputs={busd[row.bus_in_1_alternative.item()]: solph.Flow()},
-                outputs={
-                    busd["b_chp_cap"]: solph.Flow(),
-                    busd[row.bus_out_2.item()]: solph.Flow(),
-                    busd[row.bus_out_3.item()]: solph.Flow(),
-                },
-                conversion_factors={
-                    busd[row.bus_in_1_alternative.item()]: row.eff_in_1.item(),
-                    busd["b_chp_cap"]: row.eff_out_1.item(),
-                    busd[row.bus_out_2.item()]: row.eff_out_2.item(),
-                    busd[row.bus_out_3.item()]: row.eff_out_3.item(),
-                },
-            )
-            # Create a virtual converter with investment that collects the first outputs
-            # from chp_hot and chp_cold and converts them into the actual first output
-            chp_to_out1 = solph.components.Converter(
-                label="chp_to_out1",
-                inputs={
-                    busd["b_chp_cap"]: solph.Flow(
-                        nominal_capacity=solph.Investment(
-                        ep_costs=epc, existing=row.existing.item()
-                        ),
-                    ),
-                },
-                outputs={
-                    busd[row.bus_out_1.item()]: solph.Flow(),
-                },
-                conversion_factors={
-                    busd["b_chp_cap"]: 1,
-                    busd[row.bus_out_1.item()]: 1,
-                },
-            )
-            es.add(chp_hot, chp_cold, chp_to_out1)
 
         elif row.investment.item() is False:
-            # Create chp for hot gas
-            chp_hot = solph.components.Converter(
-                label="chp_hot_invest",
-                inputs={busd["b_syngas_hot"]: solph.Flow()},
-                outputs={
-                    busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=row.nominal_capacity.item()
-                    ),
-                    busd[row.bus_out_2.item()]: solph.Flow(),
-                    busd[row.bus_out_3.item()]: solph.Flow(),
-                },
-                conversion_factors={
-                    busd["b_syngas_hot"]: row.eff_in_1.item(),
-                    busd[row.bus_out_1.item()]: row.eff_out_1.item(),
-                    busd[row.bus_out_2.item()]: row.eff_out_2.item(),
-                    busd[row.bus_out_3.item()]: row.eff_out_3.item(),
-                },
-            )
-            # Create chp for cold gas with b_chp_cap instead of first output
+            # Create chp for cold gas
             chp_cold = solph.components.Converter(
-                label="chp_cold_invest",
-                inputs={busd["b_syngas_cold"]: solph.Flow()},
+                label="chp_cold",
+                inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
                         nominal_capacity=row.nominal_capacity.item()
@@ -463,13 +421,13 @@ def create_energysystem(
                     busd[row.bus_out_3.item()]: solph.Flow(),
                 },
                 conversion_factors={
-                    busd["b_syngas_cold"]: row.eff_in_1.item(),
+                    busd[row.bus_in_1.item()]: row.eff_in_1.item(),
                     busd[row.bus_out_1.item()]: row.eff_out_1.item(),
                     busd[row.bus_out_2.item()]: row.eff_out_2.item(),
                     busd[row.bus_out_3.item()]: row.eff_out_3.item(),
                 },
             )
-            es.add(chp_hot, chp_cold)
+        es.add(chp_cold)
 
     if "power_to_heat" in components:
         row = converters.loc[converters.label == "power_to_heat"]
@@ -483,7 +441,8 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc)
+                        nominal_capacity=solph.Investment(ep_costs=epc, minimum=row.minimum.item()),
+                        
                     ),
                 },
                 conversion_factors={
@@ -519,7 +478,8 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc)
+                        nominal_capacity=solph.Investment(ep_costs=epc, minimum=row.minimum.item()),
+                        
                     ),
                 },
                 conversion_factors={
@@ -561,18 +521,18 @@ def create_energysystem(
                         min=row.min_load_share.item(),  # Minimal load
                         max=1,  # A maximum is required for linearization
                         # positive_gradient_limit=row.positive_gradient_limit.item(),
-                        # Apparently a positive gradient limit isn't possible in investment
+                        # A positive gradient limit isn't possible in investment
                         # optimization. If it is activated, nominal_capacity becomes a NoneType object.
                         nonconvex=solph.NonConvex(
-                            startup_costs=row.startup_costs.item(),
+                            # startup_costs=row.startup_costs.item(),
                             minimum_downtime=int(row.minimum_downtime.item()),
-                            initial_status=0,
-                            maximum_startups=row.maximum_startups.item(),
+                        initial_status=1,
+                        maximum_startups=row.maximum_startups.item(),
                         ),
                         nominal_capacity=solph.Investment(
                             ep_costs=epc,
+                            minimum=row.minimum.item(),
                             maximum=row.maximum.item(),  # necessary for linearization
-                            existing=row.existing.item(),
                         ),
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
@@ -601,6 +561,7 @@ def create_energysystem(
                         min=row.min_load_share.item(),
                         max=1,
                         nonconvex=solph.NonConvex(
+                            # startup_costs=row.startup_costs.item(),
                             minimum_downtime=int(row.minimum_downtime.item()),
                         initial_status=0,
                         maximum_startups=row.maximum_startups.item(),
@@ -617,7 +578,10 @@ def create_energysystem(
                     busd[row.bus_out_3.item()]: row.eff_out_3.item(),
                 },
             )
+            '''
             # Add a PiecewiseLinearTransformer which consumes biochar if little is produced (i.e. it has lower quality)
+            # Suppress warning that the slopes of two consecutive timesteps were within 1e-08 of one another:
+
             cap = row.nominal_capacity.item()
             threshold = row.min_load_share.item()
             breakpoints = np.array([0, 0.2*cap, 0.3*cap, 0.4*cap, cap])
@@ -652,6 +616,7 @@ def create_energysystem(
                 pw_repn='CC'
             )
             es.add(biochar_valuator)
+            '''
         es.add(pyrolysis)
 
     if "heat_exchanger" in components:
@@ -732,7 +697,7 @@ def create_energysystem(
                 inputs={
                     busd["b_combustor_cap"]: solph.Flow(
                         nominal_capacity=solph.Investment(
-                        ep_costs=epc, existing=row.existing.item()
+                        ep_costs=epc, minimum=row.minimum.item()
                         ),
                     ),
                 },
@@ -789,7 +754,11 @@ def create_energysystem(
                     busd[row.bus_in_1.item()]: solph.Flow(),
                 },
                 outputs={
-                    busd[row.bus_out_1.item()]: solph.Flow(nominal_capacity=solph.Investment(ep_costs=epc)), # cold syngas
+                    busd[row.bus_out_1.item()]: solph.Flow(
+                        nominal_capacity=solph.Investment(
+                            ep_costs=epc, 
+                            minimum=row.minimum.item())
+                            ), # cold syngas
                     busd[row.bus_out_2.item()]: solph.Flow(), # heat
                     busd[row.bus_out_3.item()]: solph.Flow(), # oil
                 },
@@ -807,7 +776,9 @@ def create_energysystem(
                     busd[row.bus_in_1.item()]: solph.Flow(),
                 },
                 outputs={
-                    busd[row.bus_out_1.item()]: solph.Flow(), # cold syngas
+                    busd[row.bus_out_1.item()]: solph.Flow(
+                            nominal_capacity=row.nominal_capacity.item()
+                    ), # cold syngas
                     busd[row.bus_out_2.item()]: solph.Flow(), # heat
                     busd[row.bus_out_3.item()]: solph.Flow(), # oil
                 },
@@ -908,60 +879,62 @@ def create_energysystem(
 
     
     if "pyrolysis" in components:
-        print("Creating costum constraints for pyrolysis")
         row = converters.loc[converters.label == "pyrolysis"]
-        
-        pyrolysis_component = pyrolysis
-        bus_out_1 = busd[row.bus_out_1.item()]
-        bus_out_2 = busd[row.bus_out_2.item()]
-        eff_out_1 = row.eff_out_1.item()
-
-
-        def tradeoff_bounds_lower(om, t):
-            out1 = om.flow[pyrolysis_component, bus_out_1, t]
-            out2 = om.flow[pyrolysis_component, bus_out_2, t]
-            min_ratio = (
-                eff_out_1 + eff_out_1 * row.out_1_max_decrease.item()
-            ) / (
-                row.eff_out_2.item()
-                + row.eff_out_2.item() * row.out_2_corresponding_increase.item()
-            )
-            # Only enforce when biochar is active
-            return out1 >= min_ratio * out2
-
-        def tradeoff_bounds_upper(om, t):
-            out1 = om.flow[pyrolysis_component, bus_out_1, t]
-            out2 = om.flow[pyrolysis_component, bus_out_2, t]
-            max_ratio = eff_out_1 / row.eff_out_2.item()
-            return out1 <= max_ratio * out2
-        
-        def ramp_rule(om, t):
-            '''
-            This constraint ensures that the ramping of the pyrolysis unit is limited according to the positive_gradient_limit parameter.
-            The limitation is only enforced above the minimum load share to avoid conflicting constraints in the case
-            positive_gradient_limit < minimum_load_share. The constraint is only active in dispatch mode to keep the optimization
-            problem linear. 
-            '''
-            if t == om.TIMESTEPS.first():
-                return Constraint.Skip
-            else:
-                out1 = om.flow[pyrolysis_component, bus_out_1, t]
-                out1_prev = om.flow[pyrolysis_component, bus_out_1, t - 1]
-
-                status_t = om.NonConvexFlowBlock.status[pyrolysis_component, bus_out_1, t]
-                status_prev = om.NonConvexFlowBlock.status[pyrolysis_component, bus_out_1, t - 1]
-
-                nominal_capacity = row.nominal_capacity.item()
-                min_load = row.min_load_share.item()
-                max_ramp = row.positive_gradient_limit.item()
-
-                return (out1 - out1_prev) <= max_ramp * nominal_capacity + min_load * nominal_capacity * (status_t - status_prev)
-
-        om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
-        om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
 
         if row.investment.item() is False:
-            om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
+            print("Creating costum constraints for pyrolysis")
+
+            pyrolysis_component = pyrolysis
+            bus_out_1 = busd[row.bus_out_1.item()]
+            bus_out_2 = busd[row.bus_out_2.item()]
+            eff_out_1 = row.eff_out_1.item()
+
+
+            def tradeoff_bounds_lower(om, t):
+                out1 = om.flow[pyrolysis_component, bus_out_1, t]
+                out2 = om.flow[pyrolysis_component, bus_out_2, t]
+                min_ratio = (
+                    eff_out_1 + eff_out_1 * row.out_1_max_decrease.item()
+                ) / (
+                    row.eff_out_2.item()
+                    + row.eff_out_2.item() * row.out_2_corresponding_increase.item()
+                )
+                # Only enforce when biochar is active
+                return out1 >= min_ratio * out2
+
+            def tradeoff_bounds_upper(om, t):
+                out1 = om.flow[pyrolysis_component, bus_out_1, t]
+                out2 = om.flow[pyrolysis_component, bus_out_2, t]
+                max_ratio = eff_out_1 / row.eff_out_2.item()
+                return out1 <= max_ratio * out2
+            
+            def ramp_rule(om, t):
+                '''
+                This constraint ensures that the ramping of the pyrolysis unit is limited according to the positive_gradient_limit parameter.
+                The limitation is only enforced above the minimum load share to avoid conflicting constraints in the case
+                positive_gradient_limit < minimum_load_share. The constraint is only active in dispatch mode to keep the optimization
+                problem linear. 
+                '''
+                if t == om.TIMESTEPS.first():
+                    return Constraint.Skip
+                else:
+                    out1 = om.flow[pyrolysis_component, bus_out_1, t]
+                    out1_prev = om.flow[pyrolysis_component, bus_out_1, t - 1]
+
+                    status_t = om.NonConvexFlowBlock.status[pyrolysis_component, bus_out_1, t]
+                    status_prev = om.NonConvexFlowBlock.status[pyrolysis_component, bus_out_1, t - 1]
+
+                    nominal_capacity = row.nominal_capacity.item()
+                    min_load = row.min_load_share.item()
+                    max_ramp = row.positive_gradient_limit.item()
+
+                    return (out1 - out1_prev) <= max_ramp * nominal_capacity + min_load * nominal_capacity * (status_t - status_prev)
+
+
+            # om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
+            # om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
+            # om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
+
         
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
@@ -972,12 +945,10 @@ def create_energysystem(
 
     # Solve the system with error handling
     from pyomo.opt import SolverStatus, TerminationCondition
-    
-    try:
-        results = om.solve(solver="cbc")
-    except Exception as e:
-        print("\n=== SOLVER ENCOUNTERED AN ERROR ===")
-        print(f"Error: {e}")
+
+   
+    om.solve(solver="cbc")
+
 
     # Check solver status
     if om.solver_results.Solver.Status == SolverStatus.warning or om.solver_results.Solver.termination_condition == TerminationCondition.infeasible:
@@ -985,31 +956,9 @@ def create_energysystem(
         print(f"Solver Status: {om.solver_results.Solver.Status}")
         print(f"Termination Condition: {om.solver_results.Solver.termination_condition}")
         
-        # Find conflicting constraints
-        print("\n=== CONFLICTING CONSTRAINTS ===")
-        infeasible_constraints = []
-        for constraint in om.component_objects(Constraint):
-            try:
-                c = constraint
-                slack = c.slack()
-                if slack is None or (isinstance(slack, (int, float)) and abs(slack) < 1e-6):
-                    infeasible_constraints.append({
-                        'name': f"{constraint.name}",
-                        'lower': c.lower(),
-                        'body': float(c.body()),
-                        'upper': c.upper(),
-                        'slack': slack,
-                    })
-            except Exception as e:
-                pass
-        
-        # Print top 10 conflicting constraints sorted by name
-        sorted_constraints = sorted(infeasible_constraints, key=lambda x: str(x['name']))
-        for i, constr in enumerate(sorted_constraints[:10]):
-            print(f"{i+1}. {constr['name']}")
-            print(f"   Bounds: {constr['lower']} <= value <= {constr['upper']}")
-            print(f"   Body value: {constr['body']}")
-            print(f"   Slack: {constr['slack']}\n")
+        #for c in om.component_data_objects(Constraint, active=True):
+        #    if c.body is not None:
+        #        print(c, c.body)
     
     elif om.solver_results.Solver.termination_condition == TerminationCondition.optimal:
         print("\n=== MODEL SOLVED SUCCESSFULLY ===")
@@ -1079,7 +1028,7 @@ if __name__ == "__main__":
     scenario = "stromflex_h2"
     # Definition of the time period
     time = pd.date_range(
-        start="2025-01-01 00:00", end="2025-01-08 05:00", freq="h", inclusive="both"
+        start="2025-01-01 00:00", end="2025-01-03 05:00", freq="h", inclusive="both"
     )
 
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = define_and_create_folders(
