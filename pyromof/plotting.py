@@ -32,10 +32,9 @@ def prepare_amount_sequences_for_plotting():
         "b_syngas_hot": "kWh",
         "b_syngas_cold": "kWh",
         "b_h2": "kWh",
-        "b_valuable_biochar": "kg"
+        "b_valuable_biochar": "kg",
     }
-    # Remove all columns were the column name starts with "b_"
-    amount_sequences = amount_sequences.loc[:, amount_sequences.columns.str.startswith("b_")]
+
     sequences_in_kg = pd.DataFrame(index=amount_sequences.index)
     sequences_in_kWh = pd.DataFrame(index=amount_sequences.index)
     for flow in amount_sequences.columns:

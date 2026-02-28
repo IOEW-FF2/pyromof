@@ -35,35 +35,41 @@ def convert_result_sequences_to_df(results_data):
     results = processing.convert_keys_to_strings(results_data)
     flows = [x for x in results.keys() if x[1] != "None"]
     nodes = [x for x in results.keys() if x[1] == "None"]
-    
+
     df_sequences = pd.DataFrame()
     df_additional_columns = pd.DataFrame()
     df_scalars = pd.DataFrame(columns=flows)
     df_storage_content = pd.DataFrame()
     df_storage_losses = pd.DataFrame()
-    
+
     for flow in flows:
         flow_name = " to ".join(flow)
         sequences_data = results[flow]["sequences"]
-        
+
         # Add the flow column
         if "flow" in sequences_data.columns:
             df_sequences[flow_name] = sequences_data["flow"]
-        
+
         # Capture all other columns (positive_gradient, biochar_status, etc.)
         additional_cols = [col for col in sequences_data.columns if col != "flow"]
         for col in additional_cols:
             col_name = f"{flow_name} ({col})"
             df_additional_columns[col_name] = sequences_data[col]
-        
+
         df_scalars[flow_name] = results[flow]["scalars"]
-    
+
     for node in nodes:
         node_name = " to ".join(node)
         df_scalars[node_name] = results[node]["scalars"]
         df_storage_content[node_name] = results[node]["sequences"]["storage_content"]
-    
-    return df_sequences, df_scalars, df_storage_content, df_storage_losses, df_additional_columns
+
+    return (
+        df_sequences,
+        df_scalars,
+        df_storage_content,
+        df_storage_losses,
+        df_additional_columns,
+    )
 
 
 def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
@@ -205,6 +211,10 @@ def postprocess(es, DUMPING_SPACE, investment):
         scalar_results = add_investment_amount_to_scalar_results(
             investment, scalars, scalar_results, DUMPING_SPACE
         )
+    # Remove all columns from sequences were the column name does not start with "b_"
+    # Because buses are balanced one column per bus is sufficient.
+    sequences = sequences.loc[:, sequences.columns.str.startswith("b_")]
+
     return {
         "sequences": sequences,
         "storage_contents": storage_contents,
