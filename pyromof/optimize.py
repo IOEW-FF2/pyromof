@@ -542,7 +542,7 @@ def create_energysystem(
                             # startup_costs=row.startup_costs.item(),
                             # startup_costs in investment optimization makes the model infeasible
                             minimum_downtime=int(row.minimum_downtime.item()),
-                            initial_status=0,
+                            initial_status=row.initial_status.item(),
                             maximum_startups=row.maximum_startups.item(),
                         ),
                         nominal_capacity=solph.Investment(
@@ -579,7 +579,7 @@ def create_energysystem(
                         nonconvex=solph.NonConvex(
                             # startup_costs=row.startup_costs.item(),
                             minimum_downtime=int(row.minimum_downtime.item()),
-                            initial_status=0,
+                            initial_status=row.initial_status.item(),
                             maximum_startups=row.maximum_startups.item(),
                         ),
                     ),
@@ -1068,5 +1068,5 @@ if __name__ == "__main__":
         time=time,
         scenario=scenario,
     )
-    visualize_network_in_dash(es)
+    # visualize_network_in_dash(es)
     save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
