@@ -227,8 +227,8 @@ def postprocess(es, DUMPING_SPACE, investment):
 
 if __name__ == "__main__":
 
-    # scenario = input("For which scenario shall the results be postprocessed? ")
-    scenario = "stromflex_h2"
+    general = pd.read_excel("input_data.xlsx", sheet_name="general")
+    scenario = general.loc[general["label"] == "scenario", "value"].item()
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)

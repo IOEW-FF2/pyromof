@@ -189,8 +189,8 @@ def plot(scenario):
 
 if __name__ == "__main__":
 
-    # scenario = input("For which scenario shall the results be plotted? ")
-    scenario = "stromflex_h2"
+    general = pd.read_excel("input_data.xlsx", sheet_name="general")
+    scenario = general.loc[general["label"] == "scenario", "value"].item()
 
     ROOT_PATH = Path(__file__).parent.parent
     RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")

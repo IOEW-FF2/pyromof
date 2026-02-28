@@ -1044,7 +1044,7 @@ if __name__ == "__main__":
         "input_data.xlsx"
     )
     # scenario = input("Which scenario shall be optimized? ")
-    scenario = "stromflex_h2"
+    scenario = general.loc[general["label"] == "scenario", "value"].item()
     # Definition of the time period
     time = pd.date_range(
         start="2025-01-01 00:00", end="2025-01-03 05:00", freq="h", inclusive="both"
