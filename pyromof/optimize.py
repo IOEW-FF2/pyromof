@@ -364,7 +364,9 @@ def create_energysystem(
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc)
+                        nominal_capacity=solph.Investment(
+                            ep_costs=epc, minimum=row.minimum.item()
+                        )
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                 },
@@ -744,7 +746,7 @@ def create_energysystem(
             combustor_cold = solph.components.Converter(
                 label="combustor_cold",
                 inputs={
-                    busd[row.bus_in_1.item()]: solph.Flow(),
+                    busd[row.bus_in_1_alternative.item()]: solph.Flow(),
                 },
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(),
