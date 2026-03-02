@@ -1048,9 +1048,9 @@ if __name__ == "__main__":
     # scenario = input("Which scenario shall be optimized? ")
     scenario = general.loc[general["label"] == "scenario", "value"].item()
     # Definition of the time period
-    time = pd.date_range(
-        start="2025-01-01 00:00", end="2025-01-03 05:00", freq="h", inclusive="both"
-    )
+    start_time = general.loc[general["label"] == "start_time", "value"].item()
+    end_time = general.loc[general["label"] == "end_time", "value"].item()
+    time = pd.date_range(start=start_time, end=end_time, freq="h", inclusive="both")
 
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = define_and_create_folders(
         Path(__file__).parent.parent, scenario
