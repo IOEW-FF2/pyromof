@@ -1051,6 +1051,9 @@ if __name__ == "__main__":
     start_time = general.loc[general["label"] == "start_time", "value"].item()
     end_time = general.loc[general["label"] == "end_time", "value"].item()
     time = pd.date_range(start=start_time, end=end_time, freq="h", inclusive="both")
+    # Slice the time period from profiles
+    profiles["timeindex"] = pd.to_datetime(profiles["timeindex"])
+    profiles = profiles[profiles["timeindex"].isin(time)]
 
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = define_and_create_folders(
         Path(__file__).parent.parent, scenario
