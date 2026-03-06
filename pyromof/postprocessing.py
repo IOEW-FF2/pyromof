@@ -26,6 +26,24 @@ def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
     return pd.concat([scalar_results, new_df], ignore_index=True)
 
 
+def add_sums_to_scalar_results(data, description, scalar_results):
+    """
+    Calculate sums of the data and append them to the scalar results if they are not 0.
+
+    Args:
+        data: DataFrame to sum (sequences or costs)
+        description: Description of the data type for the results (e.g., "sum of flow [kWh]")
+        scalar_results: Existing scalar results dataframe
+
+    Returns:
+        Updated scalar results dataframe
+    """
+    sums = data.sum(axis=0)
+    dict = {index: value for index, value in sums.items()}
+    scalar_results = add_items_to_scalar_results(dict, description, scalar_results)
+    return scalar_results
+
+
 def convert_result_sequences_to_df(results_data):
     """
     This function extracts all the sequences and all scalars from the flows
@@ -90,28 +108,6 @@ def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
     for col in effective_variable_costs.columns:
         effective_variable_costs[col] = sequences[col] * varcosts[col]
     return effective_variable_costs
-
-
-def add_sums_to_scalar_results(effective_variable_costs, sequences, scalar_results):
-    """
-    Calculate sums of the effective variable costs and append them to the scalar
-    results if they are not 0
-    """
-    sums = effective_variable_costs.sum(axis=0)
-    non_zero_dict = {index: value for index, value in sums.items() if value != 0}
-    scalar_results = add_items_to_scalar_results(
-        non_zero_dict, "sum of variable costs [Euros]", scalar_results
-    )
-
-    # Calculate the sums of the flows and append them to the scalar results
-
-    sums = sequences.sum(axis=0)
-    sums = sums.to_dict()
-    scalar_results = add_items_to_scalar_results(
-        sums, "sum of flow [kWh]", scalar_results
-    )
-
-    return scalar_results
 
 
 def add_investment_amount_to_scalar_results(
@@ -205,7 +201,10 @@ def postprocess(es, DUMPING_SPACE, investment):
     )
 
     scalar_results = add_sums_to_scalar_results(
-        effective_variable_costs, sequences, scalar_results
+        sequences, "sum of flow [kWh]", scalar_results
+    )
+    scalar_results = add_sums_to_scalar_results(
+        effective_variable_costs, "sum of variable costs [Euros]", scalar_results
     )
     if investment is True:
         scalar_results = add_investment_amount_to_scalar_results(
