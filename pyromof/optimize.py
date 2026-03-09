@@ -11,21 +11,8 @@ from pathlib import Path
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
 from pyromof import helpers
+from pyromof import postprocessing
 from pyomo.environ import Constraint
-
-
-@typechecked
-def define_and_create_folders(ROOT_PATH: Path, scenario: str):
-    RESULTS = Path(os.path.join(ROOT_PATH, "results"))
-    # Create folder for the scenario within the results folder if it doesn't exist yet
-    Path(os.path.join(RESULTS, scenario)).mkdir(exist_ok=True)
-    SCENARIO_PATH = Path(os.path.join(RESULTS, scenario))
-    # Create folders for meta_info and dumping_space
-    Path(os.path.join(SCENARIO_PATH, "meta_info")).mkdir(exist_ok=True)
-    META_INFO = Path(os.path.join(SCENARIO_PATH, "meta_info"))
-    Path(os.path.join(SCENARIO_PATH, "dumping_space")).mkdir(exist_ok=True)
-    DUMPING_SPACE = Path(os.path.join(SCENARIO_PATH, "dumping_space"))
-    return SCENARIO_PATH, META_INFO, DUMPING_SPACE
 
 
 def read_raw_data(relative_file_path):
@@ -36,6 +23,30 @@ def read_raw_data(relative_file_path):
     storage = pd.read_excel(relative_file_path, sheet_name="storage")
     general = pd.read_excel(relative_file_path, sheet_name="general")
     return profiles, sinks, sources, converters, storage, general
+
+
+@typechecked
+def define_time_period(general_df: pd.DataFrame) -> pd.DatetimeIndex:
+    # Definition of the time period
+    start_time = general.loc[general["label"] == "start_time", "value"].item()
+    end_time = general.loc[general["label"] == "end_time", "value"].item()
+    time = pd.date_range(start=start_time, end=end_time, freq="h", inclusive="both")
+    return time
+
+
+def slice_time_period_from_profiles(
+    profiles: pd.DataFrame, time: pd.DatetimeIndex
+) -> pd.DataFrame:
+    # Slice the time period from profiles
+    profiles["timeindex"] = pd.to_datetime(profiles["timeindex"])
+    profiles = profiles[profiles["timeindex"].isin(time)]
+    return profiles
+
+
+@typechecked
+def retrieve_scenario_from_input_data(general_df: pd.DataFrame) -> str:
+    scenario = general_df.loc[general_df["label"] == "scenario", "value"].item()
+    return scenario
 
 
 @typechecked
@@ -1045,17 +1056,10 @@ if __name__ == "__main__":
     profiles, sinks, sources, converters, storage, general = read_raw_data(
         "input_data.xlsx"
     )
-    # scenario = input("Which scenario shall be optimized? ")
-    scenario = general.loc[general["label"] == "scenario", "value"].item()
-    # Definition of the time period
-    start_time = general.loc[general["label"] == "start_time", "value"].item()
-    end_time = general.loc[general["label"] == "end_time", "value"].item()
-    time = pd.date_range(start=start_time, end=end_time, freq="h", inclusive="both")
-    # Slice the time period from profiles
-    profiles["timeindex"] = pd.to_datetime(profiles["timeindex"])
-    profiles = profiles[profiles["timeindex"].isin(time)]
-
-    SCENARIO_PATH, META_INFO, DUMPING_SPACE = define_and_create_folders(
+    scenario = retrieve_scenario_from_input_data(general)
+    time = define_time_period(general)
+    profiles = slice_time_period_from_profiles(profiles, time)
+    SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
         Path(__file__).parent.parent, scenario
     )
     # Save current input data version in the scenario folder
@@ -1073,6 +1077,7 @@ if __name__ == "__main__":
         time=time,
         scenario=scenario,
     )
+
     # visualize_network_in_dash(es)
     save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
 
