@@ -1,12 +1,10 @@
 from oemof import solph
 import pandas as pd
-import pyomo.environ as po
 from typeguard import typechecked
 from typing import Tuple
 
 import os
 import shutil
-import numpy as np
 from pathlib import Path
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
@@ -608,7 +606,8 @@ def create_energysystem(
                 },
             )
             """
-            # Add a PiecewiseLinearTransformer which consumes biochar if little is produced (i.e. it has lower quality)
+            # Add a PiecewiseLinearTransformer which consumes biochar if little
+            # is produced (i.e. it has lower quality)
             # Suppress warning that the slopes of two consecutive timesteps were within 1e-08 of one another:
 
             cap = row.nominal_capacity.item()
@@ -932,9 +931,12 @@ def create_energysystem(
 
             def ramp_rule(om, t):
                 """
-                This constraint ensures that the ramping of the pyrolysis unit is limited according to the positive_gradient_limit parameter.
-                The limitation is only enforced above the minimum load share to avoid conflicting constraints in the case
-                positive_gradient_limit < minimum_load_share. The constraint is only active in dispatch mode to keep the optimization
+                This constraint ensures that the ramping of the pyrolysis unit is limited according
+                to the positive_gradient_limit parameter.
+                The limitation is only enforced above the minimum load share to avoid conflicting
+                constraints in the case
+                positive_gradient_limit < minimum_load_share. The constraint is only active in dispatch
+                mode to keep the optimization
                 problem linear.
                 """
                 if t == om.TIMESTEPS.first():

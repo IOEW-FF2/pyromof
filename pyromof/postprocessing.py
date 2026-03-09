@@ -203,7 +203,7 @@ def postprocess(es, DUMPING_SPACE, investment):
     # Because buses are balanced one column per bus is sufficient.
     sequences = sequences.loc[:, sequences.columns.str.startswith("b_")]
 
-    ## Create scalar results
+    # Create scalar results
     scalar_results = add_objective_to_scalar_results(es.results, scalar_results)
 
     scalar_results = add_sums_to_scalar_results(
