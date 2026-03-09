@@ -44,6 +44,15 @@ def add_sums_to_scalar_results(data, description, scalar_results):
     return scalar_results
 
 
+def add_objective_to_scalar_results(results, scalar_results):
+    scalar_results = add_items_to_scalar_results(
+        {"objective": es.results["meta"]["objective"]},
+        "objective [Euros]",
+        scalar_results,
+    )
+    return scalar_results
+
+
 def convert_result_sequences_to_df(results_data):
     """
     This function extracts all the sequences and all scalars from the flows
@@ -58,7 +67,6 @@ def convert_result_sequences_to_df(results_data):
     df_additional_columns = pd.DataFrame()
     df_scalars = pd.DataFrame(columns=flows)
     df_storage_content = pd.DataFrame()
-    df_storage_losses = pd.DataFrame()
 
     for flow in flows:
         flow_name = " to ".join(flow)
@@ -85,7 +93,6 @@ def convert_result_sequences_to_df(results_data):
         df_sequences,
         df_scalars,
         df_storage_content,
-        df_storage_losses,
         df_additional_columns,
     )
 
@@ -183,16 +190,8 @@ def postprocess(es, DUMPING_SPACE, investment):
     # From the meta information, only the objective value is interesting for the results.
     # Store this value in the scalar results remove the meta part from the results:
 
-    scalar_results = add_items_to_scalar_results(
-        {"objective": es.results["meta"]["objective"]},
-        "objective [Euros]",
-        scalar_results,
-    )
-
-    es.results = es.results["main"]
-
-    sequences, scalars, storage_contents, storage_losses, additional_columns = (
-        convert_result_sequences_to_df(results_data=es.results)
+    sequences, scalars, storage_contents, additional_columns = (
+        convert_result_sequences_to_df(results_data=es.results["main"])
     )
 
     effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
@@ -217,14 +216,10 @@ def postprocess(es, DUMPING_SPACE, investment):
         scalar_results = add_investment_amount_to_scalar_results(
             investment, scalars, scalar_results, DUMPING_SPACE
         )
-    # Remove all columns from sequences were the column name does not start with "b_"
-    # Because buses are balanced one column per bus is sufficient.
-    sequences = sequences.loc[:, sequences.columns.str.startswith("b_")]
 
     return {
         "sequences": sequences,
         "storage_contents": storage_contents,
-        "storage_losses": storage_losses,
         "effective_variable_costs": effective_variable_costs,
         "scalar_results": scalar_results,
         "additional_columns": additional_columns,
@@ -262,9 +257,6 @@ if __name__ == "__main__":
     result_dfs["sequences"].to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
     result_dfs["storage_contents"].to_csv(
         os.path.join(RESULTS, "storage_contents.csv"), sep=";"
-    )
-    result_dfs["storage_losses"].to_csv(
-        os.path.join(RESULTS, "storage_losses.csv"), sep=";"
     )
     result_dfs["scalar_results"].to_csv(
         os.path.join(RESULTS, "scalar_results.csv"), sep=";"
