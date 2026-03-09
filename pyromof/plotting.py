@@ -19,20 +19,23 @@ def prepare_amount_sequences_for_plotting():
         os.path.join(RESULTS, "sequences.csv"), sep=";", index_col=0, parse_dates=True
     )
     units = {
-        "b_biochar": "t",
-        "b_co2": "t",
+        "b_biochar": "kg",
+        "b_co2": "kg",
         "b_electricity": "kWh",
         "b_electricity_2": "kWh",
         "b_heat_ht": "kWh",
         "b_heat_lt": "kWh",
-        "b_oil": "t",
-        "b_biomass": "t",
-        "b_biomass_dry": "t",
-        "b_heat_in": "kWh",
+        "b_oil": "kg",
+        "b_biomass": "kg",
+        "b_biomass_dry": "kg",
+        "b_heat_mt": "kWh",
         "b_syngas_hot": "kWh",
+        "b_syngas_cold": "kWh",
         "b_h2": "kWh",
+        "b_valuable_biochar": "kg",
     }
-    sequences_in_t = pd.DataFrame(index=amount_sequences.index)
+
+    sequences_in_kg = pd.DataFrame(index=amount_sequences.index)
     sequences_in_kWh = pd.DataFrame(index=amount_sequences.index)
     for flow in amount_sequences.columns:
         bus = helpers.filter_bus_in_string(flow)
@@ -42,32 +45,31 @@ def prepare_amount_sequences_for_plotting():
                 + flow
                 + " is not defined. Therefore it will not be plotted in the amount sequences."
             )
-        elif units[bus] == "t":
-            sequences_in_t[flow] = amount_sequences[flow]
+        elif units[bus] == "kg":
+            sequences_in_kg[flow] = amount_sequences[flow]
         elif units[bus] == "kWh":
             sequences_in_kWh[flow] = amount_sequences[flow]
         else:
             print(
                 "The unit for "
                 + flow
-                + " is neither t nor kWh. Therefore it will not be plotted in the amount sequences."
+                + " is neither kg nor kWh. Therefore it will not be plotted in the amount sequences."
             )
-    # TODO: Remove one of the two columns for every bus by comparing the flow names and the numbers.
-    return sequences_in_t, sequences_in_kWh
+    return sequences_in_kg, sequences_in_kWh
 
 
-def plot_amount_sequences(sequences_in_t, sequences_in_kWh, scenario):
+def plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario):
     """
     Takes two dataframes, one with flow sequences in tonnes and one in kWh,
     and plots them as line plots one below the other.
     """
     fig = make_subplots(rows=2, cols=1)
 
-    for col in sequences_in_t.columns:
+    for col in sequences_in_kg.columns:
         fig.add_trace(
             go.Scatter(
-                x=sequences_in_t.index,
-                y=sequences_in_t[col],
+                x=sequences_in_kg.index,
+                y=sequences_in_kg[col],
                 mode="lines",
                 line=dict(dash="solid"),
                 name=col,
@@ -88,7 +90,7 @@ def plot_amount_sequences(sequences_in_t, sequences_in_kWh, scenario):
             col=1,
         )
 
-    fig.update_yaxes(title_text="t/hour", row=1)
+    fig.update_yaxes(title_text="kg/hour", row=1)
     fig.update_yaxes(title_text="kWh/hour", row=2)
     fig.update_layout(hoverlabel_namelength=-1)
     fig.write_html(os.path.join(RESULTS, "amount_sequences_{}.html".format(scenario)))
@@ -181,14 +183,14 @@ def plot(scenario):
         RESULTS, "scalar_results.csv", scenario
     )
     plot_cost_scalars(scalcosts, scenario)
-    sequences_in_t, sequences_in_kWh = prepare_amount_sequences_for_plotting()
-    plot_amount_sequences(sequences_in_t, sequences_in_kWh, scenario)
+    sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting()
+    plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario)
 
 
 if __name__ == "__main__":
 
-    scenario = input("For which scenario shall the results be plotted? ")
-    # scenario = sys.argv[1]
+    general = pd.read_excel("input_data.xlsx", sheet_name="general")
+    scenario = general.loc[general["label"] == "scenario", "value"].item()
 
     ROOT_PATH = Path(__file__).parent.parent
     RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")

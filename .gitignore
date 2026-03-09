@@ -1,1 +1,10 @@
 **/__pycache__/
+results/
+raw_data/
+input_data.xlsx
+~$input_data.xlsx
+cbc.exe
+.vscode
+**/Thumbs.db
+preprocessing/
+

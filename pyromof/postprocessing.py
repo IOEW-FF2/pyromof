@@ -26,34 +26,75 @@ def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
     return pd.concat([scalar_results, new_df], ignore_index=True)
 
 
+def add_sums_to_scalar_results(data, description, scalar_results):
+    """
+    Calculate sums of the data and append them to the scalar results if they are not 0.
+
+    Args:
+        data: DataFrame to sum (sequences or costs)
+        description: Description of the data type for the results (e.g., "sum of flow [kWh]")
+        scalar_results: Existing scalar results dataframe
+
+    Returns:
+        Updated scalar results dataframe
+    """
+    sums = data.sum(axis=0)
+    dict = {index: value for index, value in sums.items()}
+    scalar_results = add_items_to_scalar_results(dict, description, scalar_results)
+    return scalar_results
+
+
+def add_objective_to_scalar_results(results, scalar_results):
+    scalar_results = add_items_to_scalar_results(
+        {"objective": results["meta"]["objective"]},
+        "objective [Euros]",
+        scalar_results,
+    )
+    return scalar_results
+
+
 def convert_result_sequences_to_df(results_data):
     """
     This function extracts all the sequences and all scalars from the flows
-    from the results data and stores them in three dataframes: one for sequences,
-    one for scalars, and a separate one for the storage content sequences.
-    Sequences are saved with the flow names as columnnames and a datetime index.
+    from the results data and stores them in dataframes.
+    Also captures additional columns like positive_gradient, biochar_status, etc.
     """
     results = processing.convert_keys_to_strings(results_data)
     flows = [x for x in results.keys() if x[1] != "None"]
     nodes = [x for x in results.keys() if x[1] == "None"]
-    df_sequences = pd.DataFrame(columns=flows)
+
+    df_sequences = pd.DataFrame()
+    df_additional_columns = pd.DataFrame()
     df_scalars = pd.DataFrame(columns=flows)
     df_storage_content = pd.DataFrame()
-    df_storage_losses = pd.DataFrame()
+
     for flow in flows:
-        df_sequences[flow] = results[flow]["sequences"][
-            "flow"
-        ]  # Besides the "flow" column there can be columns "positive_gradient"
-        # etc. if these are set on the flow.
-        df_scalars[flow] = results[flow]["scalars"]
+        flow_name = " to ".join(flow)
+        sequences_data = results[flow]["sequences"]
+
+        # Add the flow column
+        if "flow" in sequences_data.columns:
+            df_sequences[flow_name] = sequences_data["flow"]
+
+        # Capture all other columns (positive_gradient, biochar_status, etc.)
+        additional_cols = [col for col in sequences_data.columns if col != "flow"]
+        for col in additional_cols:
+            col_name = f"{flow_name} ({col})"
+            df_additional_columns[col_name] = sequences_data[col]
+
+        df_scalars[flow_name] = results[flow]["scalars"]
+
     for node in nodes:
-        df_scalars[node] = results[node]["scalars"]
-        df_storage_content[node] = results[node]["sequences"]["storage_content"]
-    #       df_storage_losses[node] = results[node]["sequences"]["storage_losses"]
-    #       Storage losses are stored in this format only in dispatch mode.
-    for df in [df_sequences, df_scalars, df_storage_content, df_storage_losses]:
-        df.columns = [" to ".join(x) for x in df.columns]
-    return df_sequences, df_scalars, df_storage_content, df_storage_losses
+        node_name = " to ".join(node)
+        df_scalars[node_name] = results[node]["scalars"]
+        df_storage_content[node_name] = results[node]["sequences"]["storage_content"]
+
+    return (
+        df_sequences,
+        df_scalars,
+        df_storage_content,
+        df_additional_columns,
+    )
 
 
 def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
@@ -76,28 +117,6 @@ def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
     return effective_variable_costs
 
 
-def add_sums_to_scalar_results(effective_variable_costs, sequences, scalar_results):
-    """
-    Calculate sums of the effective variable costs and append them to the scalar
-    results if they are not 0
-    """
-    sums = effective_variable_costs.sum(axis=0)
-    non_zero_dict = {index: value for index, value in sums.items() if value != 0}
-    scalar_results = add_items_to_scalar_results(
-        non_zero_dict, "sum of variable costs [Euros]", scalar_results
-    )
-
-    # Calculate the sums of the flows and append them to the scalar results
-
-    sums = sequences.sum(axis=0)
-    sums = sums.to_dict()
-    scalar_results = add_items_to_scalar_results(
-        sums, "sum of flow [kWh]", scalar_results
-    )
-
-    return scalar_results
-
-
 def add_investment_amount_to_scalar_results(
     investment: bool, scalars, scalar_results, DUMPING_SPACE
 ):
@@ -106,7 +125,7 @@ def add_investment_amount_to_scalar_results(
     The scalars df should be composed of the scalars of all flows taken from the raw results
     data: results[flow]["scalars"]
     """
-    scalars = scalars.dropna(axis=1)
+    scalars = scalars.dropna(axis=1, how="all")
     dict = {}
     for columnName, columnData in scalars.items():
         dict[columnName] = columnData["invest"]
@@ -171,16 +190,8 @@ def postprocess(es, DUMPING_SPACE, investment):
     # From the meta information, only the objective value is interesting for the results.
     # Store this value in the scalar results remove the meta part from the results:
 
-    scalar_results = add_items_to_scalar_results(
-        {"objective": es.results["meta"]["objective"]},
-        "objective [Euros]",
-        scalar_results,
-    )
-
-    es.results = es.results["main"]
-
-    sequences, scalars, storage_contents, storage_losses = (
-        convert_result_sequences_to_df(results_data=es.results)
+    sequences, scalars, storage_contents, additional_columns = (
+        convert_result_sequences_to_df(results_data=es.results["main"])
     )
 
     effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
@@ -188,26 +199,37 @@ def postprocess(es, DUMPING_SPACE, investment):
         os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"),
     )
 
+    # Remove all columns from sequences were the column name does not start with "b_"
+    # Because buses are balanced one column per bus is sufficient.
+    sequences = sequences.loc[:, sequences.columns.str.startswith("b_")]
+
+    # Create scalar results
+    scalar_results = add_objective_to_scalar_results(es.results, scalar_results)
+
     scalar_results = add_sums_to_scalar_results(
-        effective_variable_costs, sequences, scalar_results
+        sequences, "sum of flow [kWh]", scalar_results
+    )
+    scalar_results = add_sums_to_scalar_results(
+        effective_variable_costs, "sum of variable costs [Euros]", scalar_results
     )
     if investment is True:
         scalar_results = add_investment_amount_to_scalar_results(
             investment, scalars, scalar_results, DUMPING_SPACE
         )
+
     return {
         "sequences": sequences,
         "storage_contents": storage_contents,
-        "storage_losses": storage_losses,
         "effective_variable_costs": effective_variable_costs,
         "scalar_results": scalar_results,
+        "additional_columns": additional_columns,
     }
 
 
 if __name__ == "__main__":
 
-    # scenario = input("For which scenario shall the results be postprocessed? ")
-    scenario = "stromflex_h2"
+    general = pd.read_excel("input_data.xlsx", sheet_name="general")
+    scenario = general.loc[general["label"] == "scenario", "value"].item()
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
@@ -236,9 +258,9 @@ if __name__ == "__main__":
     result_dfs["storage_contents"].to_csv(
         os.path.join(RESULTS, "storage_contents.csv"), sep=";"
     )
-    result_dfs["storage_losses"].to_csv(
-        os.path.join(RESULTS, "storage_losses.csv"), sep=";"
-    )
     result_dfs["scalar_results"].to_csv(
         os.path.join(RESULTS, "scalar_results.csv"), sep=";"
+    )
+    result_dfs["additional_columns"].to_csv(
+        os.path.join(RESULTS, "additional_columns.csv"), sep=";"
     )
