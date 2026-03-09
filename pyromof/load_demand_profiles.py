@@ -18,9 +18,9 @@ temperature = temperature.interpolate()  # interpolate NA values
 # Annual heat demands for medium-sized German municipality (~20,000 inhabitants)
 # Assumptions: ~6,000 households, building mix typical for German municipality
 ann_demands_per_type = {
-    "efh": 6000 * 18000,      # Single family homes: 6,000 units × 18 MWh/year
-    "mfh": 2000 * 35000,      # Multi-family homes: 2,000 units × 35 MWh/year
-    "ghd": 1 * 5000000,       # Commercial/service sector: 5 GWh/year
+    "efh": 6000 * 18000,  # Single family homes: 6,000 units × 18 MWh/year
+    "mfh": 2000 * 35000,  # Multi-family homes: 2,000 units × 35 MWh/year
+    "ghd": 1 * 5000000,  # Commercial/service sector: 5 GWh/year
 }
 
 # Create DataFrame for 2024
