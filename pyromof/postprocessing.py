@@ -200,6 +200,13 @@ def postprocess(es, DUMPING_SPACE, investment):
         os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"),
     )
 
+    # Remove all columns from sequences were the column name does not start with "b_"
+    # Because buses are balanced one column per bus is sufficient.
+    sequences = sequences.loc[:, sequences.columns.str.startswith("b_")]
+
+    ## Create scalar results
+    scalar_results = add_objective_to_scalar_results(es.results, scalar_results)
+
     scalar_results = add_sums_to_scalar_results(
         sequences, "sum of flow [kWh]", scalar_results
     )
