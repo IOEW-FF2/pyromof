@@ -1075,3 +1075,16 @@ if __name__ == "__main__":
     )
     # visualize_network_in_dash(es)
     save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
+
+    # Dump results to CSV before further processing
+    sequences, scalars, storage_contents, additional_columns = (
+        postprocessing.convert_result_sequences_to_df(es.results["main"])
+    )
+
+    for df, filename in [
+        (sequences, "sequences.csv"),
+        (scalars, "scalars.csv"),
+        (storage_contents, "storage_contents.csv"),
+        (additional_columns, "additional_columns.csv"),
+    ]:
+        df.to_csv(os.path.join(DUMPING_SPACE, filename), sep=";")
