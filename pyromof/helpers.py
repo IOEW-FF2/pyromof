@@ -1,6 +1,22 @@
 import os
 import pandas as pd
 import re
+from pathlib import Path
+from typeguard import typechecked
+
+
+@typechecked
+def define_and_create_folders(ROOT_PATH: Path, scenario: str):
+    RESULTS = Path(os.path.join(ROOT_PATH, "results"))
+    # Create folder for the scenario within the results folder if it doesn't exist yet
+    Path(os.path.join(RESULTS, scenario)).mkdir(exist_ok=True)
+    SCENARIO_PATH = Path(os.path.join(RESULTS, scenario))
+    # Create folders for meta_info and dumping_space
+    Path(os.path.join(SCENARIO_PATH, "meta_info")).mkdir(exist_ok=True)
+    META_INFO = Path(os.path.join(SCENARIO_PATH, "meta_info"))
+    Path(os.path.join(SCENARIO_PATH, "dumping_space")).mkdir(exist_ok=True)
+    DUMPING_SPACE = Path(os.path.join(SCENARIO_PATH, "dumping_space"))
+    return SCENARIO_PATH, META_INFO, DUMPING_SPACE
 
 
 def check_type(object, type_wanted):
