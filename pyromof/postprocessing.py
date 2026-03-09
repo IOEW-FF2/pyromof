@@ -46,7 +46,7 @@ def add_sums_to_scalar_results(data, description, scalar_results):
 
 def add_objective_to_scalar_results(results, scalar_results):
     scalar_results = add_items_to_scalar_results(
-        {"objective": es.results["meta"]["objective"]},
+        {"objective": results["meta"]["objective"]},
         "objective [Euros]",
         scalar_results,
     )
