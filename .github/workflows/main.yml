@@ -33,7 +33,7 @@ jobs:
       - name: Lint with black
         run: |
           pip install black
-          python -m black --check .
+          python -m black --check . --target-version py312
 
       - name: Lint with flake8
         run: |
