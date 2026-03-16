@@ -853,21 +853,29 @@ def create_energysystem(
             epcs[label + " to None"] = epc_nominal_storage_capacity
             print("epc for ", label, " : ", epc_nominal_storage_capacity)
             investment = True
+            print(row.maximum)
+            nominal_cap = solph.Investment(
+                ep_costs=epc_nominal_storage_capacity, maximum=row.maximum
+            )
             storage = solph.components.GenericStorage(
                 label=label,
                 inputs={
-                    busd[row.bus_in]: solph.Flow(),
-                },  # The flows could also be constrained by a nominal capacity or variable costs.
+                    busd[row.bus_in]: solph.Flow(
+                        nominal_capacity=nominal_cap,
+                        nonconvex=solph.NonConvex(),
+                    ),
+                },
                 outputs={
-                    busd[row.bus_out]: solph.Flow(),
+                    busd[row.bus_out]: solph.Flow(
+                        nominal_capacity=nominal_cap,
+                        nonconvex=solph.NonConvex(),
+                    ),
                 },
                 loss_rate=row.loss_rate,
                 initial_storage_level=row.initial_storage_level,
                 inflow_conversion_factor=row.inflow_conversion_factor,
                 outflow_conversion_factor=row.outflow_conversion_factor,
-                nominal_storage_capacity=solph.Investment(
-                    ep_costs=epc_nominal_storage_capacity
-                ),
+                nominal_capacity=nominal_cap,
             )
         elif row.investment is False:
             storage = solph.components.GenericStorage(
@@ -962,10 +970,34 @@ def create_energysystem(
                         status_t - status_prev
                     )
 
-            # om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
-            # om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
-            # om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
+            om.tradeoff_lower_constraint = Constraint(
+                om.TIMESTEPS, rule=tradeoff_bounds_lower
+            )
+            om.tradeoff_upper_constraint = Constraint(
+                om.TIMESTEPS, rule=tradeoff_bounds_upper
+            )
+            om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
 
+    # Add active-flow-count-limit to avoid the use of storage to waste energy
+    if not storage.empty:
+        # ``storage`` dataframe has already been filtered by scenario above, so
+        # iterate over its rows to add a limit for each storage element.
+        for _, row in storage.iterrows():
+            # Determine the label of the storage component (may have "_invest" suffix)
+            label = row.label + ("_invest" if row.investment else "")
+            # Find the storage component in the energy system
+            storage_component = next(n for n in es.nodes if n.label == label)
+            # Apply the constraint to the storage's input and output flows
+            solph.constraints.limit_active_flow_count(
+                model=om,
+                constraint_name=f"limit_{label}_flow_count",
+                flows=[
+                    (busd[row.bus_in], storage_component),
+                    (storage_component, busd[row.bus_out]),
+                ],
+                lower_limit=0,
+                upper_limit=1,  # Prevent simultaneous charging and discharging
+            )
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
 
