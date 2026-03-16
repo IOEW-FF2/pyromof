@@ -78,6 +78,190 @@ def filter_input_data_by_scenario(
     return dfs["sinks"], dfs["sources"], dfs["converters"], dfs["storage"]
 
 
+def validate_column_types_in_excel(input_file, column_specs):
+    """
+    Validates column types for multiple sheets in an Excel file.
+    Args:
+        input_file: Path to the Excel file.
+        column_specs: List of tuples (sheet, column, dtype). Each tuple specifies:
+            - sheet: Name of the Excel sheet
+            - column: Name of the column to check
+            - dtype: Expected type as string (e.g. 'str', 'float|int|str', 'str|list[str]', etc.)
+    Supported types for dtype:
+        - 'str', 'int', 'float', 'bool', 'float|int', 'float|int|str', 'str|list[str]'
+    Prints errors with actual dtype and type mix, including profile validation for str columns if needed.
+    """
+
+    errors = []
+    profile_columns = None
+    for sheet, column, dtype in column_specs:
+        try:
+            df = pd.read_excel(input_file, sheet_name=sheet)
+            if column not in df.columns:
+                errors.append(f"Column '{column}' not found in sheet '{sheet}'.")
+                continue
+            col_data = df[column]
+            actual_type = str(col_data.dtype)
+            unique_types = set(col_data.dropna().apply(type))
+            type_mix = (
+                ", ".join(sorted([t.__name__ for t in unique_types]))
+                if actual_type == "object" or len(unique_types) > 1
+                else actual_type
+            )
+
+            def fail(msg):
+                errors.append(
+                    f"{msg} Actual type: {actual_type}. Type mix: {type_mix}."
+                )
+
+            # Type validation logic
+            type_checks = {
+                "str": lambda s: pd.api.types.is_string_dtype(s),
+                "int": lambda s: pd.api.types.is_integer_dtype(s),
+                "float": lambda s: pd.api.types.is_float_dtype(s),
+                "bool": lambda s: pd.api.types.is_bool_dtype(s),
+                "float|int": lambda s: pd.api.types.is_float_dtype(s)
+                or pd.api.types.is_integer_dtype(s),
+            }
+            # Type str|list[str] validation logic
+            if dtype == "str|list[str]":
+                for idx, val in col_data.items():
+                    if not isinstance(val, str):
+                        fail(
+                            f"Column '{column}' in sheet '{sheet}' contains a non-string value at row {idx}."
+                        )
+                        continue
+                    items = [v.strip() for v in val.split(",")]
+                    if not all(isinstance(v, str) and v for v in items):
+                        fail(
+                            f"Column '{column}' in sheet '{sheet}' contains invalid list entries at row {idx}"
+                        )
+            # Type float|int|str validation logic
+            elif dtype == "float|int|str":
+                if not (
+                    pd.api.types.is_float_dtype(col_data)
+                    or pd.api.types.is_integer_dtype(col_data)
+                    or pd.api.types.is_string_dtype(col_data)
+                    or (
+                        str(col_data.dtype) == "object"
+                        and unique_types.issubset({int, float, str})
+                    )
+                ):
+                    fail(
+                        f"Column '{column}' in sheet '{sheet}' must be of type {dtype}."
+                    )
+                if pd.api.types.is_string_dtype(col_data) or (
+                    str(col_data.dtype) == "object"
+                    and unique_types.issubset({int, float, str})
+                ):
+                    if profile_columns is None:
+                        profiles = pd.read_excel(input_file, sheet_name="profiles")
+                        profile_columns = set(profiles.columns)
+                    for idx, val in col_data.items():
+                        if isinstance(val, str):
+                            items = [v.strip() for v in val.split(",")]
+                            for item in items:
+                                if item not in profile_columns:
+                                    fail(
+                                        (
+                                            f"Profile name '{item}' from column '{column}' in sheet '{sheet}'"
+                                            f"(row {idx}) is not found in the column names of 'profiles'."
+                                        )
+                                    )
+                        elif not (
+                            isinstance(val, int)
+                            or isinstance(val, float)
+                            or pd.isna(val)
+                        ):
+                            fail(
+                                f"Column '{column}' in sheet '{sheet}' contains a value of unsupported type "
+                                f"at row {idx}."
+                            )
+            elif dtype in type_checks:
+                if not type_checks[dtype](col_data):
+                    fail(
+                        f"Column '{column}' in sheet '{sheet}' must be of type {dtype}."
+                    )
+            else:
+                fail(
+                    f"Unknown type '{dtype}' for column '{column}' in sheet '{sheet}'."
+                )
+        except Exception as e:
+            errors.append(str(e))
+        # Log the error
+    if errors:
+        print("\nErrors were found:")
+        for err in errors:
+            print("-", err)
+        exit(1)
+    else:
+        print("All data types are correct.")
+
+
+column_specs = [
+    ("general", "label", "str"),
+    ("sink", "min", "float|int|str"),
+    ("sink", "max", "float|int|str"),
+    ("sink", "variable_costs", "float|int|str"),
+    ("sink", "scenario", "str|list[str]"),
+    ("sink", "label", "str"),
+    ("sink", "bus_in", "str"),
+    ("source", "label", "str"),
+    ("source", "bus_out", "str"),
+    ("source", "scenario", "str|list[str]"),
+    ("source", "nominal_capacity", "float"),
+    ("source", "variable_costs", "float"),
+    ("converter", "bus_in_1", "str"),
+    ("converter", "bus_in_1_alternative", "str"),
+    ("converter", "bus_in_2", "str"),
+    ("converter", "bus_out_1", "str"),
+    ("converter", "bus_out_2", "str"),
+    ("converter", "bus_out_3", "str"),
+    ("converter", "label", "str"),
+    ("converter", "scenario", "str|list[str]"),
+    ("converter", "investment", "bool"),
+    ("converter", "nominal_capacity", "float"),
+    ("converter", "eff_in_1", "int"),
+    ("converter", "eff_in_2", "float"),
+    ("converter", "eff_out_1", "float"),
+    ("converter", "out_1_max_decrease", "float"),
+    ("converter", "out_2_corresponding_increase", "float"),
+    ("converter", "eff_out_2", "float"),
+    ("converter", "eff_out_3", "float"),
+    ("converter", "min_load_share", "float"),
+    ("converter", "minimum_downtime", "float|int"),
+    ("converter", "maximum_startups", "float|int"),
+    ("converter", "initial_status", "float|int"),
+    ("converter", "startup_costs", "float|int"),
+    ("converter", "positive_gradient_limit", "float"),
+    ("converter", "capex", "float|int|str"),
+    ("converter", "lifetime", "float|int"),
+    ("converter", "maximum", "float|int|str"),
+    ("storage", "bus_in", "str"),
+    ("storage", "bus_out", "str"),
+    ("storage", "investment", "bool"),
+    ("storage", "scenario", "str|list[str]"),
+    ("storage", "label", "str"),
+    ("storage", "loss_rate", "float|int|str"),
+    ("storage", "inflow_conversion_factor", "float|int"),
+    ("storage", "outflow_conversion_factor", "float|int"),
+    ("storage", "nominal_storage_capacity", "float|int"),
+    ("storage", "initial_storage_level", "float|int"),
+    ("storage", "capex", "float|int"),
+    ("storage", "lifetime", "float|int"),
+    ("profiles", "test_profile", "float"),
+    ("profiles", "profile_heat_mt", "float"),
+    ("profiles", "heat_village", "float"),
+    ("profiles", "heat_village_normed", "float"),
+    ("profiles", "heat_town", "float"),
+    ("profiles", "profile_electricity_remuneration_cents", "float"),
+    ("profiles", "profile_electricity_remuneration", "float"),
+    ("profiles", "profile_electricity", "float|int"),
+]
+
+validate_column_types_in_excel("input_data.xlsx", column_specs)
+
+
 @typechecked
 def extract_components_and_buses_from_input_data(
     sinks: pd.DataFrame,
