@@ -11,12 +11,12 @@ if __name__ == "__main__":
 
     # Insert here the parameters. Only two decimal places are possible!
     parameters = {
-        "component_type": "sources",  # must be plural
-        "component": "heat_source",
-        "variable": "variable_costs",
-        "min": 0.1,
-        "max": 1000.1,
-        "step": 100,
+        "component_type": "storage",  # must be plural
+        "component": "syngas_storage",
+        "variable": "capex",
+        "min": 0,
+        "max": 10,
+        "step": 1,
     }
 
     # scenario = input("For which scenario shall the sensitivity be analyzed? ")
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     # Definition of the time period
     time = pd.date_range(
-        start="2023-01-02", end="2023-01-03", freq="h", inclusive="both"
+        start="2023-07-01", end="2023-07-20", freq="h", inclusive="both"
     )
 
     profiles, sinks, sources, converters, storage, general = optimize.read_raw_data(
