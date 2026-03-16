@@ -114,6 +114,12 @@ def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
     # Calculate the effective variable costs by multiplying the sequences with the variable costs
     for col in effective_variable_costs.columns:
         effective_variable_costs[col] = sequences[col] * varcosts[col]
+
+    # Add a column with the sum of variable costs per timestep
+    effective_variable_costs["sum of variable costs"] = effective_variable_costs.sum(
+        axis=1
+    )
+
     return effective_variable_costs
 
 
