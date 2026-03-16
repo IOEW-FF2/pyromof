@@ -88,7 +88,7 @@ if __name__ == "__main__":
             scenario=scenario,
         )
         optimize.save_results(
-            es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario
+            time=time,
         )
 
         # POSTPROCESSING
