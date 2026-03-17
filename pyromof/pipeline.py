@@ -1,6 +1,6 @@
+import os
 import subprocess
 import sys
-import os
 from pathlib import Path
 
 pyromof = Path(__file__).parent

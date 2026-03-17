@@ -2,14 +2,15 @@
 # and is available here: https://gitlab.cc-asp.fraunhofer.de/-/snippets/1016
 # It has been published under the GPLv3 licence.
 
+import socket
+
 import dash
-from dash import html
 import dash_cytoscape as cyto
 import networkx as nx
+from dash import html
 from dash.dependencies import Input, Output
-from oemof import solph
 from IPython import get_ipython
-import socket
+from oemof import solph
 
 
 def make_network(energysystem):
@@ -216,7 +217,10 @@ def shownetwork(network):
             parameters = data.get("parameters", {})
             components = []
             components.append(
-                html.H4(f"Node {data['id']} Parameters:", style={"color": textcolor})
+                html.H4(
+                    f"Node {data['id']} Parameters:",
+                    style={"color": textcolor},
+                )
             )
 
             if data.get("type") == "source" or data.get("type") == "sink":
@@ -233,7 +237,8 @@ def shownetwork(network):
             return html.Div(components)
 
         return html.P(
-            "Click on a node to see its parameters.", style={"color": textcolor}
+            "Click on a node to see its parameters.",
+            style={"color": textcolor},
         )
 
     app.clientside_callback(
