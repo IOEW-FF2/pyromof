@@ -1,6 +1,6 @@
 import pandas as pd
 
-# define function to find cell value in excel file based on column name and row name
+# define function to find cell value in excel file
 
 
 def find_cell_value_excel(
@@ -183,7 +183,8 @@ pyrolysis_electricity_to_grid = get_data_csv(
 
 
 print(
-    f"first 10 columns of the pyrolysis electricity to grid data: \n{pyrolysis_electricity_to_grid.head(10)}"
+    f"first 10 columns of the pyrolysis electricity to grid data: \n"
+    f"{pyrolysis_electricity_to_grid.head(10)}"
 )
 
 
