@@ -6,15 +6,16 @@ def get_data_csv(
     file_path: str,
     separator: str,
     parse_dates: bool,
-    target_column: str,
-) -> pd.Series:
+    target_columns: list[str],
+) -> pd.DataFrame:
 
     data = pd.read_csv(file_path, sep=separator, parse_dates=parse_dates)
-    return data[target_column]
+    return data[target_columns]
 
 
-def sort_values_descending(column) -> pd.Series:
-    sorted_column = column.sort_values(ascending=False)
+def sort_values_descending(df: pd.DataFrame, column: str) -> pd.Series:
+    s = pd.to_numeric(df[column])
+    sorted_column = s.sort_values(ascending=False)
     return sorted_column
 
 
@@ -31,24 +32,23 @@ def plot_load_duration_curve(sorted_column, xlabel, ylabel, title, save_path):
 
 # receive data for power and biomass load
 
-power_data = get_data_csv(
+columns = get_data_csv(
     file_path="./results/stromflex_h2/results/sequences.csv",
     separator=";",
     parse_dates=True,
-    target_column="b_electricity to electricity_grid",
-)
-biomass_data = get_data_csv(
-    file_path="./results/stromflex_h2/results/sequences.csv",
-    separator=";",
-    parse_dates=True,
-    target_column="b_biomass_dry to pyrolysis",
+    target_columns=[
+        "b_electricity to electricity_grid",
+        "b_biomass_dry to pyrolysis",
+    ],
 )
 
 
 # sort the data in descending order
 
-descending_power_data = sort_values_descending(power_data)
-descending_biomass_data = sort_values_descending(biomass_data)
+descending_power_data = sort_values_descending(
+    columns, "b_electricity to electricity_grid"
+)
+descending_biomass_data = sort_values_descending(columns, "b_biomass_dry to pyrolysis")
 
 
 # plot the load duration curves for power and biomass load
