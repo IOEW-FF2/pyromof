@@ -68,9 +68,6 @@ biomass_duration_curve = plot_load_duration_curve(
     save_path="./results/stromflex_h2/results/load_duration_curve_biomass.png",
 )
 
-
-power_load_duration_curve
-biomass_duration_curve
-
-
-exit()
+if __name__ == "__main__":
+    power_load_duration_curve
+    biomass_duration_curve
