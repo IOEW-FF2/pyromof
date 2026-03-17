@@ -7,13 +7,13 @@ def get_data_csv(
     separator: str,
     parse_dates: bool,
     target_column: str,
-):
+) -> pd.Series:
 
     data = pd.read_csv(file_path, sep=separator, parse_dates=parse_dates)
     return data[target_column]
 
 
-def sort_values_descending(column):
+def sort_values_descending(column) -> pd.Series:
     sorted_column = column.sort_values(ascending=False)
     return sorted_column
 
