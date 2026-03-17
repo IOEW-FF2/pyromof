@@ -10,7 +10,7 @@ from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
 from pyromof import helpers
 from pyromof import postprocessing
-from pyomo.environ import Constraint
+from pyomo.environ import Constraint, Var, Binary, Set
 
 
 def read_raw_data(relative_file_path):
@@ -861,14 +861,10 @@ def create_energysystem(
                 label=label,
                 inputs={
                     busd[row.bus_in]: solph.Flow(
-                        nominal_capacity=nominal_cap,
-                        nonconvex=solph.NonConvex(),
                     ),
                 },
                 outputs={
                     busd[row.bus_out]: solph.Flow(
-                        nominal_capacity=nominal_cap,
-                        nonconvex=solph.NonConvex(),
                     ),
                 },
                 loss_rate=row.loss_rate,
@@ -980,24 +976,49 @@ def create_energysystem(
 
     # Add active-flow-count-limit to avoid the use of storage to waste energy
     if not storage.empty:
-        # ``storage`` dataframe has already been filtered by scenario above, so
-        # iterate over its rows to add a limit for each storage element.
+        print("Creating flow count limits for storage")
+        storage_components = []
+
         for _, row in storage.iterrows():
+            label = row.label + ("_invest" if row.investment else "")
+            comp = next(n for n in es.nodes if n.label == label)
+            storage_components.append(comp)
+
+        om.STORAGES = Set(initialize=storage_components)
+        om.storage_direction = Var(om.STORAGES, om.TIMESTEPS, within=Binary)
+        M = 200 # a safe but tight upper bound
+
+        def make_limit_charge(bus_in, storage_comp):
+            """Factory function to create a charge constraint for a specific storage's inflow"""
+            def limit_charge(m, t):
+                flow_in = m.flow[(bus_in, storage_comp), t]
+                return flow_in <= M * m.storage_direction[storage_comp, t]
+            return limit_charge
+        
+        def make_limit_discharge(storage_comp, bus_out):
+            """Factory function to create a discharge constraint for a specific storage's outflow"""
+            def limit_discharge(m, t):
+                flow_out = m.flow[(storage_comp, bus_out), t]
+                return flow_out <= M * (1 - m.storage_direction[storage_comp, t])
+            return limit_discharge
+        
+        for idx, (_, row) in enumerate(storage.iterrows()):
             # Determine the label of the storage component (may have "_invest" suffix)
             label = row.label + ("_invest" if row.investment else "")
             # Find the storage component in the energy system
             storage_component = next(n for n in es.nodes if n.label == label)
-            # Apply the constraint to the storage's input and output flows
-            solph.constraints.limit_active_flow_count(
-                model=om,
-                constraint_name=f"limit_{label}_flow_count",
-                flows=[
-                    (busd[row.bus_in], storage_component),
-                    (storage_component, busd[row.bus_out]),
-                ],
-                lower_limit=0,
-                upper_limit=1,  # Prevent simultaneous charging and discharging
-            )
+            # Get the bus objects for this storage
+            bus_in = busd[row.bus_in]
+            bus_out = busd[row.bus_out]
+            
+            # Apply constraints with unique names for each storage component
+            setattr(om, f'flow_count_limit_charge_{idx}', Constraint(
+                om.TIMESTEPS, rule=make_limit_charge(bus_in, storage_component)
+            ))
+            setattr(om, f'flow_count_limit_discharge_{idx}', Constraint(
+                om.TIMESTEPS, rule=make_limit_discharge(storage_component, bus_out)
+            ))
+
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
 
@@ -1008,7 +1029,8 @@ def create_energysystem(
     # Solve the system with error handling
     from pyomo.opt import SolverStatus, TerminationCondition
 
-    om.solve(solver="cbc")
+    print("Solving the model...")
+    om.solve(solver="cbc", tee=True)
 
     # Check solver status
     if (
