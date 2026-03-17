@@ -56,14 +56,14 @@ descending_biomass_data = sort_values_descending(biomass_data)
 power_load_duration_curve = plot_load_duration_curve(
     sorted_column=descending_power_data,
     xlabel="Hours",
-    ylabel="Injected Energy",
+    ylabel="Electricity feed-in (kWh)",
     title="Load duration curve - Power",
     save_path="./results/stromflex_h2/results/load_duration_curve_power.png",
 )
 biomass_duration_curve = plot_load_duration_curve(
     sorted_column=descending_biomass_data,
     xlabel="Hours",
-    ylabel="Injected Biomass",
+    ylabel="Injected Biomass (kg)",
     title="Load duration curve - Biomass",
     save_path="./results/stromflex_h2/results/load_duration_curve_biomass.png",
 )
