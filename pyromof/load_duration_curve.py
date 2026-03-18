@@ -1,10 +1,11 @@
 import argparse
-import pandas as pd
+
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
-# function to read data from CSV file of the chosen scenario
 def get_data_csv(scenario: str) -> pd.DataFrame:
+    """Read data from CSV file of the chosen scenario."""
     file_path = f"./results/{scenario}/results/sequences.csv"
     separator = ";"
     parse_dates = True
@@ -16,17 +17,15 @@ def get_data_csv(scenario: str) -> pd.DataFrame:
     data = pd.read_csv(file_path, sep=separator, parse_dates=parse_dates)
     return data[target_columns]
 
-    # function to sort values in descending order
-
 
 def sort_values_descending(df: pd.DataFrame, column: str) -> pd.Series:
+    """Sort values in descending order."""
     s = pd.to_numeric(df[column])
     return s.sort_values(ascending=False)
 
-    # function to plot the load duration curve
-
 
 def plot_load_duration_curve(sorted_column, xlabel, ylabel, title, save_path):
+    """Plot the load duration curve."""
     plt.figure(figsize=(10, 6))
     plt.plot(range(len(sorted_column)), sorted_column.values)
     plt.xlabel(xlabel)
@@ -36,10 +35,9 @@ def plot_load_duration_curve(sorted_column, xlabel, ylabel, title, save_path):
     plt.savefig(save_path)
     plt.close()
 
-    # main function to execute the load duration curve generation
-
 
 def main(scenario: str) -> None:
+    """Execute the load duration curve generation."""
     columns = get_data_csv(scenario)
 
     descending_power_data = sort_values_descending(
