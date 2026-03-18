@@ -1,17 +1,18 @@
+import argparse
+
 import pandas as pd
 
-# define function to find cell value in excel file
 
+def receive_base_value_and_lower_treshold(scenario: str, target_column: str):
+    """
+    Read base value and lower treshold from input data Excel file."""
+    file_path = f"results/{scenario}/meta_info/input_data.xlsx"
+    excel_sheet = "policies"
+    target_column = target_column
+    column_for_target_row = "policy"
+    target_row = "Sliding premium"
 
-def find_cell_value_excel(
-    file_path: str,
-    excel_sheet: str,
-    target_column: str,
-    column_for_target_row: str,
-    target_row: str,
-):
-
-    data = pd.read_excel(file_path, sheet_name=excel_sheet)
+    data = pd.read_excel(file_path, excel_sheet)
 
     row_index = data[data[column_for_target_row] == target_row].index[0]
 
@@ -20,26 +21,37 @@ def find_cell_value_excel(
     return float(cell_value)
 
 
-# define function to get electricity price data
-
-
 def get_data_csv(
     file_path: str,
     separator: str,
     parse_dates: bool,
     target_column: str,
 ):
-
     data = pd.read_csv(file_path, sep=separator, parse_dates=parse_dates)
 
     return data[target_column]
 
 
-# define function to refine received electricity price data
+def get_scenario_electricity_data(scenario: str) -> pd.Series:
+
+    file_path = f"./results/{scenario}/results/sequences.csv"
+    separator = ";"
+    parse_dates = True
+    target_column = "b_electricity to electricity_grid"
+
+    data = pd.read_csv(file_path, sep=separator, parse_dates=parse_dates)
+    return data[target_column]
 
 
-def refine_received_electricity_price_data(raw_data: any):
+def receive_and_refine_electricity_price_data():
+    """Function to receive and refine electricity price data for Germany"""
 
+    raw_data = get_data_csv(
+        file_path="preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv",
+        separator=";",
+        parse_dates=True,
+        target_column="Deutschland/Luxemburg [€/MWh] Berechnete Auflösungen",
+    )
     data_replace_comma = raw_data.copy().str.replace(",", ".")
 
     data_float = data_replace_comma.astype(float)
@@ -49,58 +61,47 @@ def refine_received_electricity_price_data(raw_data: any):
     return data_cent_per_kWh
 
 
-# define function to calculate feed-in feed_in_payment
-
-
 def feed_in_payment(electricity_price, base_value, lower_treshold):
+    """
+
+    This function calculates the feed-in payment for each hour.
+
+    Based on the electricity price, base value, and lower treshold of the sliding premium.
+
+    """
 
     feed_in_payments = []
 
     for i in range(len(electricity_price)):
-
-        if (
-            electricity_price.iloc[i] > lower_treshold
-            and electricity_price.iloc[i] <= base_value
-        ):
-
+        if electricity_price.iloc[i] > lower_treshold and electricity_price.iloc[i] <= base_value:
             feed_in_payments.append(base_value)
 
-        elif (
-            electricity_price.iloc[i] > base_value
-            or electricity_price.iloc[i] <= lower_treshold
-        ):
-
+        elif electricity_price.iloc[i] > base_value or electricity_price.iloc[i] <= lower_treshold:
             feed_in_payments.append(electricity_price.iloc[i])
 
     return pd.Series(feed_in_payments, index=electricity_price.index)
 
 
-# define function to calulate government payment share for feed-in premium
-
-
 def government_payment(electricity_price, feed_in_payment, base_value):
+    """
+    This function calculates the government payment share of the feed-in premium.
 
+    """
     payments = []
 
     for i in range(len(feed_in_payment)):
-
         if feed_in_payment.iloc[i] == base_value:
-
             payments.append(feed_in_payment.iloc[i] - electricity_price.iloc[i])
 
         elif feed_in_payment.iloc[i] != base_value:
-
             payments.append(0)
 
     return pd.Series(payments, index=feed_in_payment.index)
 
 
-# define multiplying function
+def calc_payments_in_euro(a, b):
 
-
-def multiply(a, b):
-
-    return a * b
+    return 1 / 100 * a * b
 
 
 def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
@@ -128,185 +129,187 @@ def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
     return pd.concat([scalar_results, new_df], ignore_index=True)
 
 
-# receive and refine data
+def receive_and_refine_all_data(scenario: str) -> None:
+    base_value = receive_base_value_and_lower_treshold(scenario, target_column="value 1")
+    lower_treshold = receive_base_value_and_lower_treshold(scenario, target_column="value 2")
+
+    electricity_price_data_germany_cent_per_kWh = receive_and_refine_electricity_price_data()
+    pyrolysis_electricity_to_grid = get_scenario_electricity_data(scenario)
+
+    return (
+        base_value,
+        lower_treshold,
+        electricity_price_data_germany_cent_per_kWh,
+        pyrolysis_electricity_to_grid,
+    )
 
 
-# get values for feed-in premium from excel file
-
-
-base_value = find_cell_value_excel(
-    file_path="results/stromflex_h2/meta_info/input_data.xlsx",
-    excel_sheet="policies",
-    target_column="value 1",
-    column_for_target_row="policy",
-    target_row="Sliding premium",
-)
-
-
-lower_treshold = find_cell_value_excel(
-    file_path="results/stromflex_h2/meta_info/input_data.xlsx",
-    excel_sheet="policies",
-    target_column="value 2",
-    column_for_target_row="policy",
-    target_row="Sliding premium",
-)
-
-
-print(f"base_value = {base_value}, lower_treshold = {lower_treshold}")
-
-
-# receive and refinde data for electricity price
-
-
-electricity_price_data_germany_euro_per_MWh = get_data_csv(
-    file_path="preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv",
-    separator=";",
-    parse_dates=True,
-    target_column="Deutschland/Luxemburg [€/MWh] Berechnete Auflösungen",
-)
-
-
-electricity_price_data_germany_cent_per_kWh = refine_received_electricity_price_data(
-    electricity_price_data_germany_euro_per_MWh.copy()
-)
-
-
-# receive data for electricity_to_grid from pyrolysis plant
-
-
-pyrolysis_electricity_to_grid = get_data_csv(
-    file_path="results/stromflex_h2/results/sequences.csv",
-    separator=";",
-    parse_dates=True,
-    target_column="b_electricity to electricity_grid",
-)
-
-
-print(
-    f"first 10 columns of the pyrolysis electricity to grid data: \n"
-    f"{pyrolysis_electricity_to_grid.head(10)}"
-)
-
-
-# create new data
-
-
-# create data for received feed_in_payment (cent/kWh)
-
-
-feed_in_payment_series = feed_in_payment(
-    electricity_price_data_germany_cent_per_kWh.copy(), base_value, lower_treshold
-)
-
-
-# create data for government payment to renewable energy producers (cent/kWh)
-
-
-government_payment_share = government_payment(
-    electricity_price_data_germany_cent_per_kWh.copy(),
-    feed_in_payment_series.copy(),
+def calculate_payments(
+    electricity_price_data_germany_cent_per_kWh,
     base_value,
-)
+    lower_treshold,
+    pyrolysis_electricity_to_grid,
+):
+
+    feed_in_revenue = feed_in_payment(
+        electricity_price_data_germany_cent_per_kWh.copy(), base_value, lower_treshold
+    )
+
+    government_payment_share = government_payment(
+        electricity_price_data_germany_cent_per_kWh.copy(),
+        feed_in_revenue.copy(),
+        base_value,
+    )
+
+    received_payment = calc_payments_in_euro(
+        feed_in_revenue.copy(), pyrolysis_electricity_to_grid.copy()
+    )
+
+    government_payment_for_pyrolysis_plant = calc_payments_in_euro(
+        government_payment_share.copy(), pyrolysis_electricity_to_grid.copy()
+    )
+
+    electricity_market_payment_euro = (
+        received_payment.copy() - government_payment_for_pyrolysis_plant.copy()
+    )
+
+    return (
+        feed_in_revenue,
+        government_payment_share,
+        received_payment,
+        government_payment_for_pyrolysis_plant,
+        electricity_market_payment_euro,
+    )
 
 
-# calculate received payment for electricity fed into the grid (euro)
+def calc_payment_sums(
+    received_payment,
+    government_payment_for_pyrolysis_plant,
+    electricity_market_payment_euro,
+):
+
+    sum_received_payment = received_payment.sum()
+
+    sum_government_payment = government_payment_for_pyrolysis_plant.sum()
+
+    sum_electricity_market_payment = electricity_market_payment_euro.sum()
+
+    return sum_received_payment, sum_government_payment, sum_electricity_market_payment
 
 
-received_payment_series = (
-    1
-    / 100
-    * multiply(feed_in_payment_series.copy(), pyrolysis_electricity_to_grid.copy())
-)
+def create_csv_file_for_created_data(
+    electricity_price_data_germany_cent_per_kWh,
+    feed_in_revenue,
+    government_payment_share,
+    pyrolysis_electricity_to_grid,
+    received_payment,
+    government_payment_for_pyrolysis_plant,
+    electricity_market_payment_euro,
+    sum_government_payment,
+    sum_electricity_market_payment,
+    sum_received_payment,
+):
 
+    df = pd.DataFrame(
+        {
+            "electricity_price (cent/kWh)": electricity_price_data_germany_cent_per_kWh,
+            "feed_in_payment (cent/kWh)": feed_in_revenue,
+            "government_payment_share (cent/kWh)": government_payment_share,
+            "pyrolysis_electricity_to_grid (kWh)": pyrolysis_electricity_to_grid,
+            "received_payment (euro)": received_payment,
+            "government_payment_share (euro)": government_payment_for_pyrolysis_plant,
+            "electricity_market_payment_share (euro)": electricity_market_payment_euro,
+        }
+    )
 
-# calculate payment share of government for electricity from the pyrolysis plant (euro)
+    df = df.round(1)
 
+    df.to_csv("preprocessing/feed_in_premium_data.csv", index=False, sep=";")
 
-government_payment_for_pyrolysis_plant = (
-    1
-    / 100
-    * multiply(government_payment_share.copy(), pyrolysis_electricity_to_grid.copy())
-)
+    df2 = pd.DataFrame(
+        {
+            "government_payment_share (euro)": government_payment_for_pyrolysis_plant,
+            "electricity_market_payment_share (euro)": electricity_market_payment_euro,
+            "received_payment (euro)": received_payment,
+        }
+    )
 
+    df2 = df2.round(1)
 
-# calculate payment share of electricity market for electricity from the pyrolysis plant
-
-
-electricity_market_payment_for_pyrolysis_plant = (
-    received_payment_series.copy() - government_payment_for_pyrolysis_plant.copy()
-)
-
-
-# calculate sums
-
-sum_received_payment = received_payment_series.sum()
-
-sum_government_payment = government_payment_for_pyrolysis_plant.sum()
-
-sum_electricity_market_payment = electricity_market_payment_for_pyrolysis_plant.sum()
-
-
-# create csv file for feed_in_premium_data
-
-
-df = pd.DataFrame(
-    {
-        "electricity_price (cent/kWh)": electricity_price_data_germany_cent_per_kWh,
-        "feed_in_payment (cent/kWh)": feed_in_payment_series,
-        "government_payment_share (cent/kWh)": government_payment_share,
-        "pyrolysis_electricity_to_grid (kWh)": pyrolysis_electricity_to_grid,
-        "received_payment (euro)": received_payment_series,
-        "government_payment_share (euro)": government_payment_for_pyrolysis_plant,
-        "electricity_market_payment_share (euro)": electricity_market_payment_for_pyrolysis_plant,
+    sum_dict = {
+        "government_payment_share (euro)": sum_government_payment,
+        "electricity_market_payment_share (euro)": sum_electricity_market_payment,
+        "received_payment (euro)": sum_received_payment,
     }
-)
+
+    df2_with_sum = add_items_to_scalar_results(sum_dict, "sum", df2.copy())
+
+    df2_with_sum.to_csv("preprocessing/electricity_revenue_data.csv", index=False, sep=";")
+
+    print("check if sum is correct:")
+
+    print(f"total sum: {sum_received_payment.round(1)} euro")
+
+    print(
+        f"government payment + electricity market payment: \n"
+        f"{sum_government_payment.round(1) + sum_electricity_market_payment.round(1)} euro"
+    )
 
 
-df = df.round(1)
+def main(scenario: str) -> None:
+    (
+        base_value,
+        lower_treshold,
+        electricity_price_data_germany_cent_per_kWh,
+        pyrolysis_electricity_to_grid,
+    ) = receive_and_refine_all_data(scenario)
 
-df.to_csv("preprocessing/feed_in_premium_data.csv", index=False, sep=";")
+    (
+        feed_in_revenue,
+        government_payment_share,
+        received_payment,
+        government_payment_for_pyrolysis_plant,
+        electricity_market_payment_euro,
+    ) = calculate_payments(
+        electricity_price_data_germany_cent_per_kWh,
+        base_value,
+        lower_treshold,
+        pyrolysis_electricity_to_grid,
+    )
 
-print(f"first 20 columns of the data sheet: \n{df.head(20)}")
+    (
+        sum_received_payment,
+        sum_government_payment,
+        sum_electricity_market_payment,
+    ) = calc_payment_sums(
+        received_payment,
+        government_payment_for_pyrolysis_plant,
+        electricity_market_payment_euro,
+    )
+
+    create_csv_file_for_created_data(
+        electricity_price_data_germany_cent_per_kWh,
+        feed_in_revenue,
+        government_payment_share,
+        pyrolysis_electricity_to_grid,
+        received_payment,
+        government_payment_for_pyrolysis_plant,
+        electricity_market_payment_euro,
+        sum_government_payment,
+        sum_electricity_market_payment,
+        sum_received_payment,
+    )
 
 
-# create csv file for electricity_revenue_data
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
 
+    parser.add_argument(
+        "--scenario",
+        required=True,
+        help="Name of the scenario, e.g. stromflex_h2",
+    )
 
-df2 = pd.DataFrame(
-    {
-        "government_payment_share (euro)": government_payment_for_pyrolysis_plant,
-        "electricity_market_payment_share (euro)": electricity_market_payment_for_pyrolysis_plant,
-        "received_payment (euro)": received_payment_series,
-    }
-)
+    args = parser.parse_args()
 
-df2 = df2.round(1)
-
-
-# create dict with sums for payments
-
-
-sum_dict = {
-    "government_payment_share (euro)": sum_government_payment,
-    "electricity_market_payment_share (euro)": sum_electricity_market_payment,
-    "received_payment (euro)": sum_received_payment,
-}
-
-
-# add sums to df2
-
-df2_with_sum = add_items_to_scalar_results(sum_dict, "sum", df2.copy())
-
-df2_with_sum.to_csv("preprocessing/electricity_revenue_data.csv", index=False, sep=";")
-
-
-# check if sums are correct
-
-print("check if sum is correct:")
-
-print(f"total sum: {sum_received_payment.round(1)} euro")
-
-print(
-    f"government payment + electricity market payment: \n"
-    f"{sum_government_payment.round(1) + sum_electricity_market_payment.round(1)} euro"
-)
+    main(args.scenario)
