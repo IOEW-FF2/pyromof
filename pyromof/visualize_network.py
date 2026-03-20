@@ -149,7 +149,7 @@ def shownetwork(network):
                 layout={
                     "name": "klay"
                 },  # klay means horizontal layout. Change to e.g. 'dagre' for vertical layout
-                style={"width": "100%", "height": "500px"},
+                style={"width": "100%", "height": "800px"},
                 elements=elements,
                 stylesheet=[
                     {
