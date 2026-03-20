@@ -48,9 +48,9 @@ def retrieve_scenario_from_input_data(general_df: pd.DataFrame) -> str:
 @typechecked
 def matches_scenario(scenario_to_check: str, scenario_wanted: str) -> bool:
     """
-    Checks wether the string "scenario to check" is either "all" or 
+    Checks wether the string "scenario to check" is either "all" or
     includes the "scenario_wanted".
-    "scenario_wanted" should be the scenario to be optimized, 
+    "scenario_wanted" should be the scenario to be optimized,
     and "scenario_to_check" a scenario field
     from the input data.
     """
@@ -531,7 +531,7 @@ def create_energysystem(
                         max=1,  # A maximum is required for linearization
                         # positive_gradient_limit=row.positive_gradient_limit.item(),
                         # A positive gradient limit isn't possible in investment
-                        # optimization. If it is activated, nominal_capacity becomes 
+                        # optimization. If it is activated, nominal_capacity becomes
                         # a NoneType object.
                         nonconvex=solph.NonConvex(
                             # startup_costs=row.startup_costs.item(),
@@ -568,7 +568,7 @@ def create_energysystem(
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
                         nominal_capacity=row.nominal_capacity.item(),
-                        # No positive_gradient_limit here because it is 
+                        # No positive_gradient_limit here because it is
                         # set in the ramping constraint
                         min=row.min_load_share.item(),
                         max=1,
@@ -1046,7 +1046,7 @@ if __name__ == "__main__":
         scenario=scenario,
     )
 
-    # visualize_network_in_dash(es)
+    visualize_network_in_dash(es)
     save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
 
     # Dump results to CSV before further processing
