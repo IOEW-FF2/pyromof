@@ -105,7 +105,7 @@ def gas_char_ratio(df_sequences, df_additional_columns, converter):
     The ratio is then added as a column to the df_additional_columns dataframe.
     The ratio is calculated using the outputs from the sequences dataframe.
     Then, the ratio is multiplied with the normed ratio to get a ratio range close to 1.
-    The normed ratio is based on the normed pyrolysis outputs from the input_data.xlsx/converter sheet.
+    The normed ratio is based on the normed pyrolysis outputs from the input_data.xlsx file.
     """
     normed_biochar_output = converter.loc[converter["label"] == "pyrolysis", "eff_out_1"].iloc[0]
     normed_syngas_output = converter.loc[converter["label"] == "pyrolysis", "eff_out_2"].iloc[0]
