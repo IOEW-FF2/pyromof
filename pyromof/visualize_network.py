@@ -293,4 +293,4 @@ def shownetwork(network):
     if is_notebook():  # directly displayed in jupyter
         app.run(mode="inline", debug=True, port=port)
     else:  # gives a link for the port
-        app.run(debug=True, port=port)
+        app.run(debug=True, port=port, use_reloader=False)
