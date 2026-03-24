@@ -38,41 +38,41 @@ def sliding_premium_policy(
     return sink
 
 
-def fix_investment_subsidy_policy(converter: pd.DataFrame, policies: pd.DataFrame) -> pd.DataFrame:
+def fix_investment_subsidy_policy(converters: pd.DataFrame, policies: pd.DataFrame) -> pd.DataFrame:
     fix_subsidy = policies.loc[
         policies["policy"] == "Subsidy for pyrolysis investment costs", "value 1"
     ].values[0]
     activate_status = policies.loc[
-        policies["policy"] == "Fixed feed-in remuneration", "activate"
+        policies["policy"] == "Subsidy for pyrolysis investment costs", "activate"
     ].values[0]
-    base_investment_cost = converter.loc[converter["label"] == "pyrolysis", "capex"].values[0]
+    base_investment_cost = converters.loc[converters["label"] == "pyrolysis", "capex"].values[0]
 
     if activate_status == "x":
-        converter.loc[converter["label"] == "pyrolysis", "capex"] = (
+        converters.loc[converters["label"] == "pyrolysis", "capex"] = (
             base_investment_cost - fix_subsidy
         )
-    return converter
+    return converters
 
 
 def percentage_investment_subsidy_policy(
-    converter: pd.DataFrame, policies: pd.DataFrame
+    converters: pd.DataFrame, policies: pd.DataFrame
 ) -> pd.DataFrame:
     percentage_subsidy = policies.loc[policies["policy"] == "percentage subsidy", "value 1"].values[
         0
     ]
     activate_status = policies.loc[policies["policy"] == "percentage subsidy", "activate"].values[0]
     # Name für Zeile ("percentage subsidy") ggf. noch anpassen, da stand jezt nichts drin
-    base_investment_cost = converter.loc[converter["label"] == "pyrolysis", "capex"].values[0]
+    base_investment_cost = converters.loc[converters["label"] == "pyrolysis", "capex"].values[0]
 
     if activate_status == "x":
-        converter.loc[converter["label"] == "pyrolysis", "capex"] = base_investment_cost * (
+        converters.loc[converters["label"] == "pyrolysis", "capex"] = base_investment_cost * (
             1 - percentage_subsidy
         )
-    return converter
+    return converters
 
 
-def redefine_sinks_for_policies(
-    sink: pd.DataFrame, converter: pd.DataFrame, policies: pd.DataFrame, scenario: str
+def redefine_sink_and_converter_for_policies(
+    sink: pd.DataFrame, converters: pd.DataFrame, policies: pd.DataFrame, scenario: str
 ) -> pd.DataFrame:
 
     if (
@@ -92,7 +92,7 @@ def redefine_sinks_for_policies(
     else:
         sink = fixed_premium_policy(sink, policies, scenario)
         sink = sliding_premium_policy(sink, policies, scenario)
-        converter = fix_investment_subsidy_policy(converter, policies)
-        converter = percentage_investment_subsidy_policy(converter, policies)
+        converters = fix_investment_subsidy_policy(converters, policies)
+        converters = percentage_investment_subsidy_policy(converters, policies)
 
-    return sink, converter
+    return sink, converters
