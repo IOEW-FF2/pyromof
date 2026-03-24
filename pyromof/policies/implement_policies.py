@@ -1,4 +1,9 @@
 import pandas as pd
+from pyromof.policies.sliding_premium import (
+    feed_in_payment_cent_per_kWh,
+    receive_and_refine_electricity_price_data,
+    receive_base_value_and_lower_threshold,
+)
 
 
 def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame, scenario: str) -> pd.DataFrame:
@@ -16,14 +21,18 @@ def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame, scenario: s
 
 
 def sliding_premium_policy(
-    sink: pd.dataFrame, policies: pd.DataFrame, scenario: str
+    sink: pd.DataFrame, policies: pd.DataFrame, scenario: str
 ) -> pd.DataFrame:
-    sliding_feed_in_premium = 1  # funktion aus electricity_feed_in_revenue skript importieren
-    activate_status = policies.loc[policies["policy"] == "Sliding premium", "activate"]
+    base_value, lower_threshold = receive_base_value_and_lower_threshold(scenario)
+    electricity_price_cent_per_kWh = receive_and_refine_electricity_price_data()
+    sliding_feed_in_premium = feed_in_payment_cent_per_kWh(
+        electricity_price_cent_per_kWh, base_value, lower_threshold
+    )
+    activate_status = policies.loc[policies["policy"] == "Sliding premium", "activate"].values[0]
 
     if activate_status == "x":
         sink.loc[
-            sink["label"] == "electricity_grid" and sink[scenario] == scenario, "variable_costs"
+            sink["label"] == "electricity_grid" and sink["scenario"] == scenario, "variable_costs"
         ] = sliding_feed_in_premium
 
     return sink
