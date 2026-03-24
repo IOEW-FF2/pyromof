@@ -11,6 +11,7 @@ from pyomo.environ import Constraint
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
+from pyromof.policies.implement_policies import redefine_sink_and_converter_for_policies
 
 
 def read_raw_data(relative_file_path):
@@ -20,6 +21,8 @@ def read_raw_data(relative_file_path):
     converters = pd.read_excel(relative_file_path, sheet_name="converter")
     storage = pd.read_excel(relative_file_path, sheet_name="storage")
     general = pd.read_excel(relative_file_path, sheet_name="general")
+    policies = pd.read_excel(relative_file_path, sheet_name="policies")
+    sinks, converters = redefine_sink_and_converter_for_policies(sinks, converters, policies, scenario) 
     return profiles, sinks, sources, converters, storage, general
 
 
