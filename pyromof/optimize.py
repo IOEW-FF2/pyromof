@@ -977,7 +977,7 @@ def create_energysystem(
 
 def visualize_network_in_dash(es: solph.EnergySystem):
     if input("Visualize network in dash app? (yes/no) ") == "yes":
-        from visualize_network import make_network, shownetwork
+        from pyromof.visualize_network import make_network, shownetwork
 
         network = make_network(es)
         shownetwork(network)
@@ -1029,8 +1029,8 @@ if __name__ == "__main__":
         "input_data.xlsx"
     )
     scenario = retrieve_scenario_from_input_data(general)
-    sinks, converters = redefine_sink_and_converter_for_policies(
-        sinks, converters, policies, scenario
+    sinks, converters, profiles = redefine_sink_and_converter_for_policies(
+        sinks, converters, policies, profiles, scenario
     )
     time = define_time_period(general)
     profiles = slice_time_period_from_profiles(profiles, time)
