@@ -149,7 +149,7 @@ def shownetwork(network):
                 layout={
                     "name": "klay"
                 },  # klay means horizontal layout. Change to e.g. 'dagre' for vertical layout
-                style={"width": "100%", "height": "500px"},
+                style={"width": "100%", "height": "800px"},
                 elements=elements,
                 stylesheet=[
                     {
@@ -293,4 +293,4 @@ def shownetwork(network):
     if is_notebook():  # directly displayed in jupyter
         app.run(mode="inline", debug=True, port=port)
     else:  # gives a link for the port
-        app.run(debug=True, port=port)
+        app.run(debug=True, port=port, use_reloader=False)

@@ -1053,7 +1053,7 @@ if __name__ == "__main__":
         scenario=scenario,
     )
 
-    # visualize_network_in_dash(es)
+    visualize_network_in_dash(es)
     save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
 
     # Dump results to CSV before further processing
