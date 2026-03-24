@@ -22,10 +22,7 @@ def read_raw_data(relative_file_path):
     storage = pd.read_excel(relative_file_path, sheet_name="storage")
     general = pd.read_excel(relative_file_path, sheet_name="general")
     policies = pd.read_excel(relative_file_path, sheet_name="policies")
-    sinks, converters = redefine_sink_and_converter_for_policies(
-        sinks, converters, policies, scenario
-    )
-    return profiles, sinks, sources, converters, storage, general
+    return profiles, sinks, sources, converters, storage, general, policies
 
 
 @typechecked
@@ -1028,8 +1025,11 @@ def save_results(
 
 
 if __name__ == "__main__":
-    profiles, sinks, sources, converters, storage, general = read_raw_data("input_data.xlsx")
+    profiles, sinks, sources, converters, storage, general, policies = read_raw_data("input_data.xlsx")
     scenario = retrieve_scenario_from_input_data(general)
+    sinks, converters = redefine_sink_and_converter_for_policies(
+        sinks, converters, policies, scenario
+    )
     time = define_time_period(general)
     profiles = slice_time_period_from_profiles(profiles, time)
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
