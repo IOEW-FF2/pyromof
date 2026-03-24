@@ -3,51 +3,15 @@ import argparse
 import pandas as pd
 
 
-def receive_base_value_and_lower_threshold(scenario: str, target_column: str):
-    """
-    This function reads the base value and lower threshold from the input data file.
-
-    The input data file is located in results/{scenario}/meta_info in the policies sheet.
-
-    The base value and lower threshold can be adjusted.
-
-    """
-
-    file_path = f"results/{scenario}/meta_info/input_data.xlsx"
-    excel_sheet = "policies"
-    target_column = target_column
-    column_for_target_row = "policy"
-    target_row = "Sliding premium"
-
-    data = pd.read_excel(file_path, excel_sheet)
-
-    row_index = data[data[column_for_target_row] == target_row].index[0]
-
-    cell_value = data.loc[row_index, target_column]
-
-    return float(cell_value)
+def receive_base_value_and_lower_threshold(scenario: str) -> float:
+    path = f"results/{scenario}/meta_info/input_data.xlsx"
+    policies = pd.read_excel(path, sheet_name="policies")
+    base_value = policies.loc[policies["policy"] == "Sliding premium", "value 1"].values[0]
+    lower_threshold = policies.loc[policies["policy"] == "Sliding premium", "value 2"].values[0]
+    return float(base_value), float(lower_threshold)
 
 
-def get_data_csv(
-    file_path: str,
-    separator: str,
-    parse_dates: bool,
-    target_column: str,
-):
-    data = pd.read_csv(file_path, sep=separator, parse_dates=parse_dates)
-
-    return data[target_column]
-
-
-def get_scenario_electricity_data(scenario: str) -> pd.Series:
-    """
-
-    This function reads the electricity feed-in data for the given scenario.
-
-    The data is located in the results/{scenario}/results/sequences.csv file.
-
-    """
-
+def receive_scenario_electricity_data(scenario: str) -> pd.Series:
     file_path = f"./results/{scenario}/results/sequences.csv"
     separator = ";"
     parse_dates = True
@@ -58,20 +22,13 @@ def get_scenario_electricity_data(scenario: str) -> pd.Series:
 
 
 def receive_and_refine_electricity_price_data():
-    """
-
-    This function receives and refines the electricity price data for Germany.
-
-    The file is located in the preprocessing folder.
-
-    """
-
-    raw_data = get_data_csv(
-        file_path="preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv",
-        separator=";",
+    data_file = pd.read_csv(
+        "preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv",
+        sep=";",
         parse_dates=True,
-        target_column="Deutschland/Luxemburg [€/MWh] Berechnete Auflösungen",
     )
+    raw_data = data_file["Deutschland/Luxemburg [€/MWh] Berechnete Auflösungen"]
+
     data_replace_comma = raw_data.copy().str.replace(",", ".")
 
     data_float = data_replace_comma.astype(float)
@@ -182,11 +139,10 @@ def receive_and_refine_all_data(scenario: str) -> None:
     The input data depend on the given scenario.
 
     """
-    base_value = receive_base_value_and_lower_threshold(scenario, target_column="value 1")
-    lower_threshold = receive_base_value_and_lower_threshold(scenario, target_column="value 2")
+    base_value, lower_threshold = receive_base_value_and_lower_threshold(scenario)
 
     electricity_price_cent_per_kWh = receive_and_refine_electricity_price_data()
-    pyrolysis_electricity_to_grid_kWh = get_scenario_electricity_data(scenario)
+    pyrolysis_electricity_to_grid_kWh = receive_scenario_electricity_data(scenario)
 
     return (
         base_value,
