@@ -8,7 +8,7 @@ from pyromof.policies.sliding_premium import (
 
 
 def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame, scenario: str) -> pd.DataFrame:
-    feed_in_premium = - policies.loc[
+    feed_in_premium = -policies.loc[
         policies["policy"] == "Fixed feed-in remuneration", "value 1"
     ].values[0]
     activate_status = policies.loc[
@@ -60,10 +60,12 @@ def fix_investment_subsidy_policy(converters: pd.DataFrame, policies: pd.DataFra
 def percentage_investment_subsidy_policy(
     converters: pd.DataFrame, policies: pd.DataFrame
 ) -> pd.DataFrame:
-    percentage_subsidy = policies.loc[policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "value 1"].values[
-        0
-    ]
-    activate_status = policies.loc[policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "activate"].values[0]
+    percentage_subsidy = policies.loc[
+        policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "value 1"
+    ].values[0]
+    activate_status = policies.loc[
+        policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "activate"
+    ].values[0]
     base_investment_cost = converters.loc[converters["label"] == "pyrolysis", "capex"].values[0]
 
     if activate_status == "x":
@@ -85,7 +87,10 @@ def redefine_sink_and_converter_for_policies(
             policies["policy"] == "Subsidy for pyrolysis investment costs", "activate"
         ].values[0]
         == "x"
-        and policies.loc[policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "activate"].values[0] == "x"
+        and policies.loc[
+            policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "activate"
+        ].values[0]
+        == "x"
     ):
         raise ValueError(
             "Only one of the policies in each policy type can be activated at the same time. \n"

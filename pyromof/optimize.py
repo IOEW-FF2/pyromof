@@ -1025,7 +1025,9 @@ def save_results(
 
 
 if __name__ == "__main__":
-    profiles, sinks, sources, converters, storage, general, policies = read_raw_data("input_data.xlsx")
+    profiles, sinks, sources, converters, storage, general, policies = read_raw_data(
+        "input_data.xlsx"
+    )
     scenario = retrieve_scenario_from_input_data(general)
     sinks, converters = redefine_sink_and_converter_for_policies(
         sinks, converters, policies, scenario
