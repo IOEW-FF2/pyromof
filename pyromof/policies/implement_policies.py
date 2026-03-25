@@ -125,3 +125,35 @@ def redefine_sink_and_converter_for_policies(
         converters = percentage_investment_subsidy_policy(converters, policies, scenario)
 
     return sink, converters, profiles
+
+
+# test if the functions work as expected
+
+
+def verify_redefine_sink_and_converter_for_policies(relative_file_path):
+    profiles = pd.read_excel(relative_file_path, sheet_name="profiles")
+    sinks = pd.read_excel(relative_file_path, sheet_name="sink")
+    converters = pd.read_excel(relative_file_path, sheet_name="converter")
+    policies = pd.read_excel(relative_file_path, sheet_name="policies")
+
+    sink, converters, profiles = redefine_sink_and_converter_for_policies(
+        sinks, converters, policies, profiles, "stromflex_h2"
+    )
+    print("\n=== pyrolysis converters: label, capex, investment ===")
+    print(
+        converters.loc[
+            converters["label"] == "pyrolysis", ["label", "scenario", "capex", "investment"]
+        ].to_string(index=False)
+    )
+
+    print("\n=== electricity_grid variable_costs for scenario stromflex_h2 ===")
+    print(
+        sink.loc[
+            (sink["label"] == "electricity_grid") & (sink["scenario"] == "stromflex_h2"),
+            "variable_costs",
+        ].to_string(index=False)
+    )
+
+
+if __name__ == "__main__":
+    verify_redefine_sink_and_converter_for_policies("input_data.xlsx")
