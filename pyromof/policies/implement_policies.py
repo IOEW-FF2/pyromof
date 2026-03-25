@@ -52,24 +52,30 @@ def sliding_premium_policy(
     return sink, profiles
 
 
-def fix_investment_subsidy_policy(converters: pd.DataFrame, policies: pd.DataFrame) -> pd.DataFrame:
+def fix_investment_subsidy_policy(
+    converters: pd.DataFrame, policies: pd.DataFrame, scenario: str
+) -> pd.DataFrame:
     fix_subsidy = policies.loc[
         policies["policy"] == "Subsidy for pyrolysis investment costs", "value 1"
     ].values[0]
     activate_status = policies.loc[
         policies["policy"] == "Subsidy for pyrolysis investment costs", "activate"
     ].values[0]
-    base_investment_cost = converters.loc[converters["label"] == "pyrolysis", "capex"].values[0]
 
     if activate_status == "x":
-        converters.loc[converters["label"] == "pyrolysis", "capex"] = (
-            base_investment_cost - fix_subsidy
+        converters.loc[
+            (converters["label"] == "pyrolysis") & (converters["scenario"] == scenario), "capex"
+        ] = (
+            converters.loc[
+                (converters["label"] == "pyrolysis") & (converters["scenario"] == scenario), "capex"
+            ]
+            - fix_subsidy
         )
     return converters
 
 
 def percentage_investment_subsidy_policy(
-    converters: pd.DataFrame, policies: pd.DataFrame
+    converters: pd.DataFrame, policies: pd.DataFrame, scenario: str
 ) -> pd.DataFrame:
     percentage_subsidy = policies.loc[
         policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "value 1"
@@ -77,12 +83,13 @@ def percentage_investment_subsidy_policy(
     activate_status = policies.loc[
         policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "activate"
     ].values[0]
-    base_investment_cost = converters.loc[converters["label"] == "pyrolysis", "capex"].values[0]
 
     if activate_status == "x":
-        converters.loc[converters["label"] == "pyrolysis", "capex"] = base_investment_cost * (
-            1 - percentage_subsidy
-        )
+        converters.loc[
+            (converters["label"] == "pyrolysis") & (converters["scenario"] == scenario), "capex"
+        ] = converters.loc[
+            (converters["label"] == "pyrolysis") & (converters["scenario"] == scenario), "capex"
+        ] * (1 - (1 / 100 * percentage_subsidy))
     return converters
 
 
@@ -114,7 +121,7 @@ def redefine_sink_and_converter_for_policies(
     else:
         sink = fixed_premium_policy(sink, policies, scenario)
         sink, profiles = sliding_premium_policy(sink, policies, profiles, scenario)
-        converters = fix_investment_subsidy_policy(converters, policies)
-        converters = percentage_investment_subsidy_policy(converters, policies)
+        converters = fix_investment_subsidy_policy(converters, policies, scenario)
+        converters = percentage_investment_subsidy_policy(converters, policies, scenario)
 
     return sink, converters, profiles
