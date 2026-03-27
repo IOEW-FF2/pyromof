@@ -13,7 +13,10 @@ dependencies = [
     "oemof (>=1.0,<2.0)",
     "openpyxl (>=3.1.5,<4.0.0)",
     "matplotlib",
-    "typeguard"
+    "typeguard",
+    "dash",
+    "dash_cytoscape",
+    "IPython"
 ]
 
 
