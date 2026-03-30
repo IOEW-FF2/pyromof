@@ -1,11 +1,12 @@
-import plotly.graph_objects as go
-import plotly.express as px
-import pandas as pd
 import os
-import helpers
 from pathlib import Path
-from plotly.subplots import make_subplots
+
+import helpers
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from oemof.solph import EnergySystem
+from plotly.subplots import make_subplots
 
 
 def prepare_amount_sequences_for_plotting():
@@ -16,7 +17,10 @@ def prepare_amount_sequences_for_plotting():
     # instead of specifying them in the script.
     """
     amount_sequences = pd.read_csv(
-        os.path.join(RESULTS, "sequences.csv"), sep=";", index_col=0, parse_dates=True
+        os.path.join(RESULTS, "sequences.csv"),
+        sep=";",
+        index_col=0,
+        parse_dates=True,
     )
     units = {
         "b_biochar": "kg",
@@ -43,7 +47,8 @@ def prepare_amount_sequences_for_plotting():
             print(
                 "The unit for "
                 + flow
-                + " is not defined. Therefore it will not be plotted in the amount sequences."
+                + " is not defined. Therefore it will not be plotted in "
+                + "the amount sequences."
             )
         elif units[bus] == "kg":
             sequences_in_kg[flow] = amount_sequences[flow]
@@ -53,7 +58,8 @@ def prepare_amount_sequences_for_plotting():
             print(
                 "The unit for "
                 + flow
-                + " is neither kg nor kWh. Therefore it will not be plotted in the amount sequences."
+                + " is neither kg nor kWh. Therefore it will not be plotted "
+                + "in the amount sequences."
             )
     return sequences_in_kg, sequences_in_kWh
 
@@ -179,16 +185,13 @@ def plot_cost_scalars(scalcosts, scenario):
 def plot(scenario):
     df_dict = prepare_cost_sequences_for_plotting()
     plot_cost_sequences(df_dict, scenario)
-    scalcosts = helpers.prepare_cost_scalars_for_plotting(
-        RESULTS, "scalar_results.csv", scenario
-    )
+    scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
     plot_cost_scalars(scalcosts, scenario)
     sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting()
     plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario)
 
 
 if __name__ == "__main__":
-
     general = pd.read_excel("input_data.xlsx", sheet_name="general")
     scenario = general.loc[general["label"] == "scenario", "value"].item()
 

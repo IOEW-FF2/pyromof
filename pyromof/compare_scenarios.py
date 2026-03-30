@@ -1,16 +1,17 @@
 import os
-import plotly.graph_objects as go
-import pandas as pd
-import helpers
 from pathlib import Path
+
+import helpers
+import pandas as pd
+import plotly.graph_objects as go
 
 
 def merge_scalars_from_scenarios(scenarios):
     """
     This script takes a list of scenario names and processes and joins their scalar data.
     The resulting dataframe has the following format:
-    |variable                   |type                           |{scenario_name_1}|{scenario_name_2}|
-    b_biochar to biochar_market | sum of variable costs [Euros] | 10.7            |1.4e-01          |
+    |variable                   |type                          |{scenario_name_1}|{scenario_name_2}|
+    b_biochar to biochar_market | sum of variable costs [Euros]| 10.7            |1.4e-01          |
     Non-existing numbers are filled with zeros.
     """
 
