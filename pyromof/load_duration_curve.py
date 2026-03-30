@@ -57,7 +57,7 @@ def main(scenario: str) -> None:
     plot_load_duration_curve(
         sorted_column=descending_biomass_data,
         xlabel="Hours",
-        ylabel="Injected Biomass (kg)",
+        ylabel="Biomass input (kg)",
         title=f"Scenario {scenario}: Load duration curve - Biomass",
         save_path=f"./results/{scenario}/results/load_duration_curve_biomass.png",
     )
