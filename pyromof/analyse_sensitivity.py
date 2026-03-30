@@ -1,14 +1,13 @@
 import os
 import shutil
-from pathlib import Path
 from functools import reduce
-import pandas as pd
+from pathlib import Path
+
 import optimize
+import pandas as pd
 import postprocessing
 
-
 if __name__ == "__main__":
-
     # Insert here the parameters. Only two decimal places are possible!
     parameters = {
         "component_type": "sources",  # must be plural
@@ -23,9 +22,7 @@ if __name__ == "__main__":
     scenario = "stromflex_h2"
 
     # Definition of the time period
-    time = pd.date_range(
-        start="2023-01-02", end="2023-01-03", freq="h", inclusive="both"
-    )
+    time = pd.date_range(start="2023-01-02", end="2023-01-03", freq="h", inclusive="both")
 
     profiles, sinks, sources, converters, storage, general = optimize.read_raw_data(
         "input_data.xlsx"
@@ -87,9 +84,7 @@ if __name__ == "__main__":
             time=time,
             scenario=scenario,
         )
-        optimize.save_results(
-            es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario
-        )
+        optimize.save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario)
 
         # POSTPROCESSING
 
@@ -97,9 +92,7 @@ if __name__ == "__main__":
 
         postprocessing.check_scalar_costs_consistency(result_dfs["scalar_results"])
 
-        result_dfs["scalar_results"].rename(
-            columns={"value": parameter_value}, inplace=True
-        )
+        result_dfs["scalar_results"].rename(columns={"value": parameter_value}, inplace=True)
         print(result_dfs["scalar_results"])
 
         all_dfs.append(result_dfs["scalar_results"])
