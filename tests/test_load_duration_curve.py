@@ -1,13 +1,14 @@
 import matplotlib
+
+matplotlib.use("Agg")
 import pandas as pd
+
 
 from pyromof.load_duration_curve import (
     plot_load_duration_curve,
     sort_values_descending,
     get_data_csv,
 )
-
-matplotlib.use("Agg")
 
 
 def test_sort_values_descending():
