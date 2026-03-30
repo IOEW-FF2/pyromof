@@ -3,11 +3,10 @@ import matplotlib
 matplotlib.use("Agg")
 import pandas as pd
 
-
 from pyromof.load_duration_curve import (
+    get_data_csv,
     plot_load_duration_curve,
     sort_values_descending,
-    get_data_csv,
 )
 
 
