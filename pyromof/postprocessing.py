@@ -1,14 +1,13 @@
 import os
 from pathlib import Path
 
-import optimize
 import pandas as pd
 from oemof.solph import (
     EnergySystem,
     processing,
 )
 
-from pyromof import helpers
+from pyromof import helpers, optimize
 
 
 def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
