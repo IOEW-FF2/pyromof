@@ -973,7 +973,7 @@ def create_energysystem(
                 om.TIMESTEPS, rule=tradeoff_bounds_upper
             )
             om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
-
+    
     # Add active-flow-count-limit to avoid the use of storage to waste energy
     if not storage.empty:
         print("Creating flow count limits for storage")
@@ -989,14 +989,14 @@ def create_energysystem(
         M = 200 # a safe but tight upper bound
 
         def make_limit_charge(bus_in, storage_comp):
-            """Factory function to create a charge constraint for a specific storage's inflow"""
+            # Factory function to create a charge constraint for a specific storage's inflow
             def limit_charge(m, t):
                 flow_in = m.flow[(bus_in, storage_comp), t]
                 return flow_in <= M * m.storage_direction[storage_comp, t]
             return limit_charge
         
         def make_limit_discharge(storage_comp, bus_out):
-            """Factory function to create a discharge constraint for a specific storage's outflow"""
+            # Factory function to create a discharge constraint for a specific storage's outflow
             def limit_discharge(m, t):
                 flow_out = m.flow[(storage_comp, bus_out), t]
                 return flow_out <= M * (1 - m.storage_direction[storage_comp, t])
@@ -1018,7 +1018,7 @@ def create_energysystem(
             setattr(om, f'flow_count_limit_discharge_{idx}', Constraint(
                 om.TIMESTEPS, rule=make_limit_discharge(storage_component, bus_out)
             ))
-
+    
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
 
