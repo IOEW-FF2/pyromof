@@ -1,7 +1,9 @@
 import os
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 import pandas as pd
+
 from pyromof import postprocessing
 
 TEST_PATH = Path(__file__).parent
@@ -12,10 +14,8 @@ def test_calculate_variable_costs_per_flow_per_timestep():
     path_sequences = os.path.join(TEST_PATH, "files", "sequences.csv")
     sequences = pd.read_csv(path_sequences, sep=";", index_col=0)
     path_varcosts = os.path.join(TEST_PATH, "files", "variable_costs_from_model.csv")
-    effective_variable_costs = (
-        postprocessing.calculate_variable_costs_per_flow_per_timestep(
-            sequences, path_varcosts
-        )
+    effective_variable_costs = postprocessing.calculate_variable_costs_per_flow_per_timestep(
+        sequences, path_varcosts
     )
     expected_result = pd.DataFrame(
         columns=[
@@ -31,7 +31,12 @@ def test_calculate_variable_costs_per_flow_per_timestep():
         ],
         data={
             "('b_biochar to biochar_market')": [0, 0, 0, np.nan],
-            "('b_electricity_2 to electricity_grid')": [-0.2, -0.2, -0.2, np.nan],
+            "('b_electricity_2 to electricity_grid')": [
+                -0.2,
+                -0.2,
+                -0.2,
+                np.nan,
+            ],
             "('b_co2 to co2_market')": [0.02, 0.02, 0.02, np.nan],
         },
     )

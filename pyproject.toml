@@ -13,11 +13,25 @@ dependencies = [
     "oemof (>=1.0,<2.0)",
     "openpyxl (>=3.1.5,<4.0.0)",
     "matplotlib",
-    "typeguard"
+    "typeguard",
+    "dash",
+    "dash_cytoscape",
+    "IPython"
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff"
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
 

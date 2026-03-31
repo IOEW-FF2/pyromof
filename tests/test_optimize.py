@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
+
 import pandas as pd
+
 from pyromof import optimize
 
 TEST_PATH = Path(__file__).parent
@@ -19,7 +21,10 @@ def test_minimalexample():
         Path(__file__).parent.parent, "minimalexample"
     )
     time = pd.date_range(
-        start="2023-01-02 02:00", end="2023-01-02 05:00", freq="h", inclusive="both"
+        start="2023-01-02 02:00",
+        end="2023-01-02 05:00",
+        freq="h",
+        inclusive="both",
     )
     es, om, investment, epcs = optimize.create_energysystem(
         META_INFO=META_INFO,
