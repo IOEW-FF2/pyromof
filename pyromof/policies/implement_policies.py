@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame, scenario: str) -> pd.DataFrame:
+def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame) -> pd.DataFrame:
     feed_in_premium = (
         -1
         / 100
@@ -12,14 +12,14 @@ def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame, scenario: s
     ].values[0]
     if activate_status == "x":
         sink.loc[
-            (sink["label"] == "electricity_grid") & (sink["scenario"] == scenario),
+            (sink["label"] == "electricity_grid"),
             "variable_costs",
         ] = feed_in_premium
     return sink
 
 
 def sliding_premium_policy(
-    sink: pd.DataFrame, policies: pd.DataFrame, profiles: pd.DataFrame, scenario: str
+    sink: pd.DataFrame, policies: pd.DataFrame, profiles: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     base_value = (
@@ -45,16 +45,14 @@ def sliding_premium_policy(
     if activate_status == "x":
         profiles["sliding_premium_profile"] = feed_in_payment_euro_per_kWh
         sink.loc[
-            (sink["label"] == "electricity_grid") & (sink["scenario"] == scenario),
+            (sink["label"] == "electricity_grid"),
             "variable_costs",
         ] = "sliding_premium_profile"
 
     return sink, profiles
 
 
-def fix_investment_subsidy_policy(
-    converters: pd.DataFrame, policies: pd.DataFrame, scenario: str
-) -> pd.DataFrame:
+def fix_investment_subsidy_policy(converters: pd.DataFrame, policies: pd.DataFrame) -> pd.DataFrame:
     fix_subsidy = policies.loc[
         policies["policy"] == "Subsidy for pyrolysis investment costs", "value 1"
     ].values[0]
@@ -63,19 +61,14 @@ def fix_investment_subsidy_policy(
     ].values[0]
 
     if activate_status == "x":
-        converters.loc[
-            (converters["label"] == "pyrolysis") & (converters["scenario"] == scenario), "capex"
-        ] = (
-            converters.loc[
-                (converters["label"] == "pyrolysis") & (converters["scenario"] == scenario), "capex"
-            ]
-            - fix_subsidy
+        converters.loc[(converters["label"] == "pyrolysis"), "capex"] = (
+            converters.loc[(converters["label"] == "pyrolysis"), "capex"] - fix_subsidy
         )
     return converters
 
 
 def percentage_investment_subsidy_policy(
-    converters: pd.DataFrame, policies: pd.DataFrame, scenario: str
+    converters: pd.DataFrame, policies: pd.DataFrame
 ) -> pd.DataFrame:
     percentage_subsidy = policies.loc[
         policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "value 1"
@@ -85,12 +78,28 @@ def percentage_investment_subsidy_policy(
     ].values[0]
 
     if activate_status == "x":
-        converters.loc[
-            (converters["label"] == "pyrolysis") & (converters["scenario"] == scenario), "capex"
-        ] = converters.loc[
-            (converters["label"] == "pyrolysis") & (converters["scenario"] == scenario), "capex"
+        converters.loc[(converters["label"] == "pyrolysis"), "capex"] = converters.loc[
+            (converters["label"] == "pyrolysis"), "capex"
         ] * (1 - (1 / 100 * percentage_subsidy))
     return converters
+
+
+def confirm_policies(policies):
+    activated_policies = policies.loc[policies["activate"] == "x", "policy"].tolist()
+
+    if (
+        "Fixed feed-in remuneration" in activated_policies
+        and "Sliding premium" in activated_policies
+    ) or (
+        "Subsidy for pyrolysis investment costs" in activated_policies
+        and "Percentage subsidy for pyrolysis investment costs" in activated_policies
+    ):
+        raise ValueError(
+            "Only one of the policies in each policy type can be activated at the same time. \n"
+            "Please check your input in the policies sheet."
+        )
+    else:
+        return print("policies confirmed")
 
 
 def redefine_sink_and_converter_for_policies(
@@ -98,36 +107,19 @@ def redefine_sink_and_converter_for_policies(
     converters: pd.DataFrame,
     policies: pd.DataFrame,
     profiles: pd.DataFrame,
-    scenario: str,
 ) -> pd.DataFrame:
 
-    if (
-        policies.loc[policies["policy"] == "Fixed feed-in remuneration", "activate"].values[0]
-        == "x"
-        and policies.loc[policies["policy"] == "Sliding premium", "activate"].values[0] == "x"
-        or policies.loc[
-            policies["policy"] == "Subsidy for pyrolysis investment costs", "activate"
-        ].values[0]
-        == "x"
-        and policies.loc[
-            policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "activate"
-        ].values[0]
-        == "x"
-    ):
-        raise ValueError(
-            "Only one of the policies in each policy type can be activated at the same time. \n"
-            "Please check your input in the policies sheet."
-        )
-    else:
-        sink = fixed_premium_policy(sink, policies, scenario)
-        sink, profiles = sliding_premium_policy(sink, policies, profiles, scenario)
-        converters = fix_investment_subsidy_policy(converters, policies, scenario)
-        converters = percentage_investment_subsidy_policy(converters, policies, scenario)
+    confirm_policies(policies)
+
+    sink = fixed_premium_policy(sink, policies)
+    sink, profiles = sliding_premium_policy(sink, policies, profiles)
+    converters = fix_investment_subsidy_policy(converters, policies)
+    converters = percentage_investment_subsidy_policy(converters, policies)
 
     return sink, converters, profiles
 
 
-# test if the functions work as expected
+# test if the functions work as expected for scenario "stromflex_h2"
 
 
 def verify_redefine_sink_and_converter_for_policies(relative_file_path):
@@ -137,7 +129,7 @@ def verify_redefine_sink_and_converter_for_policies(relative_file_path):
     policies = pd.read_excel(relative_file_path, sheet_name="policies")
 
     sink, converters, profiles = redefine_sink_and_converter_for_policies(
-        sinks, converters, policies, profiles, "stromflex_h2"
+        sinks, converters, policies, profiles
     )
     print("\n=== pyrolysis converters: label, capex, investment ===")
     print(
