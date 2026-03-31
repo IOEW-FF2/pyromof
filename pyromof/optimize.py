@@ -155,9 +155,6 @@ def create_energysystem(
     # Model definition
     es = solph.EnergySystem(timeindex=time)
 
-    sinks, sources, converters, storage = filter_input_data_by_scenario(
-        sinks, sources, converters, storage, scenario
-    )
     buses, components = extract_components_and_buses_from_input_data(
         sinks, sources, converters, storage
     )
@@ -1029,8 +1026,12 @@ if __name__ == "__main__":
         "input_data.xlsx"
     )
     scenario = retrieve_scenario_from_input_data(general)
+
+    sinks, sources, converters, storage = filter_input_data_by_scenario(
+        sinks, sources, converters, storage, scenario
+    )
     sinks, converters, profiles = redefine_sink_and_converter_for_policies(
-        sinks, converters, policies, profiles, scenario
+        sinks, converters, policies, profiles
     )
     time = define_time_period(general)
     profiles = slice_time_period_from_profiles(profiles, time)
