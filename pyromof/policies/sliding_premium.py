@@ -33,9 +33,14 @@ def receive_and_refine_electricity_price_data():
 
     data_float = data_replace_comma.astype(float)
 
-    electricity_price_cent_per_kWh = data_float.copy() / 10
+    electricity_price_cent_per_kWh = data_float.copy() / -10
+    electricity_price_euro_per_kWh = data_float.copy() / -1000
 
-    return electricity_price_cent_per_kWh
+    result_df = pd.DataFrame({
+        "cent_per_kWh": electricity_price_cent_per_kWh,
+        "euro_per_kWh": electricity_price_euro_per_kWh
+    })
+    return result_df
 
 
 def feed_in_payment_cent_per_kWh(electricity_price_cent_per_kWh, base_value, lower_threshold):
@@ -141,13 +146,18 @@ def receive_and_refine_all_data(scenario: str) -> None:
     """
     base_value, lower_threshold = receive_base_value_and_lower_threshold(scenario)
 
-    electricity_price_cent_per_kWh = receive_and_refine_electricity_price_data()
+    electricity_price_data = receive_and_refine_electricity_price_data()
+    electricity_price_cent_per_kWh = electricity_price_data["cent_per_kWh"]
+    electricity_price_euro_per_kWh = electricity_price_data["euro_per_kWh"]
+
+
     pyrolysis_electricity_to_grid_kWh = receive_scenario_electricity_data(scenario)
 
     return (
         base_value,
         lower_threshold,
         electricity_price_cent_per_kWh,
+        electricity_price_euro_per_kWh,
         pyrolysis_electricity_to_grid_kWh,
     )
 
@@ -220,6 +230,7 @@ def calc_payment_sums(
 
 def create_csv_file_for_created_data(
     electricity_price_cent_per_kWh,
+    electricity_price_euro_per_kWh,
     feed_in_revenue_cent_per_kWh,
     government_payment_share_cent_per_kWh,
     pyrolysis_electricity_to_grid_kWh,
@@ -248,17 +259,18 @@ def create_csv_file_for_created_data(
     """
     df = pd.DataFrame(
         {
-            "electricity_price (cent/kWh)": electricity_price_cent_per_kWh,
-            "feed_in_payment (cent/kWh)": feed_in_revenue_cent_per_kWh,
-            "government_payment_share (cent/kWh)": government_payment_share_cent_per_kWh,
-            "pyrolysis_electricity_to_grid (kWh)": pyrolysis_electricity_to_grid_kWh,
-            "revenue_fed_in_electricity (euro)": revenue_fed_in_electricity_euro,
-            "government_payment_share (euro)": government_payment_for_fed_in_electricity_euro,
-            "electricity_market_payment_share (euro)": electricity_market_payment_euro,
+            "electricity_price (cent/kWh)": electricity_price_cent_per_kWh.round(2),
+            "electricity_price (euro/kWh)": electricity_price_euro_per_kWh.round(4),
+            "feed_in_payment (cent/kWh)": feed_in_revenue_cent_per_kWh.round(2),
+            "government_payment_share (cent/kWh)": government_payment_share_cent_per_kWh.round(2),
+            "pyrolysis_electricity_to_grid (kWh)": pyrolysis_electricity_to_grid_kWh.round(2),
+            "revenue_fed_in_electricity (euro)": revenue_fed_in_electricity_euro.round(),
+            "government_payment_share (euro)": government_payment_for_fed_in_electricity_euro.round(),
+            "electricity_market_payment_share (euro)": electricity_market_payment_euro.round(),
         }
     )
 
-    df = df.round(1)
+    #df = df.round(2)
 
     df.to_csv("preprocessing/feed_in_premium_data.csv", index=False, sep=";")
 
@@ -301,6 +313,7 @@ def main(scenario: str) -> None:
         base_value,
         lower_treshold,
         electricity_price_cent_per_kWh,
+        electricity_price_euro_per_kWh,
         pyrolysis_electricity_to_grid_kWh,
     ) = receive_and_refine_all_data(scenario)
 
@@ -329,6 +342,7 @@ def main(scenario: str) -> None:
 
     create_csv_file_for_created_data(
         electricity_price_cent_per_kWh,
+        electricity_price_euro_per_kWh,
         feed_in_revenue_cent_per_kWh,
         government_payment_share_cent_per_kWh,
         pyrolysis_electricity_to_grid_kWh,

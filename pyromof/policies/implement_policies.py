@@ -1,5 +1,6 @@
 import pandas as pd
 
+from sliding_premium import receive_and_refine_electricity_price_data
 
 def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame) -> pd.DataFrame:
     feed_in_premium = (
@@ -19,7 +20,7 @@ def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame) -> pd.DataF
 
 
 def sliding_premium_policy(
-    sink: pd.DataFrame, policies: pd.DataFrame, profiles: pd.DataFrame
+    sink: pd.DataFrame, policies: pd.DataFrame, profiles: pd.DataFrame, electricity_price_data: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     base_value = (
@@ -28,7 +29,7 @@ def sliding_premium_policy(
     lower_threshold = (
         -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 2"].values[0]
     )
-    electricity_price = profiles["profile_electricity_remuneration"].fillna(base_value)
+    electricity_price = electricity_price_data
     activate_status = policies.loc[policies["policy"] == "Sliding premium", "activate"].values[0]
 
     feed_in_payment_euro_per_kWh = []
@@ -110,9 +111,11 @@ def redefine_sink_and_converter_for_policies(
 ) -> pd.DataFrame:
 
     confirm_policies(policies)
+    electricity_price_data = receive_and_refine_electricity_price_data()
+    electricity_price_euro_per_mwh = electricity_price_data["euro_per_kWh"]
 
     sink = fixed_premium_policy(sink, policies)
-    sink, profiles = sliding_premium_policy(sink, policies, profiles)
+    sink, profiles = sliding_premium_policy(sink, policies, profiles, electricity_price_euro_per_mwh)
     converters = fix_investment_subsidy_policy(converters, policies)
     converters = percentage_investment_subsidy_policy(converters, policies)
 
