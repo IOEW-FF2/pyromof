@@ -245,7 +245,8 @@ def postprocess(es, DUMPING_SPACE, investment, input_data):
 
 if __name__ == "__main__":
     input_data = optimize.read_raw_data("input_data.xlsx")
-    scenario = input_data["general"].loc[input_data["general"]["label"] == "scenario", "value"].item()
+    scenario = input_data["general"].loc[input_data["general"]["label"] == 
+                                         "scenario", "value"].item()
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
