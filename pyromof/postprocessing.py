@@ -115,12 +115,13 @@ def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
     for col in effective_variable_costs.columns:
         effective_variable_costs[col] = sequences[col] * varcosts[col]
 
-    # Add a column with the sum of variable costs per timestep
-    effective_variable_costs["sum of variable costs"] = effective_variable_costs.sum(
+    return effective_variable_costs
+
+def calculate_sum_of_variable_costs_per_timestep(effective_variable_costs):
+        effective_variable_costs["sum of variable costs"] = effective_variable_costs.sum(
         axis=1
     )
-
-    return effective_variable_costs
+        return effective_variable_costs
 
 
 def add_investment_amount_to_scalar_results(
@@ -230,6 +231,8 @@ def postprocess(es, DUMPING_SPACE, investment):
         scalar_results = add_investment_amount_to_scalar_results(
             investment, scalars, scalar_results, DUMPING_SPACE
         )
+    
+    effective_variable_costs = calculate_sum_of_variable_costs_per_timestep(effective_variable_costs)
 
     return {
         "sequences": sequences,
