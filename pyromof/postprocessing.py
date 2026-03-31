@@ -1,3 +1,4 @@
+import optimize
 import os
 from pathlib import Path
 
@@ -99,7 +100,7 @@ def convert_result_sequences_to_df(results_data):
     )
 
 
-def gas_char_ratio(df_sequences, df_additional_columns, converter):
+def gas_char_ratio(df_sequences, df_additional_columns, converters):
     """
     This function calculates the ratio of biochar to syngas output for the pyrolysis process.
     The ratio is then added as a column to the df_additional_columns dataframe.
@@ -107,8 +108,8 @@ def gas_char_ratio(df_sequences, df_additional_columns, converter):
     Then, the ratio is multiplied with the normed ratio to get a ratio range close to 1.
     The normed ratio is based on the normed pyrolysis outputs from the input_data.xlsx file.
     """
-    normed_biochar_output = converter.loc[converter["label"] == "pyrolysis", "eff_out_1"].iloc[0]
-    normed_syngas_output = converter.loc[converter["label"] == "pyrolysis", "eff_out_2"].iloc[0]
+    normed_biochar_output = converters.loc[converters["label"] == "pyrolysis", "eff_out_1"].iloc[0]
+    normed_syngas_output = converters.loc[converters["label"] == "pyrolysis", "eff_out_2"].iloc[0]
     normed_ratio = normed_syngas_output / normed_biochar_output
 
     bio_char_output = df_sequences["pyrolysis to b_biochar"]
@@ -197,7 +198,7 @@ def check_scalar_costs_consistency(scalar_results):
     return scalar_results
 
 
-def postprocess(es, DUMPING_SPACE, investment, converter):
+def postprocess(es, DUMPING_SPACE, investment, input_data):
     # Create an empty dataframe for the scalar results:
 
     scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
@@ -208,8 +209,7 @@ def postprocess(es, DUMPING_SPACE, investment, converter):
     sequences, scalars, storage_contents, additional_columns = convert_result_sequences_to_df(
         results_data=es.results["main"]
     )
-
-    additional_columns = gas_char_ratio(sequences, additional_columns, converter)
+    additional_columns = gas_char_ratio(sequences, additional_columns, input_data["converters"])
 
     effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
         sequences,
@@ -244,9 +244,8 @@ def postprocess(es, DUMPING_SPACE, investment, converter):
 
 
 if __name__ == "__main__":
-    general = pd.read_excel("input_data.xlsx", sheet_name="general")
-    converter = pd.read_excel("input_data.xlsx", sheet_name="converter")
-    scenario = general.loc[general["label"] == "scenario", "value"].item()
+    input_data = optimize.read_raw_data("input_data.xlsx")
+    scenario = input_data["general"].loc[input_data["general"]["label"] == "scenario", "value"].item()
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
@@ -261,7 +260,7 @@ if __name__ == "__main__":
     # Read in the scenario and set investment variable
     scenario, investment = helpers.retreive_scenario_from_results(es)
 
-    result_dfs = postprocess(es, DUMPING_SPACE, investment, converter)
+    result_dfs = postprocess(es, DUMPING_SPACE, investment, input_data)
 
     result_dfs["scalar_results"] = check_scalar_costs_consistency(result_dfs["scalar_results"])
 
