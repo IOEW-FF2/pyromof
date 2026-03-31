@@ -36,10 +36,12 @@ def receive_and_refine_electricity_price_data():
     electricity_price_cent_per_kWh = data_float.copy() / -10
     electricity_price_euro_per_kWh = data_float.copy() / -1000
 
-    result_df = pd.DataFrame({
-        "cent_per_kWh": electricity_price_cent_per_kWh,
-        "euro_per_kWh": electricity_price_euro_per_kWh
-    })
+    result_df = pd.DataFrame(
+        {
+            "cent_per_kWh": electricity_price_cent_per_kWh,
+            "euro_per_kWh": electricity_price_euro_per_kWh,
+        }
+    )
     return result_df
 
 
@@ -149,7 +151,6 @@ def receive_and_refine_all_data(scenario: str) -> None:
     electricity_price_data = receive_and_refine_electricity_price_data()
     electricity_price_cent_per_kWh = electricity_price_data["cent_per_kWh"]
     electricity_price_euro_per_kWh = electricity_price_data["euro_per_kWh"]
-
 
     pyrolysis_electricity_to_grid_kWh = receive_scenario_electricity_data(scenario)
 
@@ -265,12 +266,12 @@ def create_csv_file_for_created_data(
             "government_payment_share (cent/kWh)": government_payment_share_cent_per_kWh.round(2),
             "pyrolysis_electricity_to_grid (kWh)": pyrolysis_electricity_to_grid_kWh.round(2),
             "revenue_fed_in_electricity (euro)": revenue_fed_in_electricity_euro.round(),
-            "government_payment_share (euro)": government_payment_for_fed_in_electricity_euro.round(),
+            "government_payment_share (euro)": government_payment_for_fed_in_electricity_euro,
             "electricity_market_payment_share (euro)": electricity_market_payment_euro.round(),
         }
     )
 
-    #df = df.round(2)
+    # df = df.round(2)
 
     df.to_csv("preprocessing/feed_in_premium_data.csv", index=False, sep=";")
 
