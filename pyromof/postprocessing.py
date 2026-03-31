@@ -1,7 +1,7 @@
-import optimize
 import os
 from pathlib import Path
 
+import optimize
 import pandas as pd
 from oemof.solph import (
     EnergySystem,

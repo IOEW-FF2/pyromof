@@ -12,6 +12,7 @@ from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
 
+
 def read_raw_data(relative_file_path):
     return {
         "profiles": pd.read_excel(relative_file_path, sheet_name="profiles"),
