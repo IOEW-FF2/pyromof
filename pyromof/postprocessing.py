@@ -7,7 +7,7 @@ from oemof.solph import (
     processing,
 )
 
-from pyromof import helpers
+from pyromof import helpers, optimize
 
 
 def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
@@ -99,9 +99,31 @@ def convert_result_sequences_to_df(results_data):
     )
 
 
+def gas_char_ratio(df_sequences, df_additional_columns, converters):
+    """
+    This function calculates the ratio of biochar to syngas output for the pyrolysis process.
+    The ratio is then added as a column to the df_additional_columns dataframe.
+    The ratio is calculated using the outputs from the sequences dataframe.
+    Then, the ratio is multiplied with the normed ratio to get a ratio range close to 1.
+    The normed ratio is based on the normed pyrolysis outputs from the input_data.xlsx file.
+    """
+    normed_biochar_output = converters.loc[converters["label"] == "pyrolysis", "eff_out_1"].iloc[0]
+    normed_syngas_output = converters.loc[converters["label"] == "pyrolysis", "eff_out_2"].iloc[0]
+    normed_ratio = normed_syngas_output / normed_biochar_output
+
+    bio_char_output = df_sequences["pyrolysis to b_biochar"]
+    syngas_output = df_sequences["pyrolysis to b_syngas_hot"]
+    ratio = bio_char_output.div(syngas_output) * normed_ratio
+    ratio = ratio.replace([float("inf"), -float("inf")], pd.NA)
+
+    df_additional_columns["gas_char_ratio"] = ratio
+
+    return df_additional_columns
+
+
 def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
     """
-    This function takes the result sequences (flows per timestep) and the variable costs 
+    This function takes the result sequences (flows per timestep) and the variable costs
     from csv files and multiplies them. The results are returned as a dataframe.
     """
     varcosts = pd.read_csv(path_varcosts, sep=";", index_col=0)
@@ -109,7 +131,7 @@ def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
         sequences.index[:-1]
     )  # -1 because the index in sequences in one time step longer than the data
 
-    # Create a new dataframe with the same structure as the sequences dataframe 
+    # Create a new dataframe with the same structure as the sequences dataframe
     # to store the cost sequences
     effective_variable_costs = pd.DataFrame(index=sequences.index, columns=sequences.columns)
     # Calculate the effective variable costs by multiplying the sequences with the variable costs
@@ -175,7 +197,7 @@ def check_scalar_costs_consistency(scalar_results):
     return scalar_results
 
 
-def postprocess(es, DUMPING_SPACE, investment):
+def postprocess(es, DUMPING_SPACE, investment, input_data):
     # Create an empty dataframe for the scalar results:
 
     scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
@@ -186,6 +208,7 @@ def postprocess(es, DUMPING_SPACE, investment):
     sequences, scalars, storage_contents, additional_columns = convert_result_sequences_to_df(
         results_data=es.results["main"]
     )
+    additional_columns = gas_char_ratio(sequences, additional_columns, input_data["converters"])
 
     effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
         sequences,
@@ -220,8 +243,9 @@ def postprocess(es, DUMPING_SPACE, investment):
 
 
 if __name__ == "__main__":
-    general = pd.read_excel("input_data.xlsx", sheet_name="general")
-    scenario = general.loc[general["label"] == "scenario", "value"].item()
+    input_data = optimize.read_raw_data("input_data.xlsx")
+    scenario = input_data["general"].loc[input_data["general"]["label"] == 
+                                         "scenario", "value"].item()
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
@@ -236,7 +260,7 @@ if __name__ == "__main__":
     # Read in the scenario and set investment variable
     scenario, investment = helpers.retreive_scenario_from_results(es)
 
-    result_dfs = postprocess(es, DUMPING_SPACE, investment)
+    result_dfs = postprocess(es, DUMPING_SPACE, investment, input_data)
 
     result_dfs["scalar_results"] = check_scalar_costs_consistency(result_dfs["scalar_results"])
 
