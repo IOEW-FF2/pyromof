@@ -1,6 +1,5 @@
 import pandas as pd
 
-
 from pyromof.policies.sliding_premium import (
     feed_in_payment_sliding_premium,
     receive_and_refine_electricity_price_data,
