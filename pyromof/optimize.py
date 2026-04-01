@@ -14,17 +14,18 @@ from pyromof import helpers, postprocessing
 
 
 def read_raw_data(relative_file_path):
-    profiles = pd.read_excel(relative_file_path, sheet_name="profiles")
-    sinks = pd.read_excel(relative_file_path, sheet_name="sink")
-    sources = pd.read_excel(relative_file_path, sheet_name="source")
-    converters = pd.read_excel(relative_file_path, sheet_name="converter")
-    storage = pd.read_excel(relative_file_path, sheet_name="storage")
-    general = pd.read_excel(relative_file_path, sheet_name="general")
-    return profiles, sinks, sources, converters, storage, general
+    return {
+        "profiles": pd.read_excel(relative_file_path, sheet_name="profiles"),
+        "sinks": pd.read_excel(relative_file_path, sheet_name="sink"),
+        "sources": pd.read_excel(relative_file_path, sheet_name="source"),
+        "converters": pd.read_excel(relative_file_path, sheet_name="converter"),
+        "storage": pd.read_excel(relative_file_path, sheet_name="storage"),
+        "general": pd.read_excel(relative_file_path, sheet_name="general"),
+    }
 
 
 @typechecked
-def define_time_period(general_df: pd.DataFrame) -> pd.DatetimeIndex:
+def define_time_period(general: pd.DataFrame) -> pd.DatetimeIndex:
     # Definition of the time period
     start_time = general.loc[general["label"] == "start_time", "value"].item()
     end_time = general.loc[general["label"] == "end_time", "value"].item()
@@ -1023,10 +1024,10 @@ def save_results(
 
 
 if __name__ == "__main__":
-    profiles, sinks, sources, converters, storage, general = read_raw_data("input_data.xlsx")
-    scenario = retrieve_scenario_from_input_data(general)
-    time = define_time_period(general)
-    profiles = slice_time_period_from_profiles(profiles, time)
+    data = read_raw_data("input_data.xlsx")
+    scenario = retrieve_scenario_from_input_data(data["general"])
+    time = define_time_period(data["general"])
+    profiles = slice_time_period_from_profiles(data["profiles"], time)
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
         Path(__file__).parent.parent, scenario
     )
@@ -1037,11 +1038,11 @@ if __name__ == "__main__":
     es, om, investment, epcs = create_energysystem(
         META_INFO=META_INFO,
         profiles=profiles,
-        sinks=sinks,
-        sources=sources,
-        converters=converters,
-        storage=storage,
-        general=general,
+        sinks=data["sinks"],
+        sources=data["sources"],
+        converters=data["converters"],
+        storage=data["storage"],
+        general=data["general"],
         time=time,
         scenario=scenario,
     )
