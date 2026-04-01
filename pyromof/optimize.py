@@ -11,7 +11,6 @@ from pyomo.environ import Constraint
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
-from pyromof.policies.implement_policies import redefine_sink_and_converter_for_policies
 
 
 def read_raw_data(relative_file_path):

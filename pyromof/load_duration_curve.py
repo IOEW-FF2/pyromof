@@ -40,12 +40,8 @@ def main(scenario: str) -> None:
     """Execute the load duration curve generation."""
     columns = get_data_csv(scenario)
 
-    descending_power_data = sort_values_descending(
-        columns, "b_electricity to electricity_grid"
-    )
-    descending_biomass_data = sort_values_descending(
-        columns, "b_biomass_dry to pyrolysis"
-    )
+    descending_power_data = sort_values_descending(columns, "b_electricity to electricity_grid")
+    descending_biomass_data = sort_values_descending(columns, "b_biomass_dry to pyrolysis")
 
     plot_load_duration_curve(
         sorted_column=descending_power_data,
