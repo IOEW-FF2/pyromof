@@ -75,11 +75,11 @@ if __name__ == "__main__":
             time=time,
             scenario=scenario,
         )
-        optimize.save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario)
+        optimize.save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
 
         # POSTPROCESSING
 
-        result_dfs = postprocessing.postprocess(es, DUMPING_SPACE, investment)
+        result_dfs = postprocessing.postprocess(es, DUMPING_SPACE, investment, input_data)
 
         postprocessing.check_scalar_costs_consistency(result_dfs["scalar_results"])
 
