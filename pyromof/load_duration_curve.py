@@ -24,7 +24,7 @@ def sort_values_descending(df: pd.DataFrame, column: str) -> pd.Series:
     return s.sort_values(ascending=False)
 
 
-def plot_load_duration_curve(sorted_column, xlabel, ylabel, title, save_path):
+def create_plot(sorted_column, xlabel, ylabel, title, save_path):
     """Plot the load duration curve."""
     plt.figure(figsize=(10, 6))
     plt.plot(range(len(sorted_column)), sorted_column.values)
@@ -38,6 +38,16 @@ def plot_load_duration_curve(sorted_column, xlabel, ylabel, title, save_path):
 
 def plot_load_duration_curves(scenario=None):
     """Execute the load duration curve generation."""
+    if scenario is None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--scenario",
+            required=True,
+            help="Name of the scenario, e.g. stromflex_h2",
+        )
+        args = parser.parse_args()
+        scenario = args.scenario
+    
     columns = get_data_csv(scenario)
 
     descending_power_data = sort_values_descending(
@@ -47,28 +57,17 @@ def plot_load_duration_curves(scenario=None):
         columns, "b_biomass_dry to pyrolysis"
     )
 
-    plot_load_duration_curve(
+    create_plot(
         sorted_column=descending_power_data,
         xlabel="Hours",
         ylabel="Electricity feed-in (kWh)",
         title=f"Scenario {scenario}: Load duration curve - Power",
         save_path=f"./results/{scenario}/results/load_duration_curve_power.png",
     )
-    plot_load_duration_curve(
+    create_plot(
         sorted_column=descending_biomass_data,
         xlabel="Hours",
         ylabel="Biomass input (kg)",
         title=f"Scenario {scenario}: Load duration curve - Biomass",
         save_path=f"./results/{scenario}/results/load_duration_curve_biomass.png",
     )
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--scenario",
-        required=True,
-        help="Name of the scenario, e.g. stromflex_h2",
-    )
-    args = parser.parse_args()
-    main(args.scenario)
