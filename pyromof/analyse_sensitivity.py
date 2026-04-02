@@ -79,7 +79,7 @@ def analyze_sensitivity():
 
         # POSTPROCESSING
 
-        result_dfs = postprocessing.postprocess(es, DUMPING_SPACE, investment, input_data)
+        result_dfs = postprocessing.postprocess()
 
         postprocessing.check_scalar_costs_consistency(result_dfs["scalar_results"])
 
