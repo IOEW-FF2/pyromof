@@ -49,7 +49,9 @@ def sliding_premium_policy(
     return sink, profiles
 
 
-def fix_investment_subsidy_policy(converters: pd.DataFrame, policies: pd.DataFrame) -> pd.DataFrame:
+def lump_sum_investment_subsidy_policy(
+    converters: pd.DataFrame, policies: pd.DataFrame
+) -> pd.DataFrame:
 
     fix_subsidy = policies.loc[
         policies["policy"] == "Subsidy for pyrolysis investment costs", "value 1"
@@ -87,7 +89,7 @@ def percentage_investment_subsidy_policy(
     return converters
 
 
-def confirm_policies(policies):
+def check_policy_choice_compatibility(policies):
 
     activated_policies = policies.loc[policies["activate"] == "x", "policy"].tolist()
 
@@ -114,7 +116,7 @@ def redefine_input_data_for_policies(data):
     converters = data["converters"]
     profiles = data["profiles"]
 
-    confirm_policies(policies)
+    check_policy_choice_compatibility(policies)
 
     electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data()
 
@@ -124,7 +126,7 @@ def redefine_input_data_for_policies(data):
         sinks, policies, profiles, electricity_price_euro_per_kwh
     )
 
-    data["converters"] = fix_investment_subsidy_policy(converters, policies)
+    data["converters"] = lump_sum_investment_subsidy_policy(converters, policies)
 
     data["converters"] = percentage_investment_subsidy_policy(converters, policies)
 
