@@ -1,9 +1,5 @@
 import pandas as pd
 
-from pyromof.policies.sliding_premium import (
-    feed_in_payment_sliding_premium,
-)
-
 
 def receive_and_refine_electricity_price_data():
 
@@ -45,6 +41,42 @@ def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame) -> pd.DataF
     return sink
 
 
+def feed_in_payment_sliding_premium(
+    policies: pd.DataFrame,
+    electricity_price_data: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    This function calculates the feed-in payment for each hour in euro per kwh.
+    Based on the electricity price data, base value, and lower threshold from policies.
+    The feed-in payment is the base_value if:
+    The electricity price is above the lower threshold and below the base value.
+    Otherwise the feed_in payment is the electricity price.
+    """
+
+    base_value = (
+        -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 1"].values[0]
+    )
+
+    lower_threshold = (
+        -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 2"].values[0]
+    )
+
+    electricity_price = electricity_price_data
+
+    feed_in_payment_euro_per_kwh = []
+
+    for i in range(len(electricity_price)):
+        if electricity_price.iloc[i] >= base_value and electricity_price.iloc[i] <= lower_threshold:
+            feed_in_payment_euro_per_kwh.append(base_value)
+
+        elif (
+            electricity_price.iloc[i] >= lower_threshold or electricity_price.iloc[i] <= base_value
+        ):
+            feed_in_payment_euro_per_kwh.append(electricity_price.iloc[i])
+
+    return pd.Series(feed_in_payment_euro_per_kwh, index=electricity_price.index)
+
+
 def sliding_premium_policy(
     sink: pd.DataFrame,
     policies: pd.DataFrame,
@@ -53,7 +85,6 @@ def sliding_premium_policy(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     feed_in_payment_euro_per_kwh = feed_in_payment_sliding_premium(policies, electricity_price_data)
-
     activate_status = policies.loc[policies["policy"] == "Sliding premium", "activate"].values[0]
 
     if activate_status == "x":

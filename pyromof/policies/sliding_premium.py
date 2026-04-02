@@ -2,7 +2,10 @@ import argparse
 
 import pandas as pd
 
-from pyromof.policies.implement_policies import receive_and_refine_electricity_price_data
+from pyromof.policies.implement_policies import (
+    feed_in_payment_sliding_premium,
+    receive_and_refine_electricity_price_data,
+)
 
 
 def receive_policies_sheet():
@@ -27,52 +30,6 @@ def receive_scenario_electricity_data(scenario: str) -> pd.Series:
     data = pd.read_csv(file_path, sep=separator, parse_dates=parse_dates)
 
     return data[target_column]
-
-
-def feed_in_payment_sliding_premium(
-    policies: pd.DataFrame,
-    electricity_price_data: pd.DataFrame,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """
-
-    This function calculates the feed-in payment for each hour in euro per kwh.
-
-
-    Based on the electricity price data, base value, and lower threshold from policies.
-
-
-    The feed-in payment is the base_value if:
-
-
-    The electricity price is above the lower threshold and below the base value.
-
-
-    Otherwise the feed_in payment is the electricity price.
-
-    """
-
-    base_value = (
-        -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 1"].values[0]
-    )
-
-    lower_threshold = (
-        -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 2"].values[0]
-    )
-
-    electricity_price = electricity_price_data
-
-    feed_in_payment_euro_per_kwh = []
-
-    for i in range(len(electricity_price)):
-        if electricity_price.iloc[i] >= base_value and electricity_price.iloc[i] <= lower_threshold:
-            feed_in_payment_euro_per_kwh.append(base_value)
-
-        elif (
-            electricity_price.iloc[i] >= lower_threshold or electricity_price.iloc[i] <= base_value
-        ):
-            feed_in_payment_euro_per_kwh.append(electricity_price.iloc[i])
-
-    return pd.Series(feed_in_payment_euro_per_kwh, index=electricity_price.index)
 
 
 def government_payment_euro_per_kwh(
