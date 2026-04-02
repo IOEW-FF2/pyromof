@@ -11,7 +11,7 @@ from pyomo.environ import Constraint
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
-from pyromof.policies.implement_policies import redefine_sink_and_converter_for_policies
+from pyromof.policies.implement_policies import redefine_input_data_for_policies
 
 
 def read_raw_data(relative_file_path):
@@ -1025,9 +1025,7 @@ def save_results(
 if __name__ == "__main__":
     data = read_raw_data("input_data.xlsx")
     scenario = retrieve_scenario_from_input_data(data["general"])
-    data["sinks"], data["converters"], data["profiles"] = redefine_sink_and_converter_for_policies(
-        data
-    )
+    data["sinks"], data["converters"], data["profiles"] = redefine_input_data_for_policies(data)
     time = define_time_period(data["general"])
     profiles = slice_time_period_from_profiles(data["profiles"], time)
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(

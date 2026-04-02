@@ -107,7 +107,7 @@ def confirm_policies(policies):
         return print("policies confirmed")
 
 
-def redefine_sink_and_converter_for_policies(data):
+def redefine_input_data_for_policies(data):
 
     policies = data["policies"]
     sinks = data["sinks"]
@@ -134,7 +134,7 @@ def redefine_sink_and_converter_for_policies(data):
 # test if the functions work as expected for scenario "stromflex_h2"
 
 
-def verify_redefine_sink_and_converter_for_policies(relative_file_path):
+def verify_redefine_input_data_for_policies(relative_file_path):
 
     profiles = pd.read_excel(relative_file_path, sheet_name="profiles")
 
@@ -144,7 +144,7 @@ def verify_redefine_sink_and_converter_for_policies(relative_file_path):
 
     policies = pd.read_excel(relative_file_path, sheet_name="policies")
 
-    sink, converters, profiles = redefine_sink_and_converter_for_policies(
+    sink, converters, profiles = redefine_input_data_for_policies(
         sinks, converters, policies, profiles
     )
 
@@ -167,4 +167,4 @@ def verify_redefine_sink_and_converter_for_policies(relative_file_path):
 
 
 if __name__ == "__main__":
-    verify_redefine_sink_and_converter_for_policies("input_data.xlsx")
+    verify_redefine_input_data_for_policies("input_data.xlsx")
