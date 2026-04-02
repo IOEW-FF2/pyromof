@@ -24,17 +24,9 @@ if __name__ == "__main__":
     # Definition of the time period
     time = pd.date_range(start="2023-01-02", end="2023-01-03", freq="h", inclusive="both")
 
-    profiles, sinks, sources, converters, storage, general = optimize.read_raw_data(
+    input_data = optimize.read_raw_data(
         "input_data.xlsx"
     )
-    input_data = {
-        "profiles": profiles,
-        "sinks": sinks,
-        "sources": sources,
-        "converters": converters,
-        "storage": storage,
-        "general": general,
-    }
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
