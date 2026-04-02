@@ -107,30 +107,28 @@ def confirm_policies(policies):
         return print("policies confirmed")
 
 
-def redefine_sink_and_converter_for_policies(
-    sink: pd.DataFrame,
-    converters: pd.DataFrame,
-    policies: pd.DataFrame,
-    profiles: pd.DataFrame,
-) -> pd.DataFrame:
+def redefine_sink_and_converter_for_policies(data):
+
+    policies = data["policies"]
+    sinks = data["sinks"]
+    converters = data["converters"]
+    profiles = data["profiles"]
 
     confirm_policies(policies)
 
-    electricity_price_data = receive_and_refine_electricity_price_data()
+    electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data()
 
-    electricity_price_euro_per_mwh = electricity_price_data["euro_per_kWh"]
+    data["sinks"] = fixed_premium_policy(sinks, policies)
 
-    sink = fixed_premium_policy(sink, policies)
-
-    sink, profiles = sliding_premium_policy(
-        sink, policies, profiles, electricity_price_euro_per_mwh
+    data["sinks"], data["profiles"] = sliding_premium_policy(
+        sinks, policies, profiles, electricity_price_euro_per_kwh
     )
 
-    converters = fix_investment_subsidy_policy(converters, policies)
+    data["converters"] = fix_investment_subsidy_policy(converters, policies)
 
-    converters = percentage_investment_subsidy_policy(converters, policies)
+    data["converters"] = percentage_investment_subsidy_policy(converters, policies)
 
-    return sink, converters, profiles
+    return data["sinks"], data["converters"], data["profiles"]
 
 
 # test if the functions work as expected for scenario "stromflex_h2"
