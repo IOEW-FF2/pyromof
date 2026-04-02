@@ -45,7 +45,7 @@ def analyze_sensitivity():
 
     # Loop over the steps below, changing the sensitivity parameter in the raw data each time
     all_dfs = []
-    range = [
+    value_range = [
         x / 100
         for x in range(
             int(parameters["min"] * 100),
@@ -54,7 +54,7 @@ def analyze_sensitivity():
         )
     ]
     # Somewhat complicated workaround because "range" only accepts integers
-    for parameter_value in range:
+    for parameter_value in value_range:
         print(parameter_value)
         df_name = parameters["component_type"]
         input_data[df_name].loc[
