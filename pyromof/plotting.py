@@ -9,11 +9,11 @@ from oemof.solph import EnergySystem
 from plotly.subplots import make_subplots
 
 
-def prepare_amount_sequences_for_plotting():
+def prepare_amount_sequences_for_plotting(RESULTS):
     """
     Reads the csv file with the sequences from the optimization results and splits it into
     2 according to the unit of the flows.
-    # TODO: Save input data in optimize.py and retreive units from the input data
+    # TODO: Save input data in optimize.py and retrieve units from the input data
     # instead of specifying them in the script.
     """
     amount_sequences = pd.read_csv(
@@ -64,7 +64,7 @@ def prepare_amount_sequences_for_plotting():
     return sequences_in_kg, sequences_in_kWh
 
 
-def plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario):
+def plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario, RESULTS):
     """
     Takes two dataframes, one with flow sequences in tonnes and one in kWh,
     and plots them as line plots one below the other.
@@ -102,7 +102,7 @@ def plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario):
     fig.write_html(os.path.join(RESULTS, "amount_sequences_{}.html".format(scenario)))
 
 
-def prepare_cost_sequences_for_plotting():
+def prepare_cost_sequences_for_plotting(RESULTS):
     """
     Reads the csv files of time-variable cost data, selects the columns
     that contain non-0 data and stores them in
@@ -125,7 +125,7 @@ def prepare_cost_sequences_for_plotting():
     return df_dict
 
 
-def plot_cost_sequences(df_dict, scenario):
+def plot_cost_sequences(df_dict, scenario, RESULTS):
     """
     Takes a dictionary of dataframes and plots them, each with a different line style.
     """
@@ -156,7 +156,7 @@ def plot_cost_sequences(df_dict, scenario):
     fig.write_html(os.path.join(RESULTS, "cost_sequences_{}.html".format(scenario)))
 
 
-def plot_cost_scalars(scalcosts, scenario):
+def plot_cost_scalars(scalcosts, scenario, RESULTS):
     total = scalcosts[scenario].sum()
 
     fig = px.bar(scalcosts, x="type", y=scenario, color="variable", barmode="stack")
@@ -182,13 +182,13 @@ def plot_cost_scalars(scalcosts, scenario):
     fig.write_html(os.path.join(RESULTS, "cost_scalars_{}.html".format(scenario)))
 
 
-def plot(scenario):
-    df_dict = prepare_cost_sequences_for_plotting()
-    plot_cost_sequences(df_dict, scenario)
+def plot(scenario, RESULTS):
+    df_dict = prepare_cost_sequences_for_plotting(RESULTS)
+    plot_cost_sequences(df_dict, scenario, RESULTS)
     scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
-    plot_cost_scalars(scalcosts, scenario)
-    sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting()
-    plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario)
+    plot_cost_scalars(scalcosts, scenario, RESULTS)
+    sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting(RESULTS)
+    plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario, RESULTS)
 
 
 if __name__ == "__main__":
@@ -203,4 +203,4 @@ if __name__ == "__main__":
     es.restore(DUMPING_SPACE, "es_dump.oemof")
     scenario, investment = helpers.retreive_scenario_from_results(es)
 
-    plot(scenario)
+    plot(scenario, RESULTS)
