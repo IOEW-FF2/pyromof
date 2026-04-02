@@ -197,7 +197,24 @@ def check_scalar_costs_consistency(scalar_results):
     return scalar_results
 
 
-def postprocess(es, DUMPING_SPACE, investment, input_data):
+def postprocess():
+
+    input_data = optimize.read_raw_data("input_data.xlsx")
+    scenario = input_data["general"].loc[input_data["general"]["label"] == 
+                                         "scenario", "value"].item()
+
+    ROOT_PATH = Path(__file__).parent.parent
+    SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
+    DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
+    # Create a results folder if it doesn't exist yet
+    Path(os.path.join(SCENARIO_PATH, "results")).mkdir(exist_ok=True)
+    RESULTS = os.path.join(SCENARIO_PATH, "results")
+
+    es = EnergySystem()
+    es.restore(DUMPING_SPACE, "es_dump.oemof")
+
+    # Read in the scenario and set investment variable
+    scenario, investment = helpers.retreive_scenario_from_results(es)
     # Create an empty dataframe for the scalar results:
 
     scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
@@ -233,7 +250,7 @@ def postprocess(es, DUMPING_SPACE, investment, input_data):
             investment, scalars, scalar_results, DUMPING_SPACE
         )
 
-    return {
+    result_dfs = {
         "sequences": sequences,
         "storage_contents": storage_contents,
         "effective_variable_costs": effective_variable_costs,
@@ -241,36 +258,14 @@ def postprocess(es, DUMPING_SPACE, investment, input_data):
         "additional_columns": additional_columns,
     }
 
-
-if __name__ == "__main__":
-    input_data = optimize.read_raw_data("input_data.xlsx")
-    scenario = input_data["general"].loc[input_data["general"]["label"] == 
-                                         "scenario", "value"].item()
-
-    ROOT_PATH = Path(__file__).parent.parent
-    SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
-    DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
-    # Create a results folder if it doesn't exist yet
-    Path(os.path.join(SCENARIO_PATH, "results")).mkdir(exist_ok=True)
-    RESULTS = os.path.join(SCENARIO_PATH, "results")
-
-    es = EnergySystem()
-    es.restore(DUMPING_SPACE, "es_dump.oemof")
-
-    # Read in the scenario and set investment variable
-    scenario, investment = helpers.retreive_scenario_from_results(es)
-
-    result_dfs = postprocess(es, DUMPING_SPACE, investment, input_data)
-
     result_dfs["scalar_results"] = check_scalar_costs_consistency(result_dfs["scalar_results"])
 
     # Save all results
-    result_dfs["effective_variable_costs"].to_csv(
-        os.path.join(RESULTS, "effective_variable_costs.csv"), sep=";"
-    )
-    result_dfs["sequences"].to_csv(os.path.join(RESULTS, "sequences.csv"), sep=";")
-    result_dfs["storage_contents"].to_csv(os.path.join(RESULTS, "storage_contents.csv"), sep=";")
-    result_dfs["scalar_results"].to_csv(os.path.join(RESULTS, "scalar_results.csv"), sep=";")
-    result_dfs["additional_columns"].to_csv(
-        os.path.join(RESULTS, "additional_columns.csv"), sep=";"
-    )
+    for key, df in result_dfs.items():
+        df.to_csv(os.path.join(RESULTS, f"{key}.csv"), sep=";")
+    print("The postprocessing is finished and the results have been saved.")
+
+    return result_dfs
+
+
+

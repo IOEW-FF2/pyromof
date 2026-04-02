@@ -6,7 +6,7 @@ from pathlib import Path
 from pyromof import optimize, postprocessing
 import pandas as pd
 
-if __name__ == "__main__":
+def analyze_sensitivity():
     # Insert here the parameters. Only two decimal places are possible!
     parameters = {
         "component_type": "sources",  # must be plural

@@ -75,7 +75,7 @@ def plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios, RESULTS):
     fig.write_html(os.path.join(RESULTS, "cost_scalars.html"))
 
 
-if __name__ == "__main__":
+def compare_scenarios():
     ROOT_PATH = Path(__file__).parent.parent
     RESULTS = os.path.join(ROOT_PATH, "results")
     # scenarios = [input("For which scenario shall the results be compared?

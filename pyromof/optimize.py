@@ -1023,7 +1023,7 @@ def save_results(
     print("The results have been saved.")
 
 
-if __name__ == "__main__":
+def optimize():
     data = read_raw_data("input_data.xlsx")
     scenario = retrieve_scenario_from_input_data(data["general"])
     time = define_time_period(data["general"])

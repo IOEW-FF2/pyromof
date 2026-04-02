@@ -191,7 +191,7 @@ def plot(scenario, RESULTS):
     plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario, RESULTS)
 
 
-if __name__ == "__main__":
+def plot_sequences_and_scalars():
     general = pd.read_excel("input_data.xlsx", sheet_name="general")
     scenario = general.loc[general["label"] == "scenario", "value"].item()
 

@@ -36,7 +36,7 @@ def plot_load_duration_curve(sorted_column, xlabel, ylabel, title, save_path):
     plt.close()
 
 
-def main(scenario: str) -> None:
+def plot_load_duration_curves(scenario=None):
     """Execute the load duration curve generation."""
     columns = get_data_csv(scenario)
 
