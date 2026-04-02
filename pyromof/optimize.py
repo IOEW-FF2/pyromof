@@ -60,6 +60,17 @@ def matches_scenario(scenario_to_check: str, scenario_wanted: str) -> bool:
     return scenario_to_check == "all" or scenario_wanted in scenario_to_check
 
 
+###
+"""
+    sinks: pd.DataFrame,
+    sources: pd.DataFrame,
+    converters: pd.DataFrame,
+    storage: pd.DataFrame,
+    scenario_wanted: str,
+):"""
+###
+
+
 @typechecked
 def filter_input_data_by_scenario(
     sinks: pd.DataFrame,
@@ -68,17 +79,22 @@ def filter_input_data_by_scenario(
     storage: pd.DataFrame,
     scenario_wanted: str,
 ):
-    dfs = {
+
+    filtered_data = {
         "sinks": sinks,
         "sources": sources,
         "converters": converters,
         "storage": storage,
     }
-    dfs = {
+    filtered_data = {
         name: df[df["scenario"].apply(matches_scenario, args=(scenario_wanted,))]
-        for name, df in dfs.items()
+        for name, df in filtered_data.items()
     }
-    return dfs["sinks"], dfs["sources"], dfs["converters"], dfs["storage"]
+    data["sinks"] = filtered_data["sinks"]
+    data["sources"] = filtered_data["sources"]
+    data["converters"] = filtered_data["converters"]
+    data["storage"] = filtered_data["storage"]
+    return data["sinks"], data["sources"], data["converters"], data["storage"]
 
 
 @typechecked
@@ -1025,6 +1041,15 @@ def save_results(
 if __name__ == "__main__":
     data = read_raw_data("input_data.xlsx")
     scenario = retrieve_scenario_from_input_data(data["general"])
+    data["sinks"], data["sources"], data["converters"], data["storage"] = (
+        filter_input_data_by_scenario(
+            data["sinks"],
+            data["sources"],
+            data["converters"],
+            data["storage"],
+            scenario,
+        )
+    )
     data["sinks"], data["converters"], data["profiles"] = redefine_input_data_for_policies(data)
     time = define_time_period(data["general"])
     profiles = slice_time_period_from_profiles(data["profiles"], time)
