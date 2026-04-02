@@ -2,8 +2,26 @@ import pandas as pd
 
 from pyromof.policies.sliding_premium import (
     feed_in_payment_sliding_premium,
-    receive_and_refine_electricity_price_data,
 )
+
+
+def receive_and_refine_electricity_price_data():
+
+    data_file = pd.read_csv(
+        "preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv",
+        sep=";",
+        parse_dates=True,
+    )
+
+    raw_data = data_file["Deutschland/Luxemburg [€/MWh] Berechnete Auflösungen"]
+
+    data_replace_comma = raw_data.copy().str.replace(",", ".")
+
+    data_float = data_replace_comma.astype(float)
+
+    electricity_price_euro_per_kwh = data_float.copy() / -1000
+
+    return electricity_price_euro_per_kwh
 
 
 def fixed_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame) -> pd.DataFrame:

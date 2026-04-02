@@ -2,6 +2,8 @@ import argparse
 
 import pandas as pd
 
+from pyromof.policies.implement_policies import receive_and_refine_electricity_price_data
+
 
 def receive_policies_sheet():
 
@@ -25,25 +27,6 @@ def receive_scenario_electricity_data(scenario: str) -> pd.Series:
     data = pd.read_csv(file_path, sep=separator, parse_dates=parse_dates)
 
     return data[target_column]
-
-
-def receive_and_refine_electricity_price_data():
-
-    data_file = pd.read_csv(
-        "preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv",
-        sep=";",
-        parse_dates=True,
-    )
-
-    raw_data = data_file["Deutschland/Luxemburg [€/MWh] Berechnete Auflösungen"]
-
-    data_replace_comma = raw_data.copy().str.replace(",", ".")
-
-    data_float = data_replace_comma.astype(float)
-
-    electricity_price_euro_per_kwh = data_float.copy() / -1000
-
-    return electricity_price_euro_per_kwh
 
 
 def feed_in_payment_sliding_premium(
