@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-import helpers
+from pyromof import helpers
 import pandas as pd
 import plotly.graph_objects as go
 

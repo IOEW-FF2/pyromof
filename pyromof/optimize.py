@@ -976,7 +976,7 @@ def create_energysystem(
 
 def visualize_network_in_dash(es: solph.EnergySystem):
     if input("Visualize network in dash app? (yes/no) ") == "yes":
-        from visualize_network import make_network, shownetwork
+        from pyromof.visualize_network import make_network, shownetwork
 
         network = make_network(es)
         shownetwork(network)
