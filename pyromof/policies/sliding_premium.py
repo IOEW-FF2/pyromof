@@ -9,6 +9,7 @@ from pyromof.policies.implement_policies import (
 
 from pyromof.postprocessing import add_items_to_scalar_results
 
+
 def receive_policies_sheet():
 
     path = "input_data.xlsx"
