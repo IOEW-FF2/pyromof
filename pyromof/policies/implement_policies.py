@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 
 
@@ -155,7 +157,7 @@ def redefine_input_data_for_policies(data):
     check_policy_choice_compatibility(policies)
 
     activated_policies = get_activated_policies(policies)
-    electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data()
+    electricity_price_euro_per_kwh = None
 
     for policy_name in activated_policies:
         if policy_name == "Fixed feed-in remuneration":
@@ -163,6 +165,9 @@ def redefine_input_data_for_policies(data):
             data["sinks"] = sinks
 
         elif policy_name == "Sliding premium":
+            if electricity_price_euro_per_kwh is None:
+                electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data()
+
             sinks, profiles = sliding_premium_policy(
                 sinks,
                 policies,
@@ -183,45 +188,27 @@ def redefine_input_data_for_policies(data):
     return data["sinks"], data["converters"], data["profiles"]
 
 
-# test if the functions work as expected for scenario "stromflex_h2"
+def main() -> None:
 
+    from pyromof.optimize import read_raw_data
 
-def verify_redefine_input_data_for_policies(relative_file_path):
-
-    profiles = pd.read_excel(relative_file_path, sheet_name="profiles")
-
-    sinks = pd.read_excel(relative_file_path, sheet_name="sink")
-
-    converters = pd.read_excel(relative_file_path, sheet_name="converter")
-
-    policies = pd.read_excel(relative_file_path, sheet_name="policies")
-
-    data = {
-        "profiles": profiles,
-        "sinks": sinks,
-        "converters": converters,
-        "policies": policies,
-    }
-
-    sink, converters, profiles = redefine_input_data_for_policies(data)
-
-    print("\n=== pyrolysis converters: label, capex, investment ===")
-
-    print(
-        converters.loc[
-            converters["label"] == "pyrolysis", ["label", "scenario", "capex", "investment"]
-        ].to_string(index=False)
+    data = read_raw_data("input_data.xlsx")
+    redefine_input_data_for_policies(data)
+    scenario = data["general"].loc[data["general"]["label"] == "scenario", "value"].item()
+    output_file = (
+        Path("results")
+        / scenario
+        / "meta_info"
+        / "input_preprocessed"
+        / "input_data_with_applied_policies.xlsx"
     )
+    output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    print("\n=== electricity_grid variable_costs for scenario stromflex_h2 ===")
-
-    print(
-        sink.loc[
-            (sink["label"] == "electricity_grid") & (sink["scenario"] == "stromflex_h2"),
-            "variable_costs",
-        ].to_string(index=False)
-    )
+    with pd.ExcelWriter(output_file) as writer:
+        for table_name, table_data in data.items():
+            if isinstance(table_data, pd.DataFrame):
+                table_data.to_excel(writer, sheet_name=table_name, index=False)
 
 
 if __name__ == "__main__":
-    verify_redefine_input_data_for_policies("input_data.xlsx")
+    main()
