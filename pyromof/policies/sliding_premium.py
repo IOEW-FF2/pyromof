@@ -153,12 +153,12 @@ def calculate_payments(electricity_price_euro_per_kwh, pyrolysis_electricity_to_
         electricity_price_euro_per_kwh.copy(), feed_in_revenue_euro_per_kwh.copy(), policies
     )
 
-    revenue_fed_in_electricity_euro = multiply(
-        feed_in_revenue_euro_per_kwh.copy(), pyrolysis_electricity_to_grid_kwh.copy()
+    revenue_fed_in_electricity_euro = (
+        feed_in_revenue_euro_per_kwh.copy() * pyrolysis_electricity_to_grid_kwh.copy()
     )
 
-    government_payment_for_fed_in_electricity_euro = multiply(
-        government_payment_share_euro_per_kwh.copy(), pyrolysis_electricity_to_grid_kwh.copy()
+    government_payment_for_fed_in_electricity_euro = (
+        government_payment_share_euro_per_kwh.copy() * pyrolysis_electricity_to_grid_kwh.copy()
     )
 
     electricity_market_payment_euro = (
