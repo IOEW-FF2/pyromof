@@ -7,6 +7,7 @@ from pyromof.policies.implement_policies import (
     receive_and_refine_electricity_price_data,
 )
 
+from pyromof.postprocessing import add_items_to_scalar_results
 
 def receive_policies_sheet():
 
@@ -28,36 +29,6 @@ def receive_scenario_electricity_data(scenario: str) -> pd.Series:
     data = pd.read_csv(file_path, sep=separator, index_col=0, parse_dates=[0])
 
     return data[target_column]
-
-
-def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
-    """
-
-
-    This functions adds given data to an existing dataframe with scalar results.
-
-
-    The existing dataframe must have the columns "variable", "type" and "value".
-
-
-    The input dict must contain the variable and value for each item. The type
-
-
-    must be valid for all items in the dictionary.
-
-
-    """
-
-    new_df = pd.DataFrame(
-        {
-            "variable": list(dictionary.keys()),
-            # Insert the given type for all new rows:
-            "type": [type] * len(dictionary),
-            "value": list(dictionary.values()),
-        }
-    )
-
-    return pd.concat([scalar_results, new_df], ignore_index=True)
 
 
 def receive_and_refine_all_data(scenario: str) -> None:
