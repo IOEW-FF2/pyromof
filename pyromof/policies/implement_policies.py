@@ -11,6 +11,8 @@ def receive_and_refine_electricity_price_data():
         parse_dates=True,
     )
 
+    timestamps = pd.to_datetime(data_file["Datum von"], format="%d.%m.%Y %H:%M")
+
     raw_data = data_file["Deutschland/Luxemburg [€/MWh] Berechnete Auflösungen"]
 
     data_replace_comma = raw_data.copy().str.replace(",", ".")
@@ -18,17 +20,22 @@ def receive_and_refine_electricity_price_data():
     data_float = data_replace_comma.astype(float)
 
     electricity_price_euro_per_kwh = data_float.copy() / -1000
+    electricity_price_euro_per_kwh.index = timestamps
 
     return electricity_price_euro_per_kwh
 
 
-def lump_sum_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame) -> pd.DataFrame:
+def lump_sum_premium_policy(
+    sink: pd.DataFrame,
+    policies: pd.DataFrame,
+) -> pd.DataFrame:
 
     feed_in_premium = (
         -1
         / 100
         * policies.loc[policies["policy"] == "Fixed feed-in remuneration", "value 1"].values[0]
     )
+
     sink.loc[
         (sink["label"] == "electricity_grid"),
         "variable_costs",
@@ -39,17 +46,18 @@ def lump_sum_premium_policy(sink: pd.DataFrame, policies: pd.DataFrame) -> pd.Da
 
 def feed_in_payment_sliding_premium(
     policies: pd.DataFrame,
-    electricity_price_data: pd.DataFrame,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+    electricity_price_data: pd.Series,
+) -> pd.Series:
     """
     This function calculates the feed-in payment for each hour in euro per kwh.
     Based on the electricity price data, base value, and lower threshold from policies.
-    The feed-in payment is the base_value if:
-    The electricity price is above the lower threshold and below the base value.
-    Otherwise the feed_in payment is the electricity price.
+    The monthly sliding premium is calculated from the difference between base value
+    and monthly average electricity price.
+    The premium is only added if the current electricity price is above the lower threshold.
+    Otherwise the feed-in payment is the electricity price.
     """
 
-    base_value = (
+    base_revenue = (
         -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 1"].values[0]
     )
 
@@ -57,20 +65,18 @@ def feed_in_payment_sliding_premium(
         -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 2"].values[0]
     )
 
-    electricity_price = electricity_price_data
+    monthly_average_price = electricity_price_data.groupby(
+        electricity_price_data.index.to_period("M")
+    ).transform("mean")
 
-    feed_in_payment_euro_per_kwh = []
+    sliding_premium = (base_revenue - monthly_average_price).where(
+        electricity_price_data < lower_threshold,
+        0,
+    )
 
-    for i in range(len(electricity_price)):
-        if electricity_price.iloc[i] >= base_value and electricity_price.iloc[i] <= lower_threshold:
-            feed_in_payment_euro_per_kwh.append(base_value)
+    feed_in_payment_euro_per_kwh = electricity_price_data + sliding_premium
 
-        elif (
-            electricity_price.iloc[i] >= lower_threshold or electricity_price.iloc[i] <= base_value
-        ):
-            feed_in_payment_euro_per_kwh.append(electricity_price.iloc[i])
-
-    return pd.Series(feed_in_payment_euro_per_kwh, index=electricity_price.index)
+    return feed_in_payment_euro_per_kwh
 
 
 def sliding_premium_policy(
@@ -82,7 +88,7 @@ def sliding_premium_policy(
 
     feed_in_payment_euro_per_kwh = feed_in_payment_sliding_premium(policies, electricity_price_data)
 
-    profiles["sliding_premium_profile"] = feed_in_payment_euro_per_kwh
+    profiles["sliding_premium_profile"] = feed_in_payment_euro_per_kwh.reset_index(drop=True)
 
     sink.loc[
         (sink["label"] == "electricity_grid"),
