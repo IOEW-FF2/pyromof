@@ -76,7 +76,7 @@ def feed_in_payment_sliding_premium(
 
     feed_in_payment_euro_per_kwh = electricity_price_data + sliding_premium
 
-    return feed_in_payment_euro_per_kwh
+    return feed_in_payment_euro_per_kwh, sliding_premium
 
 
 def sliding_premium_policy(
