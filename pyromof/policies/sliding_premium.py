@@ -4,8 +4,8 @@ import pandas as pd
 
 from pyromof.policies.implement_policies import (
     feed_in_payment_sliding_premium,
-    receive_base_revenue_and_lower_threshold_basis,
     receive_and_refine_electricity_price_data,
+    receive_base_revenue_and_lower_threshold_basis,
 )
 from pyromof.postprocessing import add_items_to_scalar_results
 
