@@ -33,13 +33,8 @@ def receive_scenario_electricity_data(scenario: str) -> pd.Series:
 
 def receive_and_refine_all_data(scenario: str) -> None:
     """
-
     This function receives and refines all necessary input data based on the functions defined above
-
-
     The input data depend on the given scenario.
-
-
     """
 
     policies = receive_policies_sheet()
@@ -57,7 +52,9 @@ def receive_and_refine_all_data(scenario: str) -> None:
 
 def calculate_payments(electricity_price_euro_per_kwh, pyrolysis_electricity_to_grid_kwh, policies):
     """
-    This function calculates the various payments and payment shares in cent/kWh and euro.
+    This function calculates the revenue for fed in electricity,
+    government payment share and electricity market payment share.
+    The output is the basis for the payment sums calculation.
     The input data is the output of the receive_and_refine_all_data function.
     """
 
@@ -80,21 +77,18 @@ def calculate_payments(electricity_price_euro_per_kwh, pyrolysis_electricity_to_
     ].copy()
 
     revenue_fed_in_electricity_euro = (
-        feed_in_revenue_euro_per_kwh * pyrolysis_electricity_to_grid_kwh.copy()
+        feed_in_revenue_euro_per_kwh * pyrolysis_electricity_to_grid_kwh
     )
 
     government_payment_for_fed_in_electricity_euro = (
-        government_payment_share_euro_per_kwh * pyrolysis_electricity_to_grid_kwh.copy()
+        government_payment_share_euro_per_kwh * pyrolysis_electricity_to_grid_kwh
     )
 
     electricity_market_payment_euro = (
-        revenue_fed_in_electricity_euro.copy()
-        - government_payment_for_fed_in_electricity_euro.copy()
+        revenue_fed_in_electricity_euro - government_payment_for_fed_in_electricity_euro
     )
 
     return (
-        feed_in_revenue_euro_per_kwh,
-        government_payment_share_euro_per_kwh,
         revenue_fed_in_electricity_euro,
         government_payment_for_fed_in_electricity_euro,
         electricity_market_payment_euro,
@@ -121,54 +115,11 @@ def calc_payment_sums(
 
 
 def create_csv_file_for_created_data(
-    electricity_price_euro_per_kwh,
-    feed_in_revenue_euro_per_kwh,
-    government_payment_share_euro_per_kwh,
-    pyrolysis_electricity_to_grid_kwh,
-    revenue_fed_in_electricity_euro,
-    government_payment_for_fed_in_electricity_euro,
-    electricity_market_payment_euro,
     sum_government_payment_euro,
     sum_electricity_market_payment_euro,
     sum_revenue_fed_in_electricity_euro,
 ):
-    """
-    This function summarizes the calculated payments and payment sums in two csv files.
-    The second csv file contains the actual revenue and payment shares for fed-in electricity,
-    as well as the sums the above.
-    The file is called "electricity_revenue_data.csv" and is stored in the "preprocessing" folder.
-    The first csv file contains all data necessary for the calculations.
-    This file ist called "feed_in_premium_data.csv" and is stored in the "preprocessing" folder.
-    The input for this function is the output of the functions called in the main function.
-    """
-
-    df = pd.DataFrame(
-        {
-            "electricity_price (euro/kWh)": electricity_price_euro_per_kwh.round(4),
-            "feed_in_payment (euro/kWh)": feed_in_revenue_euro_per_kwh.round(4),
-            "government_payment_share (euro/kWh)": government_payment_share_euro_per_kwh.round(4),
-            "pyrolysis_electricity_to_grid (kWh)": pyrolysis_electricity_to_grid_kwh.round(2),
-            "revenue_fed_in_electricity (euro)": revenue_fed_in_electricity_euro.round(1),
-            "government_payment_share (euro)": government_payment_for_fed_in_electricity_euro.round(
-                1
-            ),
-            "electricity_market_payment_share (euro)": electricity_market_payment_euro.round(1),
-        }
-    )
-
-    # df = df.round(2)
-
-    df.to_csv("preprocessing/feed_in_premium_data.csv", index=False, sep=";")
-
-    df2 = pd.DataFrame(
-        {
-            "government_payment_share (euro)": government_payment_for_fed_in_electricity_euro,
-            "electricity_market_payment_share (euro)": electricity_market_payment_euro,
-            "revenue_fed_in_electricity (euro)": revenue_fed_in_electricity_euro,
-        }
-    )
-
-    df2 = df2.round(1)
+    df2 = pd.DataFrame({})
 
     sum_dict = {
         "government_payment_share (euro)": sum_government_payment_euro,
@@ -192,14 +143,8 @@ def create_csv_file_for_created_data(
 
 def main(scenario: str) -> None:
     """
-
     The main function executes all functions in a logical order.
-
-
-
-
     """
-
     (
         policies,
         electricity_price_euro_per_kwh,
@@ -207,8 +152,6 @@ def main(scenario: str) -> None:
     ) = receive_and_refine_all_data(scenario)
 
     (
-        feed_in_revenue_euro_per_kwh,
-        government_payment_share_euro_per_kwh,
         revenue_fed_in_electricity_euro,
         government_payment_for_fed_in_electricity_euro,
         electricity_market_payment_euro,
@@ -227,13 +170,6 @@ def main(scenario: str) -> None:
     )
 
     create_csv_file_for_created_data(
-        electricity_price_euro_per_kwh,
-        feed_in_revenue_euro_per_kwh,
-        government_payment_share_euro_per_kwh,
-        pyrolysis_electricity_to_grid_kwh,
-        revenue_fed_in_electricity_euro,
-        government_payment_for_fed_in_electricity_euro,
-        electricity_market_payment_euro,
         sum_government_payment_euro,
         sum_electricity_market_payment_euro,
         sum_revenue_fed_in_electricity_euro,
