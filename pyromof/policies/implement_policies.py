@@ -61,7 +61,7 @@ def feed_in_payment_sliding_premium(
         -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 1"].values[0]
     )
 
-    lower_threshold = (
+    lower_threshold_basis = (
         -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 2"].values[0]
     )
 
@@ -69,8 +69,10 @@ def feed_in_payment_sliding_premium(
         electricity_price_data.index.to_period("M")
     ).transform("mean")
 
+    lower_threshold_monthly = lower_threshold_basis - monthly_average_price
+
     sliding_premium = (base_revenue - monthly_average_price).where(
-        electricity_price_data < lower_threshold,
+        electricity_price_data < lower_threshold_monthly,
         0,
     )
 
@@ -83,10 +85,12 @@ def sliding_premium_policy(
     sink: pd.DataFrame,
     policies: pd.DataFrame,
     profiles: pd.DataFrame,
-    electricity_price_data: pd.DataFrame,
+    electricity_price_data: pd.Series,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
-    feed_in_payment_euro_per_kwh = feed_in_payment_sliding_premium(policies, electricity_price_data)
+    feed_in_payment_euro_per_kwh, _ = feed_in_payment_sliding_premium(
+        policies, electricity_price_data
+    )
 
     profiles["sliding_premium_profile"] = feed_in_payment_euro_per_kwh.reset_index(drop=True)
 
