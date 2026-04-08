@@ -5,7 +5,7 @@ import pandas as pd
 from pyromof.policies.implement_policies import (
     feed_in_payment_sliding_premium,
     receive_and_refine_electricity_price_data,
-    receive_base_revenue_and_lower_threshold_basis,
+    receive_higher_threshold_basis_and_lower_threshold_basis,
 )
 from pyromof.postprocessing import add_items_to_scalar_results
 
@@ -59,12 +59,14 @@ def calculate_payments(electricity_price_euro_per_kwh, pyrolysis_electricity_to_
     The input data is the output of the receive_and_refine_all_data function.
     """
 
-    base_revenue, lower_threshold_basis = receive_base_revenue_and_lower_threshold_basis(policies)
+    higher_threshold_basis, lower_threshold_basis = (
+        receive_higher_threshold_basis_and_lower_threshold_basis(policies)
+    )
 
     feed_in_revenue_euro_per_kwh, government_payment_share_euro_per_kwh = (
         feed_in_payment_sliding_premium(
             electricity_price_euro_per_kwh,
-            base_revenue,
+            higher_threshold_basis,
             lower_threshold_basis,
         )
     )

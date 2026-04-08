@@ -25,9 +25,9 @@ def receive_and_refine_electricity_price_data():
     return electricity_price_euro_per_kwh
 
 
-def receive_base_revenue_and_lower_threshold_basis(policies):
+def receive_higher_threshold_basis_and_lower_threshold_basis(policies):
 
-    base_revenue = (
+    higher_threshold_basis = (
         -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 1"].values[0]
     )
 
@@ -35,7 +35,7 @@ def receive_base_revenue_and_lower_threshold_basis(policies):
         -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 2"].values[0]
     )
 
-    return base_revenue, lower_threshold_basis
+    return higher_threshold_basis, lower_threshold_basis
 
 
 def lump_sum_premium_policy(
@@ -59,7 +59,7 @@ def lump_sum_premium_policy(
 
 def feed_in_payment_sliding_premium(
     electricity_price_data: pd.Series,
-    base_revenue,
+    higher_threshold_basis,
     lower_threshold_basis,
 ) -> tuple[pd.Series, pd.Series]:
     """
@@ -77,7 +77,7 @@ def feed_in_payment_sliding_premium(
 
     lower_threshold_monthly = lower_threshold_basis - monthly_average_price
 
-    sliding_premium = (base_revenue - monthly_average_price).where(
+    sliding_premium = (higher_threshold_basis - monthly_average_price).where(
         electricity_price_data < lower_threshold_monthly,
         0,
     )
@@ -91,12 +91,12 @@ def sliding_premium_policy(
     sink: pd.DataFrame,
     profiles: pd.DataFrame,
     electricity_price_data: pd.Series,
-    base_revenue,
+    higher_threshold_basis,
     lower_threshold_basis,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     feed_in_payment_euro_per_kwh, _ = feed_in_payment_sliding_premium(
-        electricity_price_data, base_revenue, lower_threshold_basis
+        electricity_price_data, higher_threshold_basis, lower_threshold_basis
     )
 
     profiles["sliding_premium_profile"] = feed_in_payment_euro_per_kwh.reset_index(drop=True)
@@ -175,7 +175,7 @@ def redefine_input_data_for_policies(data):
 
     activated_policies = get_activated_policies(policies)
     electricity_price_euro_per_kwh = None
-    base_revenue = None
+    higher_threshold_basis = None
     lower_threshold_basis = None
 
     for policy_name in activated_policies:
@@ -186,16 +186,16 @@ def redefine_input_data_for_policies(data):
         elif policy_name == "Sliding premium":
             if electricity_price_euro_per_kwh is None:
                 electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data()
-            if base_revenue is None or lower_threshold_basis is None:
-                base_revenue, lower_threshold_basis = (
-                    receive_base_revenue_and_lower_threshold_basis(policies)
+            if higher_threshold_basis is None or lower_threshold_basis is None:
+                higher_threshold_basis, lower_threshold_basis = (
+                    receive_higher_threshold_basis_and_lower_threshold_basis(policies)
                 )
 
             sinks, profiles = sliding_premium_policy(
                 sinks,
                 profiles,
                 electricity_price_euro_per_kwh,
-                base_revenue,
+                higher_threshold_basis,
                 lower_threshold_basis,
             )
             data["sinks"] = sinks
