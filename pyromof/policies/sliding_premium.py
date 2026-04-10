@@ -59,15 +59,13 @@ def calculate_payments(electricity_price_euro_per_kwh, pyrolysis_electricity_to_
     The input data is the output of the receive_and_refine_all_data function.
     """
 
-    higher_threshold_basis, lower_threshold_basis = (
-        receive_higher_threshold_basis_and_lower_threshold_basis(policies)
-    )
+    base_value, lower_threshold = receive_higher_threshold_basis_and_lower_threshold_basis(policies)
 
     feed_in_revenue_euro_per_kwh, government_payment_share_euro_per_kwh = (
         feed_in_payment_sliding_premium(
             electricity_price_euro_per_kwh,
-            higher_threshold_basis,
-            lower_threshold_basis,
+            base_value,
+            lower_threshold,
         )
     )
 
