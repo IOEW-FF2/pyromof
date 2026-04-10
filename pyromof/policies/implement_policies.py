@@ -19,7 +19,7 @@ def receive_and_refine_electricity_price_data():
 
     data_float = data_replace_comma.astype(float)
 
-    electricity_price_euro_per_kwh = data_float.copy() / -1000
+    electricity_price_euro_per_kwh = data_float / -1000
     electricity_price_euro_per_kwh.index = timestamps
 
     return electricity_price_euro_per_kwh
@@ -61,7 +61,7 @@ def feed_in_payment_sliding_premium(
     electricity_price_data: pd.Series,
     base_value,
     lower_threshold,
-) -> tuple[pd.Series, pd.Series]:
+) -> tuple[pd.Series, pd.Series, pd.Series]:
     """
     This function calculates the feed-in payment for each hour in euro per kwh.
     Based on the electricity price data, base value, and lower threshold from policies.
@@ -76,12 +76,12 @@ def feed_in_payment_sliding_premium(
     ).transform("mean")
 
     sliding_premium = (base_value - monthly_average_price).where(
-        electricity_price_data < lower_threshold, 0
+        electricity_price_data < lower_threshold, -0
     )
 
     feed_in_payment_euro_per_kwh = electricity_price_data + sliding_premium
 
-    return feed_in_payment_euro_per_kwh, sliding_premium
+    return feed_in_payment_euro_per_kwh, sliding_premium, monthly_average_price
 
 
 def sliding_premium_policy(
