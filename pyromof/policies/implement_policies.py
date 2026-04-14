@@ -3,10 +3,10 @@ from pathlib import Path
 import pandas as pd
 
 
-def receive_and_refine_electricity_price_data():
+def receive_and_refine_electricity_price_data(electricity_prices_path):
 
     data_file = pd.read_csv(
-        "preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv",
+        electricity_prices_path,
         sep=";",
         parse_dates=True,
     )
@@ -92,7 +92,7 @@ def sliding_premium_policy(
     lower_threshold,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
-    feed_in_payment_euro_per_kwh, _ = feed_in_payment_sliding_premium(
+    feed_in_payment_euro_per_kwh, _, _ = feed_in_payment_sliding_premium(
         electricity_price_data, base_value, lower_threshold
     )
 
@@ -161,7 +161,7 @@ def check_policy_choice_compatibility(policies):
         return print("policies confirmed")
 
 
-def redefine_input_data_for_policies(data):
+def redefine_input_data_for_policies(data, electricity_prices_path):
 
     policies = data["policies"]
     sinks = data["sinks"]
@@ -182,7 +182,9 @@ def redefine_input_data_for_policies(data):
 
         elif policy_name == "Sliding premium":
             if electricity_price_euro_per_kwh is None:
-                electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data()
+                electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data(
+                    electricity_prices_path
+                )
             if base_value is None or lower_threshold is None:
                 base_value, lower_threshold = (
                     receive_higher_threshold_basis_and_lower_threshold_basis(policies)
@@ -209,12 +211,12 @@ def redefine_input_data_for_policies(data):
     return data["sinks"], data["converters"], data["profiles"]
 
 
-def main() -> None:
+def main(electricity_prices_path) -> None:
 
     from pyromof.optimize import read_raw_data
 
     data = read_raw_data("input_data.xlsx")
-    redefine_input_data_for_policies(data)
+    redefine_input_data_for_policies(data, electricity_prices_path)
     scenario = data["general"].loc[data["general"]["label"] == "scenario", "value"].item()
     output_file = (
         Path("results")
@@ -232,4 +234,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    electricity_prices_path = "preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv"
+    main(electricity_prices_path)
