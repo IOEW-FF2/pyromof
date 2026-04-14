@@ -1,19 +1,39 @@
 import matplotlib
 
 matplotlib.use("Agg")
+import os
 import numpy as np
 import pandas as pd
 
 from pyromof.policies.implement_policies import feed_in_payment_sliding_premium
 
-
-def receive_test_data(path):
+def receive_test_data(base_path):
 
     # receive data sheets
-    electricity_data_sheet = pd.read_excel(path, sheet_name="electricity_data")
-    timestamps = pd.to_datetime(electricity_data_sheet["Datum"], format="%d.%m.%Y %H:%M")
-    monthly_premium_sheet = pd.read_excel(path, sheet_name="monthly_premium")
-    threshold_data = pd.read_excel(path, sheet_name="threshold_data")
+    electricity_data_sheet = pd.read_csv(
+        os.path.join(base_path, "test_electricity_data_sliding_premium.csv"),
+        sep=";",
+        encoding="latin1",
+        decimal=",",
+        dtype={"electricity_price": float, "sliding_premium_1": float, "total_revenue_1": float}
+    )
+    timestamps = pd.to_datetime(electricity_data_sheet["Datum"], format="%d.%m.%Y")
+    
+    monthly_premium_sheet = pd.read_csv(
+        os.path.join(base_path, "test_monthly_premium_data_sliding_premium.csv"),
+        sep=";",
+        encoding="latin1",
+        decimal=",",
+        dtype={"electricity_price_mean_monthly": float}
+    )
+    
+    threshold_data = pd.read_csv(
+        os.path.join(base_path, "test_threshold_data_sliding_premium.csv"),
+        sep=";",
+        encoding="latin1",
+        decimal=",",
+        dtype={"value": float}
+    )
 
     # receive base value and lower threshold
     base_value_1 = (
@@ -60,7 +80,7 @@ def receive_test_data(path):
     sliding_premium_1_template,
     monthly_average_electricity_price_template,
     total_revenue_1_template,
-) = receive_test_data("tests/files/test_data_feed_in_electricity_sliding_premium.xlsm")
+) = receive_test_data("tests/files")
 
 
 total_revenue_1_test, sliding_premium_1_test, monthly_average_price_1 = (
