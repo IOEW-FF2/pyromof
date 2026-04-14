@@ -2,10 +2,12 @@ import matplotlib
 
 matplotlib.use("Agg")
 import os
+
 import numpy as np
 import pandas as pd
 
 from pyromof.policies.implement_policies import feed_in_payment_sliding_premium
+
 
 def receive_test_data(base_path):
 
@@ -15,24 +17,24 @@ def receive_test_data(base_path):
         sep=";",
         encoding="latin1",
         decimal=",",
-        dtype={"electricity_price": float, "sliding_premium_1": float, "total_revenue_1": float}
+        dtype={"electricity_price": float, "sliding_premium_1": float, "total_revenue_1": float},
     )
     timestamps = pd.to_datetime(electricity_data_sheet["Datum"], format="%d.%m.%Y")
-    
+
     monthly_premium_sheet = pd.read_csv(
         os.path.join(base_path, "test_monthly_premium_data_sliding_premium.csv"),
         sep=";",
         encoding="latin1",
         decimal=",",
-        dtype={"electricity_price_mean_monthly": float}
+        dtype={"electricity_price_mean_monthly": float},
     )
-    
+
     threshold_data = pd.read_csv(
         os.path.join(base_path, "test_threshold_data_sliding_premium.csv"),
         sep=";",
         encoding="latin1",
         decimal=",",
-        dtype={"value": float}
+        dtype={"value": float},
     )
 
     # receive base value and lower threshold
