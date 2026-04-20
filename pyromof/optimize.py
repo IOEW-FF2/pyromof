@@ -86,9 +86,10 @@ def validate_column_types_in_excel(input_file, column_specs):
         column_specs: List of tuples (sheet, column, dtype). Each tuple specifies:
             - sheet: Name of the Excel sheet
             - column: Name of the column to check
-            - dtype: Expected type as string (e.g. 'str', 'float|int|str', 'str|list[str]', etc.)
+            - dtype: Expected type as string (e.g. 'str', 'numeric|str', 'str|list[str]', etc.)
     Supported types for dtype:
-        - 'str', 'int', 'float', 'bool', 'float|int', 'float|int|str', 'str|list[str]'
+        - 'str', 'numeric', 'bool', 'numeric|str', 'str|list[str]'
+    'numeric' accepts numeric types (int or float). All ints are treated as numerics for validation.
     Prints errors with actual dtype and type mix, including profile validation for str columns.
     """
 
@@ -115,12 +116,8 @@ def validate_column_types_in_excel(input_file, column_specs):
             # Type validation logic
             type_checks = {
                 "str": lambda s: pd.api.types.is_string_dtype(s),
-                "int": lambda s: pd.api.types.is_integer_dtype(s),
-                "float": lambda s: pd.api.types.is_float_dtype(s),
+                "numeric": lambda s: pd.api.types.is_numeric_dtype(s),
                 "bool": lambda s: pd.api.types.is_bool_dtype(s),
-                "float|int": lambda s: (
-                    pd.api.types.is_float_dtype(s) or pd.api.types.is_integer_dtype(s)
-                ),
             }
             # Type str|list[str] validation logic
             if dtype == "str|list[str]":
@@ -131,11 +128,10 @@ def validate_column_types_in_excel(input_file, column_specs):
                     items = [v.strip() for v in val.split(",")]
                     if not all(isinstance(v, str) for v in items):
                         fail(f"'{column}' in '{sheet}' contains invalid list entries at row {idx}")
-            # Type float|int|str validation logic
-            elif dtype == "float|int|str":
+            # Type numeric|str validation logic
+            elif dtype == "numeric|str":
                 if not (
-                    pd.api.types.is_float_dtype(col_data)
-                    or pd.api.types.is_integer_dtype(col_data)
+                    pd.api.types.is_numeric_dtype(col_data)
                     or pd.api.types.is_string_dtype(col_data)
                     or (
                         str(col_data.dtype) == "object" and unique_types.issubset({int, float, str})
@@ -183,17 +179,17 @@ def validate_column_types_in_excel(input_file, column_specs):
 
 column_specs = [
     ("general", "label", "str"),
-    ("sink", "min", "float|int|str"),
-    ("sink", "max", "float|int|str"),
-    ("sink", "variable_costs", "float|int|str"),
+    ("sink", "min", "numeric|str"),
+    ("sink", "max", "numeric|str"),
+    ("sink", "variable_costs", "numeric|str"),
     ("sink", "scenario", "str|list[str]"),
     ("sink", "label", "str"),
     ("sink", "bus_in", "str"),
     ("source", "label", "str"),
     ("source", "bus_out", "str"),
     ("source", "scenario", "str|list[str]"),
-    ("source", "nominal_capacity", "float"),
-    ("source", "variable_costs", "float"),
+    ("source", "nominal_capacity", "numeric"),
+    ("source", "variable_costs", "numeric"),
     ("converter", "bus_in_1", "str"),
     ("converter", "bus_in_1_alternative", "str"),
     ("converter", "bus_in_2", "str"),
@@ -203,43 +199,43 @@ column_specs = [
     ("converter", "label", "str"),
     ("converter", "scenario", "str|list[str]"),
     ("converter", "investment", "bool"),
-    ("converter", "nominal_capacity", "float"),
-    ("converter", "eff_in_1", "int"),
-    ("converter", "eff_in_2", "float"),
-    ("converter", "eff_out_1", "float"),
-    ("converter", "out_1_max_decrease", "float"),
-    ("converter", "out_2_corresponding_increase", "float"),
-    ("converter", "eff_out_2", "float"),
-    ("converter", "eff_out_3", "float"),
-    ("converter", "min_load_share", "float"),
-    ("converter", "minimum_downtime", "float|int"),
-    ("converter", "maximum_startups", "float|int"),
-    ("converter", "initial_status", "float|int"),
-    ("converter", "startup_costs", "float|int"),
-    ("converter", "positive_gradient_limit", "float"),
-    ("converter", "capex", "float|int|str"),
-    ("converter", "lifetime", "float|int"),
-    ("converter", "maximum", "float|int|str"),
+    ("converter", "nominal_capacity", "numeric"),
+    ("converter", "eff_in_1", "numeric"),
+    ("converter", "eff_in_2", "numeric"),
+    ("converter", "eff_out_1", "numeric"),
+    ("converter", "out_1_max_decrease", "numeric"),
+    ("converter", "out_2_corresponding_increase", "numeric"),
+    ("converter", "eff_out_2", "numeric"),
+    ("converter", "eff_out_3", "numeric"),
+    ("converter", "min_load_share", "numeric"),
+    ("converter", "minimum_downtime", "numeric"),
+    ("converter", "maximum_startups", "numeric"),
+    ("converter", "initial_status", "numeric"),
+    ("converter", "startup_costs", "numeric"),
+    ("converter", "positive_gradient_limit", "numeric"),
+    ("converter", "capex", "numeric|str"),
+    ("converter", "lifetime", "numeric"),
+    ("converter", "maximum", "numeric|str"),
     ("storage", "bus_in", "str"),
     ("storage", "bus_out", "str"),
     ("storage", "investment", "bool"),
     ("storage", "scenario", "str|list[str]"),
     ("storage", "label", "str"),
-    ("storage", "loss_rate", "float|int|str"),
-    ("storage", "inflow_conversion_factor", "float|int"),
-    ("storage", "outflow_conversion_factor", "float|int"),
-    ("storage", "nominal_storage_capacity", "float|int"),
-    ("storage", "initial_storage_level", "float|int"),
-    ("storage", "capex", "float|int"),
-    ("storage", "lifetime", "float|int"),
-    ("profiles", "test_profile", "float"),
-    ("profiles", "profile_heat_mt", "float"),
-    ("profiles", "heat_village", "float"),
-    ("profiles", "heat_village_normed", "float"),
-    ("profiles", "heat_town", "float"),
-    ("profiles", "profile_electricity_remuneration_cents", "float"),
-    ("profiles", "profile_electricity_remuneration", "float"),
-    ("profiles", "profile_electricity", "float|int"),
+    ("storage", "loss_rate", "numeric|str"),
+    ("storage", "inflow_conversion_factor", "numeric"),
+    ("storage", "outflow_conversion_factor", "numeric"),
+    ("storage", "nominal_storage_capacity", "numeric"),
+    ("storage", "initial_storage_level", "numeric"),
+    ("storage", "capex", "numeric"),
+    ("storage", "lifetime", "numeric"),
+    ("profiles", "test_profile", "numeric"),
+    ("profiles", "profile_heat_mt", "numeric"),
+    ("profiles", "heat_village", "numeric"),
+    ("profiles", "heat_village_normed", "numeric"),
+    ("profiles", "heat_town", "numeric"),
+    ("profiles", "profile_electricity_remuneration_cents", "numeric"),
+    ("profiles", "profile_electricity_remuneration", "numeric"),
+    ("profiles", "profile_electricity", "numeric"),
 ]
 
 validate_column_types_in_excel("input_data.xlsx", column_specs)
