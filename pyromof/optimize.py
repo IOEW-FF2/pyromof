@@ -89,7 +89,7 @@ def validate_column_types_in_excel(input_file, column_specs):
             - dtype: Expected type as string (e.g. 'str', 'float|int|str', 'str|list[str]', etc.)
     Supported types for dtype:
         - 'str', 'int', 'float', 'bool', 'float|int', 'float|int|str', 'str|list[str]'
-    Prints errors with actual dtype and type mix, including profile validation for str columns if needed.
+    Prints errors with actual dtype and type mix, including profile validation for str columns.
     """
 
     errors = []
@@ -110,9 +110,7 @@ def validate_column_types_in_excel(input_file, column_specs):
             )
 
             def fail(msg):
-                errors.append(
-                    f"{msg} Actual type: {actual_type}. Type mix: {type_mix}."
-                )
+                errors.append(f"{msg} Actual type: {actual_type}. Type mix: {type_mix}.")
 
             # Type validation logic
             type_checks = {
@@ -120,22 +118,19 @@ def validate_column_types_in_excel(input_file, column_specs):
                 "int": lambda s: pd.api.types.is_integer_dtype(s),
                 "float": lambda s: pd.api.types.is_float_dtype(s),
                 "bool": lambda s: pd.api.types.is_bool_dtype(s),
-                "float|int": lambda s: pd.api.types.is_float_dtype(s)
-                or pd.api.types.is_integer_dtype(s),
+                "float|int": lambda s: (
+                    pd.api.types.is_float_dtype(s) or pd.api.types.is_integer_dtype(s)
+                ),
             }
             # Type str|list[str] validation logic
             if dtype == "str|list[str]":
                 for idx, val in col_data.items():
                     if not isinstance(val, str):
-                        fail(
-                            f"Column '{column}' in sheet '{sheet}' contains a non-string value at row {idx}."
-                        )
+                        fail(f"'{column}' in '{sheet}' contains a non-string value at row {idx}.")
                         continue
                     items = [v.strip() for v in val.split(",")]
-                    if not all(isinstance(v, str) and v for v in items):
-                        fail(
-                            f"Column '{column}' in sheet '{sheet}' contains invalid list entries at row {idx}"
-                        )
+                    if not all(isinstance(v, str) for v in items):
+                        fail(f"'{column}' in '{sheet}' contains invalid list entries at row {idx}")
             # Type float|int|str validation logic
             elif dtype == "float|int|str":
                 if not (
@@ -143,16 +138,12 @@ def validate_column_types_in_excel(input_file, column_specs):
                     or pd.api.types.is_integer_dtype(col_data)
                     or pd.api.types.is_string_dtype(col_data)
                     or (
-                        str(col_data.dtype) == "object"
-                        and unique_types.issubset({int, float, str})
+                        str(col_data.dtype) == "object" and unique_types.issubset({int, float, str})
                     )
                 ):
-                    fail(
-                        f"Column '{column}' in sheet '{sheet}' must be of type {dtype}."
-                    )
+                    fail(f"Column '{column}' in sheet '{sheet}' must be of type {dtype}.")
                 if pd.api.types.is_string_dtype(col_data) or (
-                    str(col_data.dtype) == "object"
-                    and unique_types.issubset({int, float, str})
+                    str(col_data.dtype) == "object" and unique_types.issubset({int, float, str})
                 ):
                     if profile_columns is None:
                         profiles = pd.read_excel(input_file, sheet_name="profiles")
@@ -164,28 +155,20 @@ def validate_column_types_in_excel(input_file, column_specs):
                                 if item not in profile_columns:
                                     fail(
                                         (
-                                            f"Profile name '{item}' from column '{column}' in sheet '{sheet}'"
-                                            f"(row {idx}) is not found in the column names of 'profiles'."
+                                            f"Profile name '{item}' from '{column}' in '{sheet}'"
+                                            f"(row {idx}) is not found in 'profiles'."
                                         )
                                     )
-                        elif not (
-                            isinstance(val, int)
-                            or isinstance(val, float)
-                            or pd.isna(val)
-                        ):
+                        elif not (isinstance(val, int) or isinstance(val, float) or pd.isna(val)):
                             fail(
-                                f"Column '{column}' in sheet '{sheet}' contains a value of unsupported type "
+                                f" '{column}' in '{sheet}' contains a value of unsupported type "
                                 f"at row {idx}."
                             )
             elif dtype in type_checks:
                 if not type_checks[dtype](col_data):
-                    fail(
-                        f"Column '{column}' in sheet '{sheet}' must be of type {dtype}."
-                    )
+                    fail(f"Column '{column}' in sheet '{sheet}' must be of type {dtype}.")
             else:
-                fail(
-                    f"Unknown type '{dtype}' for column '{column}' in sheet '{sheet}'."
-                )
+                fail(f"Unknown type '{dtype}' for column '{column}' in sheet '{sheet}'.")
         except Exception as e:
             errors.append(str(e))
         # Log the error

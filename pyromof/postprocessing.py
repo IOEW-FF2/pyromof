@@ -101,7 +101,7 @@ def convert_result_sequences_to_df(results_data):
 
 def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
     """
-    This function takes the result sequences (flows per timestep) and the variable costs 
+    This function takes the result sequences (flows per timestep) and the variable costs
     from csv files and multiplies them. The results are returned as a dataframe.
     """
     varcosts = pd.read_csv(path_varcosts, sep=";", index_col=0)
@@ -109,7 +109,7 @@ def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
         sequences.index[:-1]
     )  # -1 because the index in sequences in one time step longer than the data
 
-    # Create a new dataframe with the same structure as the sequences dataframe 
+    # Create a new dataframe with the same structure as the sequences dataframe
     # to store the cost sequences
     effective_variable_costs = pd.DataFrame(index=sequences.index, columns=sequences.columns)
     # Calculate the effective variable costs by multiplying the sequences with the variable costs
