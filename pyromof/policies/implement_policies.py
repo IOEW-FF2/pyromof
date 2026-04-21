@@ -163,22 +163,16 @@ def check_policy_choice_compatibility(policies):
 
 def redefine_input_data_for_policies(data, electricity_prices_path):
 
-    policies = data["policies"]
-    sinks = data["sinks"]
-    converters = data["converters"]
-    profiles = data["profiles"]
+    check_policy_choice_compatibility(data["policies"])
 
-    check_policy_choice_compatibility(policies)
-
-    activated_policies = get_activated_policies(policies)
+    activated_policies = get_activated_policies(data["policies"])
     electricity_price_euro_per_kwh = None
     base_value = None
     lower_threshold = None
 
     for policy_name in activated_policies:
         if policy_name == "Fixed feed-in remuneration":
-            sinks = lump_sum_premium_policy(sinks, policies)
-            data["sinks"] = sinks
+            data["sinks"] = lump_sum_premium_policy(data["sinks"], data["policies"])
 
         elif policy_name == "Sliding premium":
             if electricity_price_euro_per_kwh is None:
@@ -187,28 +181,24 @@ def redefine_input_data_for_policies(data, electricity_prices_path):
                 )
             if base_value is None or lower_threshold is None:
                 base_value, lower_threshold = (
-                    receive_higher_threshold_basis_and_lower_threshold_basis(policies)
+                    receive_higher_threshold_basis_and_lower_threshold_basis(data["policies"])
                 )
 
-            sinks, profiles = sliding_premium_policy(
-                sinks,
-                profiles,
+            data["sinks"], data["profiles"] = sliding_premium_policy(
+                data["sinks"],
+                data["profiles"],
                 electricity_price_euro_per_kwh,
                 base_value,
                 lower_threshold,
             )
-            data["sinks"] = sinks
-            data["profiles"] = profiles
 
         elif policy_name == "Subsidy for pyrolysis investment costs":
-            converters = lump_sum_investment_subsidy_policy(converters, policies)
-            data["converters"] = converters
+            data["converters"] = lump_sum_investment_subsidy_policy(data["converters"], data["policies"])
 
         elif policy_name == "Percentage subsidy for pyrolysis investment costs":
-            converters = percentage_investment_subsidy_policy(converters, policies)
-            data["converters"] = converters
+            data["converters"] = percentage_investment_subsidy_policy(data["converters"], data["policies"])
 
-    return data["sinks"], data["converters"], data["profiles"]
+    return data
 
 
 def main(electricity_prices_path) -> None:
