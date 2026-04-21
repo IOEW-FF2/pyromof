@@ -242,7 +242,8 @@ def plot(scenario):
         parse_dates=True,
     )
     plot_storage_content(storage_contents, scenario)
-    profiles = pd.read_excel("input_data.xlsx", sheet_name="profiles", index_col=0, parse_dates=True)
+    profiles = pd.read_excel("input_data.xlsx", sheet_name="profiles", 
+                             index_col=0, parse_dates=True)
     plot_demand_and_revenue_for_elec_and_heat(profiles, scenario)
 
 

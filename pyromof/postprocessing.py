@@ -137,8 +137,10 @@ def add_investment_amount_to_scalar_results(
     dict = {}
     for columnName, columnData in scalars.items():
         dict[columnName] = columnData["invest"]
-        # The unit depends on the flow. Flows going to None are in kWh, flows between buses are in kW.
-    # Separate the dict into two dicts, one for flows to None and one for flows between buses, to assign the correct unit in the scalar results.
+        # The unit depends on the flow. Flows going to None are in kWh, flows between buses 
+        # are in kW.
+    # Separate the dict into two dicts, one for flows to None and one for flows between buses, 
+    # to assign the correct unit in the scalar results.
     flows_kWh = {key: value for key, value in dict.items() if key.endswith(" to None")}
     flows_kW = {key: value for key, value in dict.items() if not key.endswith(" to None")}
     scalar_results = add_items_to_scalar_results(
@@ -229,7 +231,8 @@ def postprocess(es, DUMPING_SPACE, investment):
             investment, scalars, scalar_results, DUMPING_SPACE
         )
     
-    effective_variable_costs = calculate_sum_of_variable_costs_per_timestep(effective_variable_costs)
+    effective_variable_costs = calculate_sum_of_variable_costs_per_timestep(
+        effective_variable_costs)
 
     return {
         "sequences": sequences,

@@ -10,7 +10,7 @@ def merge_scalars_from_scenarios(scenarios):
     """
     This script takes a list of scenario names and processes and joins their scalar data.
     The resulting dataframe has the following format:
-    |variable                   |type                          |{scenario_name_1}_value|{scenario_name_2}_value|
+    |variable |type  |{scenario_name_1}_value|{scenario_name_2}_value|
     """
     key_columns = ["variable", "type"]
 
@@ -27,7 +27,8 @@ def merge_scalars_from_scenarios(scenarios):
     dataframes = []
     for scenario in scenarios:
         SCENARIO_RESULTS = os.path.join(RESULTS, scenario, "results")
-        scalar_results = pd.read_csv(os.path.join(SCENARIO_RESULTS, "scalar_results.csv"), sep=";", index_col=0)
+        scalar_results = pd.read_csv(os.path.join(SCENARIO_RESULTS, "scalar_results.csv"), 
+                                     sep=";", index_col=0)
         dataframes.append(rename_columns_for_scenario(scalar_results, scenario))
 
         scalcosts = helpers.prepare_cost_scalars_for_plotting(
