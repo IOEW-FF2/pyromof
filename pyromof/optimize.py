@@ -7,7 +7,7 @@ import pandas as pd
 from oemof import solph
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
-from pyomo.environ import Constraint
+from pyomo.environ import Binary, Constraint, Set, Var
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
@@ -834,19 +834,25 @@ def create_energysystem(
             epcs[label + " to None"] = epc_nominal_storage_capacity
             print("epc for ", label, " : ", epc_nominal_storage_capacity)
             investment = True
+            print(row.maximum)
+            nominal_cap = solph.Investment(
+                ep_costs=epc_nominal_storage_capacity, maximum=row.maximum
+            )
             storage = solph.components.GenericStorage(
                 label=label,
                 inputs={
-                    busd[row.bus_in]: solph.Flow(),
-                },  # The flows could also be constrained by a nominal capacity or variable costs.
+                    busd[row.bus_in]: solph.Flow(
+                    ),
+                },
                 outputs={
-                    busd[row.bus_out]: solph.Flow(),
+                    busd[row.bus_out]: solph.Flow(
+                    ),
                 },
                 loss_rate=row.loss_rate,
                 initial_storage_level=row.initial_storage_level,
                 inflow_conversion_factor=row.inflow_conversion_factor,
                 outflow_conversion_factor=row.outflow_conversion_factor,
-                nominal_storage_capacity=solph.Investment(ep_costs=epc_nominal_storage_capacity),
+                nominal_capacity=nominal_cap,
             )
         elif row.investment is False:
             storage = solph.components.GenericStorage(
@@ -936,10 +942,59 @@ def create_energysystem(
                         status_t - status_prev
                     )
 
-            # om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
-            # om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
-            # om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
+            om.tradeoff_lower_constraint = Constraint(
+                om.TIMESTEPS, rule=tradeoff_bounds_lower
+            )
+            om.tradeoff_upper_constraint = Constraint(
+                om.TIMESTEPS, rule=tradeoff_bounds_upper
+            )
+            om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
+    
+    # Add active-flow-count-limit to avoid the use of storage to waste energy
+    if not storage.empty:
+        print("Creating flow count limits for storage")
+        storage_components = []
 
+        for _, row in storage.iterrows():
+            label = row.label + ("_invest" if row.investment else "")
+            comp = next(n for n in es.nodes if n.label == label)
+            storage_components.append(comp)
+
+        om.STORAGES = Set(initialize=storage_components)
+        om.storage_direction = Var(om.STORAGES, om.TIMESTEPS, within=Binary)
+        M = 100000 # a safe but tight upper bound
+
+        def make_limit_charge(bus_in, storage_comp):
+            # Factory function to create a charge constraint for a specific storage's inflow
+            def limit_charge(m, t):
+                flow_in = m.flow[(bus_in, storage_comp), t]
+                return flow_in <= M * m.storage_direction[storage_comp, t]
+            return limit_charge
+        
+        def make_limit_discharge(storage_comp, bus_out):
+            # Factory function to create a discharge constraint for a specific storage's outflow
+            def limit_discharge(m, t):
+                flow_out = m.flow[(storage_comp, bus_out), t]
+                return flow_out <= M * (1 - m.storage_direction[storage_comp, t])
+            return limit_discharge
+        
+        for idx, (_, row) in enumerate(storage.iterrows()):
+            # Determine the label of the storage component (may have "_invest" suffix)
+            label = row.label + ("_invest" if row.investment else "")
+            # Find the storage component in the energy system
+            storage_component = next(n for n in es.nodes if n.label == label)
+            # Get the bus objects for this storage
+            bus_in = busd[row.bus_in]
+            bus_out = busd[row.bus_out]
+            
+            # Apply constraints with unique names for each storage component
+            setattr(om, f'flow_count_limit_charge_{idx}', Constraint(
+                om.TIMESTEPS, rule=make_limit_charge(bus_in, storage_component)
+            ))
+            setattr(om, f'flow_count_limit_discharge_{idx}', Constraint(
+                om.TIMESTEPS, rule=make_limit_discharge(storage_component, bus_out)
+            ))
+    
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
 
@@ -950,7 +1005,8 @@ def create_energysystem(
     # Solve the system with error handling
     from pyomo.opt import SolverStatus, TerminationCondition
 
-    om.solve(solver="cbc")
+    print("Solving the model...")
+    om.solve(solver="cbc", tee=True)
 
     # Check solver status
     if (
