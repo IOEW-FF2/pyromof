@@ -964,7 +964,7 @@ def create_energysystem(
 
         om.STORAGES = Set(initialize=storage_components)
         om.storage_direction = Var(om.STORAGES, om.TIMESTEPS, within=Binary)
-        M = 200 # a safe but tight upper bound
+        M = 100000 # a safe but tight upper bound
 
         def make_limit_charge(bus_in, storage_comp):
             # Factory function to create a charge constraint for a specific storage's inflow
