@@ -1,4 +1,5 @@
 from pathlib import Path
+from pyromof import optimize
 
 import pandas as pd
 
@@ -203,11 +204,15 @@ def redefine_input_data_for_policies(data, electricity_prices_path):
 
 def main(electricity_prices_path) -> None:
 
-    from pyromof.optimize import read_raw_data
-
-    data = read_raw_data("input_data.xlsx")
-    redefine_input_data_for_policies(data, electricity_prices_path)
+    data = optimize.read_raw_data("input_data.xlsx")
     scenario = data["general"].loc[data["general"]["label"] == "scenario", "value"].item()
+    data = optimize.filter_input_data_by_scenario(data, scenario)
+    # drop column "scenario" from all tables where it exists
+    for key in data:
+        if "scenario" in data[key].columns:
+            data[key].drop(columns=["scenario"], inplace=True)
+    data = redefine_input_data_for_policies(data, electricity_prices_path)
+
     output_file = (
         Path("results")
         / scenario

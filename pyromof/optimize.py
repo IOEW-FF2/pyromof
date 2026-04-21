@@ -73,19 +73,17 @@ def matches_scenario(scenario_to_check: str, scenario_wanted: str) -> bool:
 
 @typechecked
 def filter_input_data_by_scenario(
-    sinks: pd.DataFrame,
-    sources: pd.DataFrame,
-    converters: pd.DataFrame,
-    storage: pd.DataFrame,
+    data: dict,
     scenario_wanted: str,
 ):
 
     filtered_data = {
-        "sinks": sinks,
-        "sources": sources,
-        "converters": converters,
-        "storage": storage,
+        "sinks": data["sinks"],
+        "sources": data["sources"],
+        "converters": data["converters"],
+        "storage": data["storage"],
     }
+
     filtered_data = {
         name: df[df["scenario"].apply(matches_scenario, args=(scenario_wanted,))]
         for name, df in filtered_data.items()
@@ -94,7 +92,7 @@ def filter_input_data_by_scenario(
     data["sources"] = filtered_data["sources"]
     data["converters"] = filtered_data["converters"]
     data["storage"] = filtered_data["storage"]
-    return data["sinks"], data["sources"], data["converters"], data["storage"]
+    return data
 
 
 @typechecked
@@ -1041,12 +1039,9 @@ def save_results(
 if __name__ == "__main__":
     data = read_raw_data("input_data.xlsx")
     scenario = retrieve_scenario_from_input_data(data["general"])
-    data["sinks"], data["sources"], data["converters"], data["storage"] = (
+    data = (
         filter_input_data_by_scenario(
-            data["sinks"],
-            data["sources"],
-            data["converters"],
-            data["storage"],
+            data,
             scenario,
         )
     )
