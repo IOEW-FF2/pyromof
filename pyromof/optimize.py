@@ -191,6 +191,25 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
             ignore = set(rules.get("ignore", []))
             cols = [c for c in df.columns if c not in ignore]
 
+            # row-wise validation for "general" sheet
+            if sheet == "general":
+                row_rules = rules.get("row_rules", {})
+                for idx, row in df.iterrows():
+                    label = row.get("label")
+                    value = row.get("value")
+                    if pd.isna(label) or pd.isna(value):
+                        continue
+                    expected_dtype = row_rules.get(str(label))
+                    if expected_dtype:
+                        if expected_dtype == "str" and not isinstance(value, str):
+                            errors.append(f"{sheet}/row {idx}/value: Must be string")
+                        elif expected_dtype == "numeric" and not isinstance(value, (int, float)):
+                            errors.append(f"{sheet}/row {idx}/value: Must be numeric")
+                        elif expected_dtype == "datetime":
+                            if pd.isna(pd.to_datetime(value, errors="coerce")):
+                                errors.append(f"{sheet}/row {idx}/value: Must be datetime")
+                continue
+
             for col in cols:
                 dtype = infer_dtype(sheet, col)
                 error = check_type(df[col], dtype, profile_columns)
@@ -211,7 +230,16 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
 # Define input data column type rules
 
 sheet_rules = {
-    "general": {"default": "str", "ignore": ["value"]},
+    "general": {
+        "default": "str",
+        "ignore": [],
+        "row_rules": {
+            "scenario": "str",
+            "start_time": "datetime",
+            "end_time": "datetime",
+            "wacc": "numeric",
+        },
+    },
     "sink": {"default": "numeric|str", "ignore": ["nominal_capacity", "unit", "comment"]},
     "source": {
         "default": "numeric",
