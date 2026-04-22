@@ -85,6 +85,8 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
     """
     errors = []
 
+    # implement column type rules
+
     def infer_dtype(sheet, col):
         rules = sheet_rules.get(sheet, {})
         if col in rules.get("exceptions", {}):
@@ -95,6 +97,8 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
         return rules.get("default")
 
     def check_type(col_data, dtype, profile_cols=None):
+
+        # get type specification for error feedback
         non_na = col_data.dropna()
         unique_types = set(type(v) for v in non_na)
         actual_type = str(col_data.dtype)
@@ -106,6 +110,7 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
                 else actual_type
             )
 
+        # define function to validate str|list(str) data type
         def check_str_list():
             for idx, val in col_data.items():
                 if not pd.isna(val) and not isinstance(val, str):
@@ -116,6 +121,7 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
                     return f"Invalid list at {idx} [actual={actual_type} mix={get_type_mix()}]"
             return None
 
+        # define function to validate numeric|str data type
         def check_numeric_str():
             if not (
                 pd.api.types.is_numeric_dtype(col_data)
@@ -143,6 +149,7 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
                         )
             return None
 
+        # define function to validate str, numeric, and bool data types
         def check_other_types(dtype_key):
             type_funcs = {
                 "str": lambda: (
@@ -167,6 +174,7 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
                 else None
             )
 
+        # create dictionary to apply type validation functions
         type_checks = {
             "str|list[str]": check_str_list,
             "numeric|str": check_numeric_str,
@@ -185,6 +193,7 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
     except Exception:
         profile_columns = set()
 
+    # initiate loop for column type calidation
     for sheet, rules in sheet_rules.items():
         try:
             df = pd.read_excel(input_file, sheet_name=sheet)
@@ -210,6 +219,7 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
                                 errors.append(f"{sheet}/row {idx}/value: Must be datetime")
                 continue
 
+            # create error messages
             for col in cols:
                 dtype = infer_dtype(sheet, col)
                 error = check_type(df[col], dtype, profile_columns)
