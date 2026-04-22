@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 from typing import Tuple
 
+import numpy as np
 import pandas as pd
 from oemof import solph
 from oemof.network.graph import create_nx_graph
@@ -78,167 +79,162 @@ def filter_input_data_by_scenario(
     return dfs["sinks"], dfs["sources"], dfs["converters"], dfs["storage"]
 
 
-def validate_column_types_in_excel(input_file, column_specs):
+def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
     """
-    Validates column types for multiple sheets in an Excel file.
-    Args:
-        input_file: Path to the Excel file.
-        column_specs: List of tuples (sheet, column, dtype). Each tuple specifies:
-            - sheet: Name of the Excel sheet
-            - column: Name of the column to check
-            - dtype: Expected type as string (e.g. 'str', 'numeric|str', 'str|list[str]', etc.)
-    Supported types for dtype:
-        - 'str', 'numeric', 'bool', 'numeric|str', 'str|list[str]'
-    'numeric' accepts numeric types (int or float). All ints are treated as numerics for validation.
-    Prints errors with actual dtype and type mix, including profile validation for str columns.
+    Validates column types of input data sheets based on predefined rules.
     """
-
     errors = []
-    profile_columns = None
-    for sheet, column, dtype in column_specs:
-        try:
-            df = pd.read_excel(input_file, sheet_name=sheet)
-            if column not in df.columns:
-                errors.append(f"Column '{column}' not found in sheet '{sheet}'.")
-                continue
-            col_data = df[column]
-            actual_type = str(col_data.dtype)
-            unique_types = set(col_data.dropna().apply(type))
-            type_mix = (
-                ", ".join(sorted([t.__name__ for t in unique_types]))
-                if actual_type == "object" or len(unique_types) > 1
+
+    def infer_dtype(sheet, col):
+        rules = sheet_rules.get(sheet, {})
+        if col in rules.get("exceptions", {}):
+            return rules["exceptions"][col]
+        for prefix, dtype in prefix_rules.items():
+            if col.startswith(prefix):
+                return dtype
+        return rules.get("default")
+
+    def check_type(col_data, dtype, profile_cols=None):
+        non_na = col_data.dropna()
+        unique_types = set(type(v) for v in non_na)
+        actual_type = str(col_data.dtype)
+
+        def get_type_mix():
+            return (
+                ", ".join(sorted(t.__name__ for t in unique_types))
+                if len(unique_types) > 1 or actual_type == "object"
                 else actual_type
             )
 
-            def fail(msg):
-                errors.append(f"{msg} Actual type: {actual_type}. Type mix: {type_mix}.")
+        def check_str_list():
+            for idx, val in col_data.items():
+                if not pd.isna(val) and not isinstance(val, str):
+                    return f"Non-string at {idx} [actual={actual_type} mix={get_type_mix()}]"
+                if isinstance(val, str) and not all(
+                    isinstance(v, str) for v in [v.strip() for v in val.split(",")]
+                ):
+                    return f"Invalid list at {idx} [actual={actual_type} mix={get_type_mix()}]"
+            return None
 
-            # Type validation logic
-            type_checks = {
-                "str": lambda s: pd.api.types.is_string_dtype(s),
-                "numeric": lambda s: pd.api.types.is_numeric_dtype(s),
-                "bool": lambda s: pd.api.types.is_bool_dtype(s),
-            }
-            # Type str|list[str] validation logic
-            if dtype == "str|list[str]":
+        def check_numeric_str():
+            if not (
+                pd.api.types.is_numeric_dtype(col_data)
+                or pd.api.types.is_string_dtype(col_data)
+                or (
+                    actual_type == "object"
+                    and unique_types.issubset({int, float, str, np.integer, np.floating})
+                )
+            ):
+                return f"Invalid type [actual={actual_type} mix={get_type_mix()}]"
+            if pd.api.types.is_string_dtype(col_data) or actual_type == "object":
                 for idx, val in col_data.items():
-                    if not isinstance(val, str):
-                        fail(f"'{column}' in '{sheet}' contains a non-string value at row {idx}.")
+                    if pd.isna(val):
                         continue
-                    items = [v.strip() for v in val.split(",")]
-                    if not all(isinstance(v, str) for v in items):
-                        fail(f"'{column}' in '{sheet}' contains invalid list entries at row {idx}")
-            # Type numeric|str validation logic
-            elif dtype == "numeric|str":
-                if not (
+                    if isinstance(val, str):
+                        for item in val.split(","):
+                            if item.strip() not in profile_cols:
+                                return (
+                                    f"Profile '{item.strip()}' not found "
+                                    f"[actual={actual_type} mix={get_type_mix()}]"
+                                )
+                    elif not isinstance(val, (int, float, np.integer, np.floating)):
+                        return (
+                            f"Unsupported type at {idx} [actual={actual_type} mix={get_type_mix()}]"
+                        )
+            return None
+
+        def check_other_types(dtype_key):
+            type_funcs = {
+                "str": lambda: (
+                    pd.api.types.is_string_dtype(col_data)
+                    or (actual_type == "object" and unique_types.issubset({str}))
+                ),
+                "numeric": lambda: (
                     pd.api.types.is_numeric_dtype(col_data)
-                    or pd.api.types.is_string_dtype(col_data)
                     or (
-                        str(col_data.dtype) == "object" and unique_types.issubset({int, float, str})
+                        actual_type == "object"
+                        and unique_types.issubset({int, float, np.integer, np.floating})
                     )
-                ):
-                    fail(f"Column '{column}' in sheet '{sheet}' must be of type {dtype}.")
-                if pd.api.types.is_string_dtype(col_data) or (
-                    str(col_data.dtype) == "object" and unique_types.issubset({int, float, str})
-                ):
-                    if profile_columns is None:
-                        profiles = pd.read_excel(input_file, sheet_name="profiles")
-                        profile_columns = set(profiles.columns)
-                    for idx, val in col_data.items():
-                        if isinstance(val, str):
-                            items = [v.strip() for v in val.split(",")]
-                            for item in items:
-                                if item not in profile_columns:
-                                    fail(
-                                        (
-                                            f"Profile name '{item}' from '{column}' in '{sheet}'"
-                                            f"(row {idx}) is not found in 'profiles'."
-                                        )
-                                    )
-                        elif not (isinstance(val, int) or isinstance(val, float) or pd.isna(val)):
-                            fail(
-                                f" '{column}' in '{sheet}' contains a value of unsupported type "
-                                f"at row {idx}."
-                            )
-            elif dtype in type_checks:
-                if not type_checks[dtype](col_data):
-                    fail(f"Column '{column}' in sheet '{sheet}' must be of type {dtype}.")
-            else:
-                fail(f"Unknown type '{dtype}' for column '{column}' in sheet '{sheet}'.")
+                ),
+                "bool": lambda: (
+                    pd.api.types.is_bool_dtype(col_data)
+                    or (actual_type == "object" and unique_types.issubset({bool}))
+                ),
+            }
+            return (
+                f"Must be {dtype_key} [actual={actual_type} mix={get_type_mix()}]"
+                if not type_funcs[dtype_key]()
+                else None
+            )
+
+        type_checks = {
+            "str|list[str]": check_str_list,
+            "numeric|str": check_numeric_str,
+            "str": lambda: check_other_types("str"),
+            "numeric": lambda: check_other_types("numeric"),
+            "bool": lambda: check_other_types("bool"),
+        }
+
+        return type_checks.get(
+            dtype, lambda: f"Unknown type '{dtype}' [actual={actual_type} mix={get_type_mix()}]"
+        )()
+
+    try:
+        profiles_df = pd.read_excel(input_file, sheet_name="profiles")
+        profile_columns = set(profiles_df.columns)
+    except Exception:
+        profile_columns = set()
+
+    for sheet, rules in sheet_rules.items():
+        try:
+            df = pd.read_excel(input_file, sheet_name=sheet)
+            ignore = set(rules.get("ignore", []))
+            cols = [c for c in df.columns if c not in ignore]
+
+            for col in cols:
+                dtype = infer_dtype(sheet, col)
+                error = check_type(df[col], dtype, profile_columns)
+                if error:
+                    errors.append(f"{sheet}/{col}: {error}")
         except Exception as e:
-            errors.append(str(e))
-        # Log the error
+            errors.append(f"Error in {sheet}: {e}")
+
     if errors:
-        print("\nErrors were found:")
+        print("\nValidation errors:")
         for err in errors:
-            print("-", err)
-        exit(1)
+            print(f"- {err}")
+        raise ValueError("Validation failed")
     else:
-        print("All data types are correct.")
+        print("All types valid.")
 
 
-column_specs = [
-    ("general", "label", "str"),
-    ("sink", "min", "numeric|str"),
-    ("sink", "max", "numeric|str"),
-    ("sink", "variable_costs", "numeric|str"),
-    ("sink", "scenario", "str|list[str]"),
-    ("sink", "label", "str"),
-    ("sink", "bus_in", "str"),
-    ("source", "label", "str"),
-    ("source", "bus_out", "str"),
-    ("source", "scenario", "str|list[str]"),
-    ("source", "nominal_capacity", "numeric"),
-    ("source", "variable_costs", "numeric"),
-    ("converter", "bus_in_1", "str"),
-    ("converter", "bus_in_1_alternative", "str"),
-    ("converter", "bus_in_2", "str"),
-    ("converter", "bus_out_1", "str"),
-    ("converter", "bus_out_2", "str"),
-    ("converter", "bus_out_3", "str"),
-    ("converter", "label", "str"),
-    ("converter", "scenario", "str|list[str]"),
-    ("converter", "investment", "bool"),
-    ("converter", "nominal_capacity", "numeric"),
-    ("converter", "eff_in_1", "numeric"),
-    ("converter", "eff_in_2", "numeric"),
-    ("converter", "eff_out_1", "numeric"),
-    ("converter", "out_1_max_decrease", "numeric"),
-    ("converter", "out_2_corresponding_increase", "numeric"),
-    ("converter", "eff_out_2", "numeric"),
-    ("converter", "eff_out_3", "numeric"),
-    ("converter", "min_load_share", "numeric"),
-    ("converter", "minimum_downtime", "numeric"),
-    ("converter", "maximum_startups", "numeric"),
-    ("converter", "initial_status", "numeric"),
-    ("converter", "startup_costs", "numeric"),
-    ("converter", "positive_gradient_limit", "numeric"),
-    ("converter", "capex", "numeric|str"),
-    ("converter", "lifetime", "numeric"),
-    ("converter", "maximum", "numeric|str"),
-    ("storage", "bus_in", "str"),
-    ("storage", "bus_out", "str"),
-    ("storage", "investment", "bool"),
-    ("storage", "scenario", "str|list[str]"),
-    ("storage", "label", "str"),
-    ("storage", "loss_rate", "numeric|str"),
-    ("storage", "inflow_conversion_factor", "numeric"),
-    ("storage", "outflow_conversion_factor", "numeric"),
-    ("storage", "nominal_storage_capacity", "numeric"),
-    ("storage", "initial_storage_level", "numeric"),
-    ("storage", "capex", "numeric"),
-    ("storage", "lifetime", "numeric"),
-    ("profiles", "test_profile", "numeric"),
-    ("profiles", "profile_heat_mt", "numeric"),
-    ("profiles", "heat_village", "numeric"),
-    ("profiles", "heat_village_normed", "numeric"),
-    ("profiles", "heat_town", "numeric"),
-    ("profiles", "profile_electricity_remuneration_cents", "numeric"),
-    ("profiles", "profile_electricity_remuneration", "numeric"),
-    ("profiles", "profile_electricity", "numeric"),
-]
+# Define input data column type rules and execute validation
 
-validate_column_types_in_excel("input_data.xlsx", column_specs)
+sheet_rules = {
+    "general": {"default": "str", "ignore": ["value"]},
+    "sink": {"default": "numeric|str", "ignore": ["nominal_capacity", "unit", "comment"]},
+    "source": {
+        "default": "numeric",
+        "ignore": ["min", "max", "capex", "lifetime", "unit", "comment"],
+    },
+    "converter": {
+        "default": "numeric",
+        "exceptions": {"investment": "bool", "capex": "numeric|str", "maximum": "numeric|str"},
+        "ignore": ["offset", "minimum", "comment", "comment 2"],
+    },
+    "storage": {
+        "default": "numeric",
+        "exceptions": {"investment": "bool", "loss_rate": "numeric|str"},
+    },
+    "profiles": {
+        "default": "numeric",
+        "ignore": ["timeindex", "profile_electricity"],
+    },
+}
+
+prefix_rules = {"scenario": "str|list[str]", "bus_": "str", "eff_": "numeric", "label": "str"}
+
+validate_input_data_column_types("input_data.xlsx", sheet_rules, prefix_rules)
 
 
 @typechecked
