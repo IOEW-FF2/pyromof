@@ -208,7 +208,7 @@ def validate_input_data_column_types(input_file, sheet_rules, prefix_rules):
         print("All types valid.")
 
 
-# Define input data column type rules and execute validation
+# Define input data column type rules
 
 sheet_rules = {
     "general": {"default": "str", "ignore": ["value"]},
@@ -233,8 +233,6 @@ sheet_rules = {
 }
 
 prefix_rules = {"scenario": "str|list[str]", "bus_": "str", "eff_": "numeric", "label": "str"}
-
-validate_input_data_column_types("input_data.xlsx", sheet_rules, prefix_rules)
 
 
 @typechecked
@@ -1182,6 +1180,7 @@ def save_results(
 
 
 if __name__ == "__main__":
+    validate_input_data_column_types("input_data.xlsx", sheet_rules, prefix_rules)
     profiles, sinks, sources, converters, storage, general = read_raw_data("input_data.xlsx")
     scenario = retrieve_scenario_from_input_data(general)
     time = define_time_period(general)
