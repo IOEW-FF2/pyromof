@@ -11,72 +11,13 @@ from pyomo.environ import Binary, Constraint, Set, Var
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
-
-
-def read_raw_data(relative_file_path):
-    return {
-        "profiles": pd.read_excel(relative_file_path, sheet_name="profiles"),
-        "sinks": pd.read_excel(relative_file_path, sheet_name="sink"),
-        "sources": pd.read_excel(relative_file_path, sheet_name="source"),
-        "converters": pd.read_excel(relative_file_path, sheet_name="converter"),
-        "storage": pd.read_excel(relative_file_path, sheet_name="storage"),
-        "general": pd.read_excel(relative_file_path, sheet_name="general"),
-    }
-
-
-@typechecked
-def define_time_period(general: pd.DataFrame) -> pd.DatetimeIndex:
-    # Definition of the time period
-    start_time = general.loc[general["label"] == "start_time", "value"].item()
-    end_time = general.loc[general["label"] == "end_time", "value"].item()
-    time = pd.date_range(start=start_time, end=end_time, freq="h", inclusive="both")
-    return time
-
-
-def slice_time_period_from_profiles(profiles: pd.DataFrame, time: pd.DatetimeIndex) -> pd.DataFrame:
-    # Slice the time period from profiles
-    profiles["timeindex"] = pd.to_datetime(profiles["timeindex"])
-    profiles = profiles[profiles["timeindex"].isin(time)]
-    return profiles
-
-
-@typechecked
-def retrieve_scenario_from_input_data(general_df: pd.DataFrame) -> str:
-    scenario = general_df.loc[general_df["label"] == "scenario", "value"].item()
-    return scenario
-
-
-@typechecked
-def matches_scenario(scenario_to_check: str, scenario_wanted: str) -> bool:
-    """
-    Checks wether the string "scenario to check" is either "all" or
-    includes the "scenario_wanted".
-    "scenario_wanted" should be the scenario to be optimized,
-    and "scenario_to_check" a scenario field
-    from the input data.
-    """
-    return scenario_to_check == "all" or scenario_wanted in scenario_to_check
-
-
-@typechecked
-def filter_input_data_by_scenario(
-    sinks: pd.DataFrame,
-    sources: pd.DataFrame,
-    converters: pd.DataFrame,
-    storage: pd.DataFrame,
-    scenario_wanted: str,
-):
-    dfs = {
-        "sinks": sinks,
-        "sources": sources,
-        "converters": converters,
-        "storage": storage,
-    }
-    dfs = {
-        name: df[df["scenario"].apply(matches_scenario, args=(scenario_wanted,))]
-        for name, df in dfs.items()
-    }
-    return dfs["sinks"], dfs["sources"], dfs["converters"], dfs["storage"]
+from pyromof.preprocessing.preprocessing_input_data import (
+    read_raw_data,
+    filter_input_data_by_scenario,
+    matches_scenario,
+    define_time_period,
+    slice_time_period_from_profiles,
+)
 
 
 @typechecked
@@ -841,12 +782,10 @@ def create_energysystem(
             storage = solph.components.GenericStorage(
                 label=label,
                 inputs={
-                    busd[row.bus_in]: solph.Flow(
-                    ),
+                    busd[row.bus_in]: solph.Flow(),
                 },
                 outputs={
-                    busd[row.bus_out]: solph.Flow(
-                    ),
+                    busd[row.bus_out]: solph.Flow(),
                 },
                 loss_rate=row.loss_rate,
                 initial_storage_level=row.initial_storage_level,
@@ -942,14 +881,10 @@ def create_energysystem(
                         status_t - status_prev
                     )
 
-            om.tradeoff_lower_constraint = Constraint(
-                om.TIMESTEPS, rule=tradeoff_bounds_lower
-            )
-            om.tradeoff_upper_constraint = Constraint(
-                om.TIMESTEPS, rule=tradeoff_bounds_upper
-            )
+            om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
+            om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
             om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
-    
+
     # Add active-flow-count-limit to avoid the use of storage to waste energy
     if not storage.empty:
         print("Creating flow count limits for storage")
@@ -962,22 +897,24 @@ def create_energysystem(
 
         om.STORAGES = Set(initialize=storage_components)
         om.storage_direction = Var(om.STORAGES, om.TIMESTEPS, within=Binary)
-        M = 100000 # a safe but tight upper bound
+        M = 100000  # a safe but tight upper bound
 
         def make_limit_charge(bus_in, storage_comp):
             # Factory function to create a charge constraint for a specific storage's inflow
             def limit_charge(m, t):
                 flow_in = m.flow[(bus_in, storage_comp), t]
                 return flow_in <= M * m.storage_direction[storage_comp, t]
+
             return limit_charge
-        
+
         def make_limit_discharge(storage_comp, bus_out):
             # Factory function to create a discharge constraint for a specific storage's outflow
             def limit_discharge(m, t):
                 flow_out = m.flow[(storage_comp, bus_out), t]
                 return flow_out <= M * (1 - m.storage_direction[storage_comp, t])
+
             return limit_discharge
-        
+
         for idx, (_, row) in enumerate(storage.iterrows()):
             # Determine the label of the storage component (may have "_invest" suffix)
             label = row.label + ("_invest" if row.investment else "")
@@ -986,15 +923,19 @@ def create_energysystem(
             # Get the bus objects for this storage
             bus_in = busd[row.bus_in]
             bus_out = busd[row.bus_out]
-            
+
             # Apply constraints with unique names for each storage component
-            setattr(om, f'flow_count_limit_charge_{idx}', Constraint(
-                om.TIMESTEPS, rule=make_limit_charge(bus_in, storage_component)
-            ))
-            setattr(om, f'flow_count_limit_discharge_{idx}', Constraint(
-                om.TIMESTEPS, rule=make_limit_discharge(storage_component, bus_out)
-            ))
-    
+            setattr(
+                om,
+                f"flow_count_limit_charge_{idx}",
+                Constraint(om.TIMESTEPS, rule=make_limit_charge(bus_in, storage_component)),
+            )
+            setattr(
+                om,
+                f"flow_count_limit_discharge_{idx}",
+                Constraint(om.TIMESTEPS, rule=make_limit_discharge(storage_component, bus_out)),
+            )
+
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
 
