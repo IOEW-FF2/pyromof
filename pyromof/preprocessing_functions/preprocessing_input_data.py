@@ -1,6 +1,5 @@
 import pandas as pd
 from typeguard import typechecked
-from typing import Dict, Tuple
 
 
 def read_raw_data(relative_file_path):
