@@ -16,19 +16,16 @@ def merge_scalars_from_scenarios(scenarios):
 
     def rename_columns_for_scenario(df, scenario):
         return df.rename(
-            columns={
-                col: f"{scenario}"
-                for col in df.columns
-                if col not in key_columns
-            }
+            columns={col: f"{scenario}" for col in df.columns if col not in key_columns}
         )
 
     cost_dataframes = []
     dataframes = []
     for scenario in scenarios:
         SCENARIO_RESULTS = os.path.join(RESULTS, scenario, "results")
-        scalar_results = pd.read_csv(os.path.join(SCENARIO_RESULTS, "scalar_results.csv"), 
-                                     sep=";", index_col=0)
+        scalar_results = pd.read_csv(
+            os.path.join(SCENARIO_RESULTS, "scalar_results.csv"), sep=";", index_col=0
+        )
         dataframes.append(rename_columns_for_scenario(scalar_results, scenario))
 
         scalcosts = helpers.prepare_cost_scalars_for_plotting(
@@ -42,8 +39,9 @@ def merge_scalars_from_scenarios(scenarios):
     for df in cost_dataframes[1:]:
         merged_cost_df = pd.merge(merged_cost_df, df, on=key_columns, how="outer")
     # Remove rows in which all values are either 0 or NaN
-    merged_cost_df = merged_cost_df[~merged_cost_df.drop(columns=key_columns).fillna(0).eq(0).all(axis=1)]
-    
+    merged_cost_df = merged_cost_df[
+        ~merged_cost_df.drop(columns=key_columns).fillna(0).eq(0).all(axis=1)
+    ]
 
     for df in dataframes[1:]:
         merged_df = pd.merge(merged_df, df, on=key_columns, how="outer")
@@ -103,9 +101,10 @@ if __name__ == "__main__":
     RESULTS = os.path.join(ROOT_PATH, "results")
     # scenarios = [input("For which scenario shall the results be compared?
     # Please enter the scenario names separated by commas. ")]
-    scenarios = ["stromflex_h2_0", "stromflex_h2_10", "stromflex_h2_20", 
-                 "stromflex_h2_30", "stromflex_h2_40", "stromflex_h2_50", 
-                 "stromflex_h2_66", "stromflex_h2_elec_1000"]
+    scenarios = [
+        "scenario1",
+        "scenario2"
+    ]
 
     multiscenario_scalcosts = merge_scalars_from_scenarios(scenarios)
     plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios)
