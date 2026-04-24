@@ -127,6 +127,12 @@ def extract_components_and_buses_from_input_data(
     buses_df = pd.DataFrame(data={"label": buses})
     return buses_df, components
 
+def calculate_ep_costs_for_time_period(capex, lifetime, wacc, time: pd.date_range):
+    annuity = economics.annuity(capex, lifetime, wacc)
+    time_period_hours = time.max() - time.min()
+    time_periods_per_year = 8760 / time_period_hours.total_seconds() * 3600
+    ep_costs = annuity/time_periods_per_year
+    return ep_costs
 
 @typechecked
 def create_energysystem(
@@ -357,7 +363,7 @@ def create_energysystem(
         row = converters.loc[converters.label == "orc"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(row.capex.item(), row.lifetime.item(), wacc, time)
             epcs["orc_invest to " + row.bus_out_1.item()] = epc
             print("epc for orc: ", epc)
             orc = solph.components.Converter(
@@ -399,7 +405,7 @@ def create_energysystem(
         row = converters.loc[converters.label == "chp"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(row.capex.item(), row.lifetime.item(), wacc, time)
             epcs["chp_cold_invest to " + row.bus_out_1.item()] = epc
             print("epc for chp: ", epc)
             chp_cold = solph.components.Converter(
@@ -445,7 +451,7 @@ def create_energysystem(
         row = converters.loc[converters.label == "power_to_heat"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(row.capex.item(), row.lifetime.item(), wacc, time)
             epcs["power_to_heat_invest to " + row.bus_out_1.item()] = epc
             print("epc for power_to_heat: ", epc)
             power_to_heat = solph.components.Converter(
@@ -481,7 +487,7 @@ def create_energysystem(
         row = converters.loc[converters.label == "h2_filtration"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(row.capex.item(), row.lifetime.item(), wacc, time)
             epcs["h2_filtration_invest to " + row.bus_out_1.item()] = epc
             print("epc for h2_filtration: ", epc)
             h2_filtration = solph.components.Converter(
@@ -517,7 +523,7 @@ def create_energysystem(
         row = converters.loc[converters.label == "pyrolysis"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(row.capex.item(), row.lifetime.item(), wacc, time)
             epcs["pyrolysis_invest to " + row.bus_out_1.item()] = epc
             print("epc for pyrolysis: ", epc)
             pyrolysis = solph.components.Converter(
@@ -638,7 +644,7 @@ def create_energysystem(
         row = converters.loc[converters.label == "heat_exchanger"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(row.capex.item(), row.lifetime.item(), wacc, time)
             epcs["heat_exchanger_invest to " + row.bus_out_1.item()] = epc
             print("epc for heat_exchanger: ", epc)
             heat_exchanger = solph.components.Converter(
@@ -676,7 +682,7 @@ def create_energysystem(
         row = converters.loc[converters.label == "combustor"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(row.capex.item(), row.lifetime.item(), wacc, time)
             epcs["combustor_invest to " + row.bus_out_1.item()] = epc
             print("epc for combustor: ", epc)
             combustor_hot = solph.components.Converter(
@@ -757,7 +763,7 @@ def create_energysystem(
         row = converters.loc[converters.label == "condensor"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(row.capex.item(), row.lifetime.item(), wacc, time)
             epcs["condensor_invest to " + row.bus_out_1.item()] = epc
             print("epc for condensor: ", epc)
             condensor = solph.components.Converter(
@@ -830,7 +836,7 @@ def create_energysystem(
         """
         if row.investment is True:
             label = row.label + "_invest"
-            epc_nominal_storage_capacity = economics.annuity(row.capex, row.lifetime, wacc)
+            epc_nominal_storage_capacity = calculate_ep_costs_for_time_period(row.capex, row.lifetime, wacc, time)
             epcs[label + " to None"] = epc_nominal_storage_capacity
             print("epc for ", label, " : ", epc_nominal_storage_capacity)
             investment = True
