@@ -41,6 +41,9 @@ def merge_scalars_from_scenarios(scenarios):
 
     for df in cost_dataframes[1:]:
         merged_cost_df = pd.merge(merged_cost_df, df, on=key_columns, how="outer")
+    # Remove rows in which all values are either 0 or NaN
+    merged_cost_df = merged_cost_df[~merged_cost_df.drop(columns=key_columns).fillna(0).eq(0).all(axis=1)]
+    
 
     for df in dataframes[1:]:
         merged_df = pd.merge(merged_df, df, on=key_columns, how="outer")
