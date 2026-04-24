@@ -27,9 +27,9 @@ def calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles
 
     share_of_total_electricity_fed_in = fed_in_at_negative_price / sequences_aligned[
         "b_electricity to electricity_grid"].sum().sum()
-    print(fed_in_at_negative_price)
-    print(share_of_total_electricity_fed_in*100)
-    return fed_in_at_negative_price
+    print("kWh elec fed_in_at_negative_price: " + str(fed_in_at_negative_price))
+    print("Share of total electricity: " + str(share_of_total_electricity_fed_in*100) + "%")
+    return fed_in_at_negative_price, share_of_total_electricity_fed_in*100
 
 def calculate_pyrolysis_full_load_hours(sequences):
     """
@@ -43,15 +43,28 @@ def calculate_pyrolysis_full_load_hours(sequences):
     return full_load_hours
 
 if __name__ == "__main__":
+    # Create a table with scenarios as column names and the elec fed in at negative price,
+    # the share of total electricity fed in at negative price and the pyrolysis full load hours as rows
+
     general = pd.read_excel("input_data.xlsx", sheet_name="general")
-    scenario = "stromflex_h2_0"
-
+    scenarios = ["stromflex_h2_0", "stromflex_h2_20", 
+                 "stromflex_h2_40", "stromflex_h2_60_unlimitiert",
+                 "stromflex_h2_1200",
+                 "stromflex_h2_ohne_syngasspeicher", "stromflex_h2_ohne_speicher",  
+                 "wärme_öl_0", "wärme_öl_60"]
+    results = pd.DataFrame(columns=scenarios, index=["fed_in_at_negative_price", 
+                                                     "share_of_total_electricity_fed_in", 
+                                                     "pyrolysis_full_load_hours"])
     ROOT_PATH = Path(__file__).parent.parent
-    SCENARIO_RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")
-    SCENARIO_META_INFO = os.path.join(ROOT_PATH, "results", scenario, "meta_info")
+    for scenario in scenarios:
+        print(scenario)
+        SCENARIO_RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")
+        SCENARIO_META_INFO = os.path.join(ROOT_PATH, "results", scenario, "meta_info")
 
-sequences = pd.read_csv(os.path.join(SCENARIO_RESULTS, "sequences.csv"), sep=";", index_col=0)
-profiles = pd.read_excel(os.path.join(SCENARIO_META_INFO, "input_data.xlsx"), 
+        sequences = pd.read_csv(os.path.join(SCENARIO_RESULTS, "sequences.csv"), sep=";", index_col=0)
+        profiles = pd.read_excel(os.path.join(SCENARIO_META_INFO, "input_data.xlsx"), 
                          sheet_name="profiles", index_col=0)
-calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles)
-calculate_pyrolysis_full_load_hours(sequences)
+        fed_in_at_negative_price, share_of_total_electricity_fed_in = calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles)
+        pyrolysis_full_load_hours = calculate_pyrolysis_full_load_hours(sequences)
+        results[scenario] = [fed_in_at_negative_price, share_of_total_electricity_fed_in, pyrolysis_full_load_hours]
+    results.to_csv(os.path.join(ROOT_PATH, "results", "flexibility_results.csv"), sep=";")
