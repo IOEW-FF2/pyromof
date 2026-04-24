@@ -11,12 +11,13 @@ from pyomo.environ import Binary, Constraint, Set, Var
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
-from pyromof.preprocessing.preprocessing_input_data import (
+from pyromof.preprocessing_functions.preprocessing_input_data import (
     read_raw_data,
-    filter_input_data_by_scenario,
-    matches_scenario,
     define_time_period,
     slice_time_period_from_profiles,
+    retrieve_scenario_from_input_data,
+    matches_scenario,
+    filter_input_data_by_scenario,
 )
 
 
