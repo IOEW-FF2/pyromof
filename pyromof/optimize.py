@@ -11,6 +11,7 @@ from pyomo.environ import Binary, Constraint, Set, Var
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
+from pyromof.policies.implement_policies import redefine_input_data_for_policies
 from pyromof.preprocessing_functions.preprocessing_input_data import (
     define_time_period,
     filter_input_data_by_scenario,
@@ -102,6 +103,10 @@ def create_energysystem(
 
     # Model definition
     es = solph.EnergySystem(timeindex=time)
+
+    sinks, sources, converters, storage = filter_input_data_by_scenario(
+        sinks, sources, converters, storage, scenario
+    )
 
     buses, components = extract_components_and_buses_from_input_data(
         sinks, sources, converters, storage
@@ -1046,13 +1051,8 @@ def save_results(
 if __name__ == "__main__":
     data = read_raw_data("input_data.xlsx")
     scenario = retrieve_scenario_from_input_data(data["general"])
-    data = (
-        filter_input_data_by_scenario(
-            data,
-            scenario,
-        )
-    )
-    data["sinks"], data["converters"], data["profiles"] = redefine_input_data_for_policies(data)
+
+    data = redefine_input_data_for_policies(data)
     time = define_time_period(data["general"])
     profiles = slice_time_period_from_profiles(data["profiles"], time)
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
