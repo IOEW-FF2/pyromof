@@ -3,28 +3,17 @@ from pyromof.preprocessing_functions import preprocessing_input_data
 
 import pandas as pd
 
+def receive_and_refine_electricity_price_data(data):
 
-def receive_and_refine_electricity_price_data(electricity_prices_path):
+    timestamps = pd.to_datetime(data["profiles"]["timeindex"])
 
-    data_file = pd.read_csv(
-        electricity_prices_path,
-        sep=";",
-        parse_dates=True,
-    )
+    raw_data = data["profiles"]["electricity market price"]
 
-    timestamps = pd.to_datetime(data_file["Datum von"], format="%d.%m.%Y %H:%M")
+    data_float = raw_data.astype(float)
 
-    raw_data = data_file["Deutschland/Luxemburg [€/MWh] Berechnete Auflösungen"]
+    data_float.index = timestamps
 
-    data_replace_comma = raw_data.copy().str.replace(",", ".")
-
-    data_float = data_replace_comma.astype(float)
-
-    electricity_price_euro_per_kwh = data_float / -1000
-    electricity_price_euro_per_kwh.index = timestamps
-
-    return electricity_price_euro_per_kwh
-
+    return data_float
 
 def receive_higher_threshold_basis_and_lower_threshold_basis(policies):
 
@@ -162,12 +151,12 @@ def check_policy_choice_compatibility(policies):
         return print("policies confirmed")
 
 
-def redefine_input_data_for_policies(data, electricity_prices_path):
+def redefine_input_data_for_policies(data):
 
     check_policy_choice_compatibility(data["policies"])
 
     activated_policies = get_activated_policies(data["policies"])
-    electricity_price_euro_per_kwh = None
+    electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data(data)
     base_value = None
     lower_threshold = None
 
@@ -176,10 +165,6 @@ def redefine_input_data_for_policies(data, electricity_prices_path):
             data["sinks"] = lump_sum_premium_policy(data["sinks"], data["policies"])
 
         elif policy_name == "Sliding premium":
-            if electricity_price_euro_per_kwh is None:
-                electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data(
-                    electricity_prices_path
-                )
             if base_value is None or lower_threshold is None:
                 base_value, lower_threshold = (
                     receive_higher_threshold_basis_and_lower_threshold_basis(data["policies"])
@@ -202,17 +187,24 @@ def redefine_input_data_for_policies(data, electricity_prices_path):
     return data
 
 
-def main(electricity_prices_path) -> None:
+def main() -> None:
 
     data = preprocessing_input_data.read_raw_data("input_data.xlsx")
+    sinks = data["sinks"]
+    sources = data["sources"]
+    converters = data["converters"]
+    storage = data["storage"]
+
     scenario = data["general"].loc[data["general"]["label"] == "scenario", "value"].item()
-    data = preprocessing_input_data.filter_input_data_by_scenario(data, scenario)
+    data = preprocessing_input_data.filter_input_data_by_scenario(sinks, sources, converters, storage, scenario)
+   
+    """
     # drop column "scenario" from all tables where it exists
     for key in data:
         if "scenario" in data[key].columns:
             data[key].drop(columns=["scenario"], inplace=True)
-    data = redefine_input_data_for_policies(data, electricity_prices_path)
-
+    data = redefine_input_data_for_policies(data)
+    
     output_file = (
         Path("results")
         / scenario
@@ -226,8 +218,7 @@ def main(electricity_prices_path) -> None:
         for table_name, table_data in data.items():
             if isinstance(table_data, pd.DataFrame):
                 table_data.to_excel(writer, sheet_name=table_name, index=False)
-
+    """
 
 if __name__ == "__main__":
-    electricity_prices_path = "preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv"
-    main(electricity_prices_path)
+    main()
