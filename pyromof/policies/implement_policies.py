@@ -1,5 +1,5 @@
 from pathlib import Path
-from pyromof import optimize
+from pyromof.preprocessing_functions import preprocessing_input_data
 
 import pandas as pd
 
@@ -204,9 +204,9 @@ def redefine_input_data_for_policies(data, electricity_prices_path):
 
 def main(electricity_prices_path) -> None:
 
-    data = optimize.read_raw_data("input_data.xlsx")
+    data = preprocessing_input_data.read_raw_data("input_data.xlsx")
     scenario = data["general"].loc[data["general"]["label"] == "scenario", "value"].item()
-    data = optimize.filter_input_data_by_scenario(data, scenario)
+    data = preprocessing_input_data.filter_input_data_by_scenario(data, scenario)
     # drop column "scenario" from all tables where it exists
     for key in data:
         if "scenario" in data[key].columns:
