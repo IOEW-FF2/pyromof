@@ -10,19 +10,21 @@ import postprocessing
 if __name__ == "__main__":
     # Insert here the parameters. Only two decimal places are possible!
     parameters = {
-        "component_type": "sources",  # must be plural
-        "component": "heat_source",
-        "variable": "variable_costs",
-        "min": 0.1,
-        "max": 1000.1,
-        "step": 100,
+        "component_type": "storage",  # must be plural
+        "component": "syngas_storage",
+        "variable": "capex",
+        "min": 0,
+        "max": 10,
+        "step": 1,
     }
 
     # scenario = input("For which scenario shall the sensitivity be analyzed? ")
     scenario = "stromflex_h2"
 
     # Definition of the time period
-    time = pd.date_range(start="2023-01-02", end="2023-01-03", freq="h", inclusive="both")
+    time = pd.date_range(
+        start="2023-07-01", end="2023-07-20", freq="h", inclusive="both"
+    )
 
     profiles, sinks, sources, converters, storage, general = optimize.read_raw_data(
         "input_data.xlsx"
@@ -84,11 +86,22 @@ if __name__ == "__main__":
             time=time,
             scenario=scenario,
         )
-        optimize.save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario)
+        optimize.save_results(
+            es=es,
+            om=om,
+            investment=investment,
+            epcs=epcs,
+            META_INFO=META_INFO,
+            DUMPING_SPACE=DUMPING_SPACE,
+            scenario=scenario,
+            time=time,
+        )
 
         # POSTPROCESSING
 
-        result_dfs = postprocessing.postprocess(es, DUMPING_SPACE, investment)
+        result_dfs = postprocessing.postprocess(
+            es=es, DUMPING_SPACE=DUMPING_SPACE, investment=investment
+        )
 
         postprocessing.check_scalar_costs_consistency(result_dfs["scalar_results"])
 
