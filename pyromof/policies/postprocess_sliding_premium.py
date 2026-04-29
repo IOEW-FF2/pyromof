@@ -77,16 +77,5 @@ def main(scenario: str, data) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--scenario",
-        required=True,
-        help="Name of the scenario, e.g. --scenario stromflex_h2 ",
-    )
-
-    args = parser.parse_args()
-
-    input_data_path = "input_data.xlsx"
-    electricity_prices_path = "preprocessing/Gro_handelspreise_202501010000_202601010000_Stunde.csv"
-    main(args.scenario, electricity_prices_path, input_data_path)
+    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
+    main(scenario, data)
