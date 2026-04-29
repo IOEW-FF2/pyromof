@@ -5,8 +5,8 @@ import pandas as pd
 
 from pyromof.policies.implement_policies import (
     feed_in_payment_sliding_premium,
-    receive_higher_threshold_basis_and_lower_threshold_basis,
     receive_and_refine_electricity_price_data,
+    receive_higher_threshold_basis_and_lower_threshold_basis,
 )
 from pyromof.postprocessing import add_items_to_scalar_results
 from pyromof.preprocessing_functions import preprocessing_input_data
@@ -32,10 +32,12 @@ def calculate_payment_sums(
 ):
 
     # calculate sliding premium and revenue per kwh
-    feed_in_revenue_euro_per_kwh, sliding_premium, monthly_average_price = feed_in_payment_sliding_premium(
-        electricity_price,
-        base_value,
-        lower_threshold,
+    feed_in_revenue_euro_per_kwh, sliding_premium, monthly_average_price = (
+        feed_in_payment_sliding_premium(
+            electricity_price,
+            base_value,
+            lower_threshold,
+        )
     )
 
     # calculate payments
@@ -61,7 +63,9 @@ def calculate_payment_sums(
     }
     revenue_sums = add_items_to_scalar_results(sum_dict, "sliding_premium", df2.copy())
 
-    revenue_sums.to_csv(os.path.join(results_dir, "electricity_revenue_data.csv"), index=False, sep=";")
+    revenue_sums.to_csv(
+        os.path.join(results_dir, "electricity_revenue_data.csv"), index=False, sep=";"
+    )
 
 
 def main(scenario: str, data) -> None:

@@ -54,19 +54,16 @@ def filter_input_data_by_scenario(
     data: dict[str, pd.DataFrame],
     scenario_wanted: str,
 ):
-    dfs = [
-        "sinks",
-        "sources",
-        "converters",
-        "storage"
-    ]
+    dfs = ["sinks", "sources", "converters", "storage"]
     # Filter sheets listed in dfs by scenario and leave the others unchanged
     data = {
         name: df[df["scenario"].apply(matches_scenario, args=(scenario_wanted,))]
-        if name in dfs else df
+        if name in dfs
+        else df
         for name, df in data.items()
     }
     return data
+
 
 def preprocess(relative_file_path):
     data = read_raw_data(relative_file_path)
@@ -75,6 +72,7 @@ def preprocess(relative_file_path):
     scenario = retrieve_scenario_from_input_data(data["general"])
     data = filter_input_data_by_scenario(data, scenario)
     return data, time, scenario
-    
+
+
 if __name__ == "__main__":
     data, time = preprocess("input_data.xlsx")

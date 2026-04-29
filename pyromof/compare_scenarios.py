@@ -101,10 +101,7 @@ if __name__ == "__main__":
     RESULTS = os.path.join(ROOT_PATH, "results")
     # scenarios = [input("For which scenario shall the results be compared?
     # Please enter the scenario names separated by commas. ")]
-    scenarios = [
-        "scenario1",
-        "scenario2"
-    ]
+    scenarios = ["scenario1", "scenario2"]
 
     multiscenario_scalcosts = merge_scalars_from_scenarios(scenarios)
     plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios)

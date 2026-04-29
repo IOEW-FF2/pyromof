@@ -1,7 +1,9 @@
 from pathlib import Path
-from pyromof.preprocessing_functions import preprocessing_input_data
 
 import pandas as pd
+
+from pyromof.preprocessing_functions import preprocessing_input_data
+
 
 def receive_and_refine_electricity_price_data(profiles):
 
@@ -14,6 +16,7 @@ def receive_and_refine_electricity_price_data(profiles):
     data_float.index = timestamps
 
     return data_float
+
 
 def receive_higher_threshold_basis_and_lower_threshold_basis(policies):
 
@@ -157,7 +160,7 @@ def redefine_input_data_for_policies(data):
     check_policy_choice_compatibility(data["policies"])
 
     activated_policies = get_activated_policies(data["policies"])
-    
+
     base_value = None
     lower_threshold = None
 
@@ -179,22 +182,26 @@ def redefine_input_data_for_policies(data):
             )
 
         elif policy_name == "Subsidy for pyrolysis investment costs":
-            data["converters"] = lump_sum_investment_subsidy_policy(data["converters"], data["policies"])
+            data["converters"] = lump_sum_investment_subsidy_policy(
+                data["converters"], data["policies"]
+            )
 
         elif policy_name == "Percentage subsidy for pyrolysis investment costs":
-            data["converters"] = percentage_investment_subsidy_policy(data["converters"], data["policies"])
+            data["converters"] = percentage_investment_subsidy_policy(
+                data["converters"], data["policies"]
+            )
 
     return data
 
 
 def implement_policies(data, scenario) -> None:
-   
+
     # drop column "scenario" from all tables where it exists
     for key in data:
         if "scenario" in data[key].columns:
             data[key].drop(columns=["scenario"], inplace=True)
     data = redefine_input_data_for_policies(data)
-    
+
     output_file = (
         Path("results")
         / scenario
@@ -210,6 +217,7 @@ def implement_policies(data, scenario) -> None:
             if isinstance(table_data, pd.DataFrame):
                 table_data.to_excel(writer, sheet_name=table_name, index=False)
     return data
+
 
 if __name__ == "__main__":
     data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
