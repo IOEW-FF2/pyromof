@@ -3,11 +3,11 @@ from pyromof.preprocessing_functions import preprocessing_input_data
 
 import pandas as pd
 
-def receive_and_refine_electricity_price_data(data):
+def receive_and_refine_electricity_price_data(profiles):
 
-    timestamps = pd.to_datetime(data["profiles"]["timeindex"])
+    timestamps = pd.to_datetime(profiles["timeindex"])
 
-    raw_data = data["profiles"]["electricity market price"]
+    raw_data = profiles["electricity market price"]
 
     data_float = raw_data.astype(float)
 
@@ -186,18 +186,8 @@ def redefine_input_data_for_policies(data):
     return data
 
 
-def main() -> None:
-
-    data = preprocessing_input_data.read_raw_data("input_data.xlsx")
-    sinks = data["sinks"]
-    sources = data["sources"]
-    converters = data["converters"]
-    storage = data["storage"]
-
-    scenario = data["general"].loc[data["general"]["label"] == "scenario", "value"].item()
-    data = preprocessing_input_data.filter_input_data_by_scenario(sinks, sources, converters, storage, scenario)
+def implement_policies(data, scenario) -> None:
    
-    """
     # drop column "scenario" from all tables where it exists
     for key in data:
         if "scenario" in data[key].columns:
@@ -215,9 +205,13 @@ def main() -> None:
 
     with pd.ExcelWriter(output_file) as writer:
         for table_name, table_data in data.items():
+            table_data = table_data.replace({True: "True", False: "False"})
             if isinstance(table_data, pd.DataFrame):
                 table_data.to_excel(writer, sheet_name=table_name, index=False)
-    """
+    return data
 
 if __name__ == "__main__":
-    main()
+    data = preprocessing_input_data.read_raw_data("input_data.xlsx")
+    scenario = data["general"].loc[data["general"]["label"] == "scenario", "value"].item()
+    data = preprocessing_input_data.filter_input_data_by_scenario(data, scenario)
+    implement_policies(data, scenario)
