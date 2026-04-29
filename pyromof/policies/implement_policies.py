@@ -77,13 +77,13 @@ def feed_in_payment_sliding_premium(
 def sliding_premium_policy(
     sink: pd.DataFrame,
     profiles: pd.DataFrame,
-    electricity_price_data: pd.Series,
     base_value,
     lower_threshold,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
+    electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data(profiles)
     feed_in_payment_euro_per_kwh, _, _ = feed_in_payment_sliding_premium(
-        electricity_price_data, base_value, lower_threshold
+        electricity_price_euro_per_kwh, base_value, lower_threshold
     )
 
     profiles["sliding_premium_profile"] = feed_in_payment_euro_per_kwh.reset_index(drop=True)
@@ -156,7 +156,7 @@ def redefine_input_data_for_policies(data):
     check_policy_choice_compatibility(data["policies"])
 
     activated_policies = get_activated_policies(data["policies"])
-    electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data(data)
+    
     base_value = None
     lower_threshold = None
 
@@ -173,7 +173,6 @@ def redefine_input_data_for_policies(data):
             data["sinks"], data["profiles"] = sliding_premium_policy(
                 data["sinks"],
                 data["profiles"],
-                electricity_price_euro_per_kwh,
                 base_value,
                 lower_threshold,
             )
