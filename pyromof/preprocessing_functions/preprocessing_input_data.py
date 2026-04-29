@@ -27,6 +27,7 @@ def slice_time_period_from_profiles(profiles: pd.DataFrame, time: pd.DatetimeInd
     # Slice the time period from profiles
     profiles["timeindex"] = pd.to_datetime(profiles["timeindex"])
     profiles = profiles[profiles["timeindex"].isin(time)]
+    profiles = profiles.set_index("timeindex")
     return profiles
 
 
