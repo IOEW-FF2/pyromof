@@ -11,13 +11,8 @@ from pyomo.environ import Binary, Constraint, Set, Var
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
-from pyromof.preprocessing_functions.preprocessing_input_data import (
-    define_time_period,
-    filter_input_data_by_scenario,
-    read_raw_data,
-    retrieve_scenario_from_input_data,
-    slice_time_period_from_profiles,
-)
+from pyromof.policies.implement_policies import implement_policies
+from pyromof.preprocessing_functions.preprocessing_input_data import preprocess
 
 
 @typechecked
@@ -80,18 +75,20 @@ def calculate_ep_costs_for_time_period(capex, lifetime, wacc, time: pd.date_rang
 @typechecked
 def create_energysystem(
     META_INFO,
-    profiles: pd.DataFrame,
-    sinks: pd.DataFrame,
-    sources: pd.DataFrame,
-    converters: pd.DataFrame,
-    storage: pd.DataFrame,
-    general: pd.DataFrame,
+    data: dict[str, pd.DataFrame],
     time,
     scenario: str,
 ) -> Tuple[solph.EnergySystem, solph.Model, bool, dict]:
     # Initiate an investment variable as False that will be overwritten
     # with True if any component with investment is added.
     # This information is required for the postprocessing.
+    profiles = data["profiles"]
+    sinks = data["sinks"]
+    sources = data["sources"]
+    converters = data["converters"]
+    storage = data["storage"]
+    general = data["general"]
+
     investment = False
 
     # Read in wacc for investment optimization
@@ -103,9 +100,6 @@ def create_energysystem(
     # Model definition
     es = solph.EnergySystem(timeindex=time)
 
-    sinks, sources, converters, storage = filter_input_data_by_scenario(
-        sinks, sources, converters, storage, scenario
-    )
     buses, components = extract_components_and_buses_from_input_data(
         sinks, sources, converters, storage
     )
@@ -999,7 +993,7 @@ def create_energysystem(
 
 def visualize_network_in_dash(es: solph.EnergySystem):
     if input("Visualize network in dash app? (yes/no) ") == "yes":
-        from visualize_network import make_network, shownetwork
+        from pyromof.visualize_network import make_network, shownetwork
 
         network = make_network(es)
         shownetwork(network)
@@ -1047,10 +1041,8 @@ def save_results(
 
 
 if __name__ == "__main__":
-    data = read_raw_data("input_data.xlsx")
-    scenario = retrieve_scenario_from_input_data(data["general"])
-    time = define_time_period(data["general"])
-    profiles = slice_time_period_from_profiles(data["profiles"], time)
+    data, time, scenario = preprocess("input_data.xlsx")
+    data = implement_policies(data, scenario)
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
         Path(__file__).parent.parent, scenario
     )
@@ -1060,12 +1052,7 @@ if __name__ == "__main__":
 
     es, om, investment, epcs = create_energysystem(
         META_INFO=META_INFO,
-        profiles=profiles,
-        sinks=data["sinks"],
-        sources=data["sources"],
-        converters=data["converters"],
-        storage=data["storage"],
-        general=data["general"],
+        data=data,
         time=time,
         scenario=scenario,
     )

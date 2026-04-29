@@ -181,6 +181,7 @@ def plot_cost_scalars(scalcosts, scenario):
     # Save plot as html
     fig.write_html(os.path.join(RESULTS, "cost_scalars_{}.html".format(scenario)))
 
+
 def plot_storage_content(storage_content, scenario):
     # Creates a line plot with the storage content over time for each storage type
     fig = go.Figure()
@@ -195,6 +196,7 @@ def plot_storage_content(storage_content, scenario):
             )
         )
     fig.write_html(os.path.join(RESULTS, "storage_content_{}.html".format(scenario)))
+
 
 def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario):
     # Creates a line plot with the demand and revenue for electricity and heat over time
@@ -228,6 +230,7 @@ def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario):
     fig.update_layout(hoverlabel_namelength=-1)
     fig.write_html(os.path.join(RESULTS, "demand_and_revenue_{}.html".format(scenario)))
 
+
 def plot(scenario):
     df_dict = prepare_cost_sequences_for_plotting()
     plot_cost_sequences(df_dict, scenario)
@@ -242,10 +245,10 @@ def plot(scenario):
         parse_dates=True,
     )
     plot_storage_content(storage_contents, scenario)
-    profiles = pd.read_excel("input_data.xlsx", sheet_name="profiles", 
-                             index_col=0, parse_dates=True)
+    profiles = pd.read_excel(
+        "input_data.xlsx", sheet_name="profiles", index_col=0, parse_dates=True
+    )
     plot_demand_and_revenue_for_elec_and_heat(profiles, scenario)
-
 
 
 if __name__ == "__main__":

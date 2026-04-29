@@ -22,9 +22,7 @@ if __name__ == "__main__":
     scenario = "stromflex_h2"
 
     # Definition of the time period
-    time = pd.date_range(
-        start="2023-07-01", end="2023-07-20", freq="h", inclusive="both"
-    )
+    time = pd.date_range(start="2023-07-01", end="2023-07-20", freq="h", inclusive="both")
 
     profiles, sinks, sources, converters, storage, general = optimize.read_raw_data(
         "input_data.xlsx"

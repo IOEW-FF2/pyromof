@@ -7,7 +7,8 @@ from oemof.solph import (
     processing,
 )
 
-from pyromof import helpers, optimize
+from pyromof import helpers
+from pyromof.preprocessing_functions import preprocessing_input_data
 
 
 def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
@@ -140,11 +141,10 @@ def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
 
     return effective_variable_costs
 
+
 def calculate_sum_of_variable_costs_per_timestep(effective_variable_costs):
-        effective_variable_costs["sum of variable costs"] = effective_variable_costs.sum(
-        axis=1
-    )
-        return effective_variable_costs
+    effective_variable_costs["sum of variable costs"] = effective_variable_costs.sum(axis=1)
+    return effective_variable_costs
 
 
 def add_investment_amount_to_scalar_results(
@@ -159,22 +159,16 @@ def add_investment_amount_to_scalar_results(
     dict = {}
     for columnName, columnData in scalars.items():
         dict[columnName] = columnData["invest"]
-        # The unit depends on the flow. Flows going to None are in kWh, flows between buses 
+        # The unit depends on the flow. Flows going to None are in kWh, flows between buses
         # are in kW.
-    # Separate the dict into two dicts, one for flows to None and one for flows between buses, 
+    # Separate the dict into two dicts, one for flows to None and one for flows between buses,
     # to assign the correct unit in the scalar results.
     flows_kWh = {key: value for key, value in dict.items() if key.endswith(" to None")}
     flows_kW = {key: value for key, value in dict.items() if not key.endswith(" to None")}
-    scalar_results = add_items_to_scalar_results(
-        flows_kWh, "built capacity [kWh]", scalar_results
-        )
-    scalar_results = add_items_to_scalar_results(
-        flows_kW, "built capacity [kW]", scalar_results
-        )
-    
-    epcs = pd.read_csv(
-        os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";"
-    )
+    scalar_results = add_items_to_scalar_results(flows_kWh, "built capacity [kWh]", scalar_results)
+    scalar_results = add_items_to_scalar_results(flows_kW, "built capacity [kW]", scalar_results)
+
+    epcs = pd.read_csv(os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";")
     investmentcost_dict = {}
     for key, value in dict.items():
         investmentcost_dict[key] = dict[key] * epcs.loc[epcs["object"] == key, "value"].item()
@@ -253,9 +247,10 @@ def postprocess(es, DUMPING_SPACE, investment, input_data):
         scalar_results = add_investment_amount_to_scalar_results(
             investment, scalars, scalar_results, DUMPING_SPACE
         )
-    
+
     effective_variable_costs = calculate_sum_of_variable_costs_per_timestep(
-        effective_variable_costs)
+        effective_variable_costs
+    )
 
     return {
         "sequences": sequences,
@@ -267,9 +262,10 @@ def postprocess(es, DUMPING_SPACE, investment, input_data):
 
 
 if __name__ == "__main__":
-    input_data = optimize.read_raw_data("input_data.xlsx")
-    scenario = input_data["general"].loc[input_data["general"]["label"] == 
-                                         "scenario", "value"].item()
+    input_data = preprocessing_input_data.read_raw_data("input_data.xlsx")
+    scenario = (
+        input_data["general"].loc[input_data["general"]["label"] == "scenario", "value"].item()
+    )
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
