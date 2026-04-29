@@ -8,6 +8,7 @@ from oemof.solph import (
 )
 
 from pyromof import helpers, optimize
+from pyromof.preprocessing_functions import preprocessing_input_data
 
 
 def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
@@ -267,7 +268,7 @@ def postprocess(es, DUMPING_SPACE, investment, input_data):
 
 
 if __name__ == "__main__":
-    input_data = optimize.read_raw_data("input_data.xlsx")
+    input_data = preprocessing_input_data.read_raw_data("input_data.xlsx")
     scenario = (
         input_data["general"].loc[input_data["general"]["label"] == "scenario", "value"].item()
     )
