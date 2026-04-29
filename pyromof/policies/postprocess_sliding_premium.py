@@ -1,18 +1,20 @@
-import argparse
+import os
+from pathlib import Path
 
 import pandas as pd
 
 from pyromof.policies.implement_policies import (
     feed_in_payment_sliding_premium,
     receive_higher_threshold_basis_and_lower_threshold_basis,
+    receive_and_refine_electricity_price_data,
 )
 from pyromof.postprocessing import add_items_to_scalar_results
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 
-def receive_data(scenario: str, electricity_prices_path: str, input_data_path) -> None:
+def receive_data(scenario: str, data: dict) -> tuple[pd.Series, pd.Series, float, float]:
 
-    policies = pd.read_excel(input_data_path, sheet_name="policies")
+    policies = data["policies"]
 
     base_value, lower_threshold = receive_higher_threshold_basis_and_lower_threshold_basis(policies)
 
@@ -30,7 +32,7 @@ def calculate_payment_sums(
 ):
 
     # calculate sliding premium and revenue per kwh
-    feed_in_revenue_euro_per_kwh, sliding_premium, _ = feed_in_payment_sliding_premium(
+    feed_in_revenue_euro_per_kwh, sliding_premium, monthly_average_price = feed_in_payment_sliding_premium(
         electricity_price,
         base_value,
         lower_threshold,

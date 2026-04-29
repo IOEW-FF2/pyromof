@@ -5,7 +5,7 @@ import pandas as pd
 
 def receive_and_refine_electricity_price_data(profiles):
 
-    timestamps = pd.to_datetime(profiles["timeindex"])
+    timestamps = pd.to_datetime(profiles.index)
 
     raw_data = profiles["electricity market price"]
 
@@ -86,7 +86,8 @@ def sliding_premium_policy(
         electricity_price_euro_per_kwh, base_value, lower_threshold
     )
 
-    profiles["sliding_premium_profile"] = feed_in_payment_euro_per_kwh.reset_index(drop=True)
+    profiles["sliding_premium_profile"] = feed_in_payment_euro_per_kwh
+    profiles["timeindex"] = profiles.index
 
     sink.loc[
         (sink["label"] == "electricity_grid"),
@@ -211,7 +212,5 @@ def implement_policies(data, scenario) -> None:
     return data
 
 if __name__ == "__main__":
-    data = preprocessing_input_data.read_raw_data("input_data.xlsx")
-    scenario = data["general"].loc[data["general"]["label"] == "scenario", "value"].item()
-    data = preprocessing_input_data.filter_input_data_by_scenario(data, scenario)
+    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
     implement_policies(data, scenario)
