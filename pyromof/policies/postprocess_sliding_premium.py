@@ -50,6 +50,7 @@ def calculate_payment_sums(
     sum_electricity_market_payment_euro = electricity_market_payment_euro.sum()
 
     # create csv file with payment sums
+    results_dir = Path(__file__).resolve().parents[2] / "results" / scenario / "results"
     df2 = pd.DataFrame({})
 
     sum_dict = {
@@ -57,18 +58,18 @@ def calculate_payment_sums(
         "electricity_market_payment_share (euro)": sum_electricity_market_payment_euro,
         "revenue_fed_in_electricity (euro)": sum_feed_in_revenue,
     }
-    revenue_sums = add_items_to_scalar_results(sum_dict, "sum", df2.copy())
+    revenue_sums = add_items_to_scalar_results(sum_dict, "sliding_premium", df2.copy())
 
-    revenue_sums.to_csv("preprocessing/electricity_revenue_data.csv", index=False, sep=";")
+    revenue_sums.to_csv(os.path.join(results_dir, "electricity_revenue_data.csv"), index=False, sep=";")
 
 
-def main(scenario: str, electricity_prices_path: str, input_data_path) -> None:
+def main(scenario: str, data) -> None:
     (
         electricity_price_euro_per_kwh,
         pyrolysis_electricity_output,
         base_value,
         lower_threshold,
-    ) = receive_data(scenario, electricity_prices_path, input_data_path)
+    ) = receive_data(scenario, data)
 
     calculate_payment_sums(
         electricity_price_euro_per_kwh, pyrolysis_electricity_output, base_value, lower_threshold
