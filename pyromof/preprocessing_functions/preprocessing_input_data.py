@@ -50,20 +50,19 @@ def matches_scenario(scenario_to_check: str, scenario_wanted: str) -> bool:
 
 @typechecked
 def filter_input_data_by_scenario(
-    sinks: pd.DataFrame,
-    sources: pd.DataFrame,
-    converters: pd.DataFrame,
-    storage: pd.DataFrame,
+    data: dict[str, pd.DataFrame],
     scenario_wanted: str,
 ):
-    dfs = {
-        "sinks": sinks,
-        "sources": sources,
-        "converters": converters,
-        "storage": storage,
-    }
-    dfs = {
+    dfs = [
+        "sinks",
+        "sources",
+        "converters",
+        "storage"
+    ]
+    # Filter sheets listed in dfs by scenario and leave the others unchanged
+    data = {
         name: df[df["scenario"].apply(matches_scenario, args=(scenario_wanted,))]
-        for name, df in dfs.items()
+        if name in dfs else df
+        for name, df in data.items()
     }
-    return dfs["sinks"], dfs["sources"], dfs["converters"], dfs["storage"]
+    return data
