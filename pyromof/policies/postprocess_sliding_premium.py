@@ -7,6 +7,7 @@ from pyromof.policies.implement_policies import (
     receive_higher_threshold_basis_and_lower_threshold_basis,
 )
 from pyromof.postprocessing import add_items_to_scalar_results
+from pyromof.preprocessing_functions import preprocessing_input_data
 
 
 def receive_data(scenario: str, electricity_prices_path: str, input_data_path) -> None:
@@ -19,9 +20,7 @@ def receive_data(scenario: str, electricity_prices_path: str, input_data_path) -
         f"./results/{scenario}/results/sequences.csv", sep=";", index_col=0, parse_dates=True
     )["b_electricity to electricity_grid"]
 
-    electricity_price = pd.read_excel(input_data_path, sheet_name="profiles")[
-        "electricity market price"
-    ]
+    electricity_price = receive_and_refine_electricity_price_data(data["profiles"])
 
     return (electricity_price, pyrolysis_electricity_output, base_value, lower_threshold)
 
