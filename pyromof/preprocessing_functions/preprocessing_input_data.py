@@ -66,3 +66,14 @@ def filter_input_data_by_scenario(
         for name, df in data.items()
     }
     return data
+
+def preprocess(relative_file_path):
+    data = read_raw_data(relative_file_path)
+    time = define_time_period(data["general"])
+    data["profiles"] = slice_time_period_from_profiles(data["profiles"], time)
+    scenario = retrieve_scenario_from_input_data(data["general"])
+    data = filter_input_data_by_scenario(data, scenario)
+    return data, time, scenario
+    
+if __name__ == "__main__":
+    data, time = preprocess("input_data.xlsx")
