@@ -10,25 +10,46 @@ def merge_scalars_from_scenarios(scenarios):
     """
     This script takes a list of scenario names and processes and joins their scalar data.
     The resulting dataframe has the following format:
-    |variable                   |type                          |{scenario_name_1}|{scenario_name_2}|
-    b_biochar to biochar_market | sum of variable costs [Euros]| 10.7            |1.4e-01          |
-    Non-existing numbers are filled with zeros.
+    |variable |type  |{scenario_name_1}_value|{scenario_name_2}_value|
     """
+    key_columns = ["variable", "type"]
 
+    def rename_columns_for_scenario(df, scenario):
+        return df.rename(
+            columns={col: f"{scenario}" for col in df.columns if col not in key_columns}
+        )
+
+    cost_dataframes = []
     dataframes = []
     for scenario in scenarios:
         SCENARIO_RESULTS = os.path.join(RESULTS, scenario, "results")
+        scalar_results = pd.read_csv(
+            os.path.join(SCENARIO_RESULTS, "scalar_results.csv"), sep=";", index_col=0
+        )
+        dataframes.append(rename_columns_for_scenario(scalar_results, scenario))
+
         scalcosts = helpers.prepare_cost_scalars_for_plotting(
             SCENARIO_RESULTS, "scalar_results.csv", scenario
         )
-        dataframes.append(scalcosts)
+        cost_dataframes.append(rename_columns_for_scenario(scalcosts, scenario))
+
+    merged_cost_df = cost_dataframes[0].copy()
     merged_df = dataframes[0].copy()
 
-    for df in dataframes[1:]:
-        merged_df = pd.merge(merged_df, df, on=["variable", "type"], how="outer")
+    for df in cost_dataframes[1:]:
+        merged_cost_df = pd.merge(merged_cost_df, df, on=key_columns, how="outer")
+    # Remove rows in which all values are either 0 or NaN
+    merged_cost_df = merged_cost_df[
+        ~merged_cost_df.drop(columns=key_columns).fillna(0).eq(0).all(axis=1)
+    ]
 
+    for df in dataframes[1:]:
+        merged_df = pd.merge(merged_df, df, on=key_columns, how="outer")
+
+    print(merged_cost_df)
     print(merged_df)
-    return merged_df
+    merged_df.to_csv(os.path.join(RESULTS, "merged_scalar_results.csv"), sep=";", index=False)
+    return merged_cost_df
 
 
 def plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios):
@@ -80,7 +101,7 @@ if __name__ == "__main__":
     RESULTS = os.path.join(ROOT_PATH, "results")
     # scenarios = [input("For which scenario shall the results be compared?
     # Please enter the scenario names separated by commas. ")]
-    scenarios = ["linear", "autarkize"]
+    scenarios = ["scenario1", "scenario2"]
 
     multiscenario_scalcosts = merge_scalars_from_scenarios(scenarios)
     plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios)
