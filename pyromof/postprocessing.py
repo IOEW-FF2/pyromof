@@ -214,7 +214,7 @@ def check_scalar_costs_consistency(scalar_results):
 
 def postprocess():
 
-    input_data = optimize.read_raw_data("input_data.xlsx")
+    input_data = preprocessing_input_data.read_raw_data("input_data.xlsx")
     scenario = input_data["general"].loc[input_data["general"]["label"] == 
                                          "scenario", "value"].item()
 
