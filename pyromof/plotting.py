@@ -232,12 +232,12 @@ def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS):
 
 
 def plot(scenario, RESULTS):
-    df_dict = prepare_cost_sequences_for_plotting()
+    df_dict = prepare_cost_sequences_for_plotting(RESULTS)
     plot_cost_sequences(df_dict, scenario, RESULTS)
     scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
     plot_cost_scalars(scalcosts, scenario, RESULTS)
-    sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting()
-    plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario)
+    sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting(RESULTS)
+    plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario, RESULTS)
     storage_contents = pd.read_csv(
         os.path.join(RESULTS, "storage_contents.csv"),
         sep=";",
