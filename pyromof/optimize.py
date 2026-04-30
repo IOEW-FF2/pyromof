@@ -13,44 +13,6 @@ from typeguard import typechecked
 from pyromof import helpers, postprocessing
 from pyromof.policies.implement_policies import implement_policies
 from pyromof.preprocessing_functions.preprocessing_input_data import preprocess
-from pyromof.preprocessing_functions.validate_input_data_types import (
-    validate_input_data_column_types,
-)
-
-# Define input data column type rules for data type validation
-
-sheet_rules = {
-    "general": {
-        "default": "str",
-        "ignore": [],
-        "row_rules": {
-            "scenario": "str",
-            "start_time": "datetime",
-            "end_time": "datetime",
-            "wacc": "numeric",
-        },
-    },
-    "sink": {"default": "numeric|str", "ignore": ["nominal_capacity", "unit", "comment"]},
-    "source": {
-        "default": "numeric",
-        "ignore": ["min", "max", "capex", "lifetime", "unit", "comment"],
-    },
-    "converter": {
-        "default": "numeric",
-        "exceptions": {"investment": "bool", "capex": "numeric|str", "maximum": "numeric|str"},
-        "ignore": ["offset", "minimum", "comment", "comment 2"],
-    },
-    "storage": {
-        "default": "numeric",
-        "exceptions": {"investment": "bool", "loss_rate": "numeric|str"},
-    },
-    "profiles": {
-        "default": "numeric",
-        "ignore": ["timeindex", "profile_electricity"],
-    },
-}
-
-prefix_rules = {"scenario": "str|list[str]", "bus_": "str", "eff_": "numeric", "label": "str"}
 
 
 @typechecked
@@ -1079,7 +1041,6 @@ def save_results(
 
 
 if __name__ == "__main__":
-    validate_input_data_column_types("input_data.xlsx", sheet_rules, prefix_rules)
     data, time, scenario = preprocess("input_data.xlsx")
     data = implement_policies(data, scenario)
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
