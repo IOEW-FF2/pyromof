@@ -1,5 +1,5 @@
 import pandas as pd
-from pyromof.policies import implement_policies
+from pyromof.policies.implement_policies import implement_policies
 from typeguard import typechecked
 
 
