@@ -1,4 +1,5 @@
 import pandas as pd
+from pyromof.policies import implement_policies
 from typeguard import typechecked
 
 
@@ -71,6 +72,7 @@ def preprocess(relative_file_path="input_data.xlsx"):
     data["profiles"] = slice_time_period_from_profiles(data["profiles"], time)
     scenario = retrieve_scenario_from_input_data(data["general"])
     data = filter_input_data_by_scenario(data, scenario)
+    data = implement_policies(data, scenario)
     return data, time, scenario
 
 

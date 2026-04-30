@@ -1041,7 +1041,6 @@ def save_results(
 
 def optimize():
     data, time, scenario = preprocess("input_data.xlsx")
-    data = implement_policies(data, scenario)
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
         Path(__file__).parent.parent, scenario
     )

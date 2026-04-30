@@ -6,8 +6,6 @@ from pathlib import Path
 from pyromof import preprocessing_functions, optimize, postprocessing
 import pandas as pd
 
-from pyromof.policies.implement_policies import implement_policies
-
 def analyze_sensitivity():
     # Insert here the parameters. Only two decimal places are possible!
     parameters = {
@@ -26,7 +24,6 @@ def analyze_sensitivity():
     data, time, scenario = preprocessing_functions.preprocessing_input_data.preprocess(
         "input_data.xlsx"
     )
-    data = implement_policies(data, scenario)
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
