@@ -1,21 +1,20 @@
 import argparse
-from pyromof.pipeline import run_pipeline, PIPELINE_STEPS
+
+from pyromof.pipeline import PIPELINE_STEPS, run_pipeline
+
 
 def main():
     parser = argparse.ArgumentParser(description="Energy model pipeline")
 
     parser.add_argument(
-        "steps",
-        nargs="+",
-        choices=PIPELINE_STEPS.keys(),
-        help="Steps to execute in order"
+        "steps", nargs="+", choices=PIPELINE_STEPS.keys(), help="Steps to execute in order"
     )
-    
+
     parser.add_argument(
         "--scenario",
         type=str,
         default=None,
-        help="Scenario name (e.g., stromflex_h2) for steps that require it"
+        help="Scenario name (e.g., stromflex_h2) for steps that require it",
     )
 
     args = parser.parse_args()

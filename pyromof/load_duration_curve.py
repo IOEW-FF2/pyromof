@@ -1,5 +1,3 @@
-import argparse
-
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -40,7 +38,7 @@ def plot_load_duration_curves(scenario=None):
     """Execute the load duration curve generation."""
     general = pd.read_excel("input_data.xlsx", sheet_name="general")
     scenario = general.loc[general["label"] == "scenario", "value"].item()
-    
+
     columns = get_data_csv(scenario)
 
     descending_power_data = sort_values_descending(columns, "b_electricity to electricity_grid")

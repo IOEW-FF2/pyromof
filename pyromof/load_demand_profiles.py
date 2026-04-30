@@ -5,10 +5,10 @@ from pathlib import Path
 import pandas as pd
 from demandlib import bdew
 
+
 def load_demand_profiles():
     # read example temperature series
     filename = "Lufttemperatur_2024_DWD.csv"
-    thisdir = os.getcwd()
     ROOT_PATH = Path(__file__).parent.parent
     dirname = os.path.join(ROOT_PATH, "preprocessing")
     datapath = os.path.join(dirname, filename)
@@ -26,7 +26,9 @@ def load_demand_profiles():
     }
 
     # Create DataFrame for 2024
-    demand = pd.DataFrame(index=pd.date_range(datetime.datetime(2024, 1, 1, 0), periods=8784, freq="h"))
+    demand = pd.DataFrame(
+        index=pd.date_range(datetime.datetime(2024, 1, 1, 0), periods=8784, freq="h")
+    )
 
     # Single family house (efh: Einfamilienhaus)
     demand["efh"] = bdew.HeatBuilding(

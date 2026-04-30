@@ -3,8 +3,10 @@ import shutil
 from functools import reduce
 from pathlib import Path
 
-from pyromof import preprocessing_functions, optimize, postprocessing
 import pandas as pd
+
+from pyromof import optimize, postprocessing, preprocessing_functions
+
 
 def analyze_sensitivity():
     # Insert here the parameters. Only two decimal places are possible!

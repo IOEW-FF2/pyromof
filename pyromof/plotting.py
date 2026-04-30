@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
 
-from pyromof import helpers
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from oemof.solph import EnergySystem
 from plotly.subplots import make_subplots
+
+from pyromof import helpers
 
 
 def prepare_amount_sequences_for_plotting(RESULTS):
@@ -264,5 +265,3 @@ def plot_sequences_and_scalars():
     scenario, investment = helpers.retreive_scenario_from_results(es)
 
     plot(scenario, RESULTS)
-
-

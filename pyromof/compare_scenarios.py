@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
 
-from pyromof import helpers, measure_flexibility
 import pandas as pd
 import plotly.graph_objects as go
+
+from pyromof import helpers, measure_flexibility
 
 
 def merge_scalars_from_scenarios(scenarios, RESULTS):
@@ -105,7 +106,7 @@ def compare_scenarios():
         if not os.path.exists(os.path.join(RESULTS, scenario)):
             raise ValueError(
                 f"Scenario {scenario} does not exist. Please select scenarios "
-                f"that are present in the results folder and enter them at " 
+                f"that are present in the results folder and enter them at "
                 f"the bottom of the script compare_scenarios.py."
             )
 

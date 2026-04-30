@@ -1,6 +1,7 @@
 import pandas as pd
-from pyromof.policies.implement_policies import implement_policies
 from typeguard import typechecked
+
+from pyromof.policies.implement_policies import implement_policies
 
 
 def read_raw_data(relative_file_path):
