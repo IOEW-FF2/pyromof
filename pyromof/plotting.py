@@ -182,14 +182,7 @@ def plot_cost_scalars(scalcosts, scenario, RESULTS):
     fig.write_html(os.path.join(RESULTS, "cost_scalars_{}.html".format(scenario)))
 
 
-def plot(scenario, RESULTS):
-    df_dict = prepare_cost_sequences_for_plotting(RESULTS)
-    plot_cost_sequences(df_dict, scenario, RESULTS)
-    scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
-    plot_cost_scalars(scalcosts, scenario, RESULTS)
-    sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting(RESULTS)
-    plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario, RESULTS)
-def plot_storage_content(storage_content, scenario):
+def plot_storage_content(storage_content, scenario, RESULTS):
     # Creates a line plot with the storage content over time for each storage type
     fig = go.Figure()
     for col in storage_content.columns:
@@ -205,7 +198,7 @@ def plot_storage_content(storage_content, scenario):
     fig.write_html(os.path.join(RESULTS, "storage_content_{}.html".format(scenario)))
 
 
-def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario):
+def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS):
     # Creates a line plot with the demand and revenue for electricity and heat over time
     fig = make_subplots(rows=2, cols=1)
 
@@ -238,11 +231,11 @@ def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario):
     fig.write_html(os.path.join(RESULTS, "demand_and_revenue_{}.html".format(scenario)))
 
 
-def plot(scenario):
+def plot(scenario, RESULTS):
     df_dict = prepare_cost_sequences_for_plotting()
-    plot_cost_sequences(df_dict, scenario)
+    plot_cost_sequences(df_dict, scenario, RESULTS)
     scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
-    plot_cost_scalars(scalcosts, scenario)
+    plot_cost_scalars(scalcosts, scenario, RESULTS)
     sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting()
     plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario)
     storage_contents = pd.read_csv(
@@ -251,11 +244,11 @@ def plot(scenario):
         index_col=0,
         parse_dates=True,
     )
-    plot_storage_content(storage_contents, scenario)
+    plot_storage_content(storage_contents, scenario, RESULTS)
     profiles = pd.read_excel(
         "input_data.xlsx", sheet_name="profiles", index_col=0, parse_dates=True
     )
-    plot_demand_and_revenue_for_elec_and_heat(profiles, scenario)
+    plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS)
 
 
 def plot_sequences_and_scalars():
@@ -271,3 +264,5 @@ def plot_sequences_and_scalars():
     scenario, investment = helpers.retreive_scenario_from_results(es)
 
     plot(scenario, RESULTS)
+
+
