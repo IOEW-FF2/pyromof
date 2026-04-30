@@ -38,15 +38,8 @@ def create_plot(sorted_column, xlabel, ylabel, title, save_path):
 
 def plot_load_duration_curves(scenario=None):
     """Execute the load duration curve generation."""
-    if scenario is None:
-        parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "--scenario",
-            required=True,
-            help="Name of the scenario, e.g. stromflex_h2",
-        )
-        args = parser.parse_args()
-        scenario = args.scenario
+    general = pd.read_excel("input_data.xlsx", sheet_name="general")
+    scenario = general.loc[general["label"] == "scenario", "value"].item()
     
     columns = get_data_csv(scenario)
 

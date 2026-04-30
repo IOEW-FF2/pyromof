@@ -8,6 +8,7 @@ from pyromof import (
     compare_scenarios,
     analyse_sensitivity,
     measure_flexibility,
+    preprocessing_functions
 )
 
 pyromof = Path(__file__).parent
@@ -16,10 +17,8 @@ PIPELINE_STEPS = {
     "load_demand_profiles": load_demand_profiles.load_demand_profiles,
     "optimize": optimize.optimize,
     "postprocess": postprocessing.postprocess,
-    "plot_sequences_and_scalars": plotting.plot_sequences_and_scalars,
-    "plot_load_duration_curves": load_duration_curve.plot_load_duration_curves,
+    "plot_scenario_results": [plotting.plot_sequences_and_scalars, load_duration_curve.plot_load_duration_curves],
     "compare_scenarios": compare_scenarios.compare_scenarios,
-    "measure_flexibility": measure_flexibility.measure_flexibility,
     "analyse_sensitivity": analyse_sensitivity.analyze_sensitivity,
 }
 
@@ -28,9 +27,19 @@ def run_pipeline(steps, scenario=None):
     for step in steps:
         if step in PIPELINE_STEPS:
             print(f"Running {step}...")
-            if step == "plot_load_duration_curves" and scenario:
-                PIPELINE_STEPS[step](scenario)
+            handler = PIPELINE_STEPS[step]
+            if isinstance(handler, list):
+                # Execute multiple functions
+                for func in handler:
+                    if scenario:
+                        func(scenario)
+                    else:
+                        func()
             else:
-                PIPELINE_STEPS[step]()
+                # Execute single function
+                if scenario:
+                    handler(scenario)
+                else:
+                    handler()
         else:
             print(f"Step {step} is not recognized. Skipping.")
