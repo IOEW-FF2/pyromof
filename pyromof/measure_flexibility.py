@@ -50,16 +50,11 @@ def calculate_pyrolysis_full_load_hours(sequences):
     return full_load_hours
 
 
-def measure_flexibility():
+def measure_flexibility(scenarios: list):
     # Create a table with scenarios as column names and the elec fed in at negative price,
     # the share of total electricity fed in at negative price and the pyrolysis full load
     # hours as rows
 
-    ## Enter here the scenarios you want to compare:
-    scenarios = [
-        "scenario1",
-        "scenario2",
-    ]
     results = pd.DataFrame(
         columns=scenarios,
         index=[
