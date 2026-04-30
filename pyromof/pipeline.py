@@ -1,5 +1,14 @@
 from pathlib import Path
-from pyromof import load_demand_profiles, optimize, postprocessing, plotting, load_duration_curve, compare_scenarios, analyse_sensitivity
+from pyromof import (
+    load_demand_profiles,
+    optimize,
+    postprocessing,
+    plotting,
+    load_duration_curve,
+    compare_scenarios,
+    analyse_sensitivity,
+    measure_flexibility,
+)
 
 pyromof = Path(__file__).parent
 
@@ -10,8 +19,10 @@ PIPELINE_STEPS = {
     "plot_sequences_and_scalars": plotting.plot_sequences_and_scalars,
     "plot_load_duration_curves": load_duration_curve.plot_load_duration_curves,
     "compare_scenarios": compare_scenarios.compare_scenarios,
+    "measure_flexibility": measure_flexibility.measure_flexibility,
     "analyse_sensitivity": analyse_sensitivity.analyze_sensitivity,
 }
+
 
 def run_pipeline(steps, scenario=None):
     for step in steps:
