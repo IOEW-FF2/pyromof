@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from pyromof import helpers
+from pyromof import helpers, measure_flexibility
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -99,9 +99,16 @@ def plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios, RESULTS):
 def compare_scenarios():
     ROOT_PATH = Path(__file__).parent.parent
     RESULTS = os.path.join(ROOT_PATH, "results")
-    # scenarios = [input("For which scenario shall the results be compared?
-    # Please enter the scenario names separated by commas. ")]
     scenarios = ["scenario1", "scenario2"]
+    # Check if the scenarios exist and if not explain how to select scenarios
+    for scenario in scenarios:
+        if not os.path.exists(os.path.join(RESULTS, scenario)):
+            raise ValueError(
+                f"Scenario {scenario} does not exist. Please select scenarios "
+                f"that are present in the results folder and enter them at " 
+                f"the bottom of the script compare_scenarios.py."
+            )
 
     multiscenario_scalcosts = merge_scalars_from_scenarios(scenarios, RESULTS)
     plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios, RESULTS)
+    measure_flexibility.measure_flexibility(scenarios)
