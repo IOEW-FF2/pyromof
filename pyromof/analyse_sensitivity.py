@@ -3,7 +3,7 @@ import shutil
 from functools import reduce
 from pathlib import Path
 
-from pyromof import optimize, postprocessing
+from pyromof import preprocessing_functions, optimize, postprocessing
 import pandas as pd
 
 def analyze_sensitivity():
@@ -21,9 +21,8 @@ def analyze_sensitivity():
     scenario = "stromflex_h2"
 
     # Definition of the time period
-    time = pd.date_range(start="2023-07-01", end="2023-07-20", freq="h", inclusive="both")
 
-    input_data = optimize.read_raw_data(
+    data, time, scenario = preprocessing_functions.preprocessing_input_data.preprocess(
         "input_data.xlsx"
     )
 
@@ -57,8 +56,8 @@ def analyze_sensitivity():
     for parameter_value in value_range:
         print(parameter_value)
         df_name = parameters["component_type"]
-        input_data[df_name].loc[
-            input_data[df_name]["label"] == parameters["component"],
+        data[df_name].loc[
+            data[df_name]["label"] == parameters["component"],
             parameters["variable"],
         ] = parameter_value
 
@@ -66,12 +65,7 @@ def analyze_sensitivity():
         # TODO: Use dict for input data everywhere instead of this loose list of dfs
         es, om, investment, epcs = optimize.create_energysystem(
             META_INFO=META_INFO,
-            profiles=input_data["profiles"],
-            sinks=input_data["sinks"],
-            sources=input_data["sources"],
-            converters=input_data["converters"],
-            storage=input_data["storage"],
-            general=input_data["general"],
+            data=data,
             time=time,
             scenario=scenario,
         )

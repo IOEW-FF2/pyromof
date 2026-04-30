@@ -65,7 +65,7 @@ def filter_input_data_by_scenario(
     return data
 
 
-def preprocess(relative_file_path):
+def preprocess(relative_file_path="input_data.xlsx"):
     data = read_raw_data(relative_file_path)
     time = define_time_period(data["general"])
     data["profiles"] = slice_time_period_from_profiles(data["profiles"], time)
