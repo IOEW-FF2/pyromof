@@ -6,25 +6,27 @@ from pathlib import Path
 from pyromof import preprocessing_functions, optimize, postprocessing
 import pandas as pd
 
+from pyromof.policies.implement_policies import implement_policies
+
 def analyze_sensitivity():
     # Insert here the parameters. Only two decimal places are possible!
     parameters = {
         "component_type": "storage",  # must be plural
         "component": "syngas_storage",
         "variable": "capex",
-        "min": 0,
-        "max": 10,
+        "min": 40,
+        "max": 40,
         "step": 1,
     }
 
-    # scenario = input("For which scenario shall the sensitivity be analyzed? ")
+    # Select the scenario here:
     scenario = "stromflex_h2"
 
     # Definition of the time period
-
     data, time, scenario = preprocessing_functions.preprocessing_input_data.preprocess(
         "input_data.xlsx"
     )
+    data = implement_policies(data, scenario)
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
@@ -62,7 +64,6 @@ def analyze_sensitivity():
         ] = parameter_value
 
         # OPTIMIZATION
-        # TODO: Use dict for input data everywhere instead of this loose list of dfs
         es, om, investment, epcs = optimize.create_energysystem(
             META_INFO=META_INFO,
             data=data,
