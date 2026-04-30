@@ -7,76 +7,12 @@ import pandas as pd
 from oemof import solph
 from oemof.network.graph import create_nx_graph
 from oemof.tools import economics
-from pyomo.environ import Constraint
+from pyomo.environ import Binary, Constraint, Set, Var
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
-
-
-def read_raw_data(relative_file_path):
-    return {
-        "profiles": pd.read_excel(relative_file_path, sheet_name="profiles"),
-        "sinks": pd.read_excel(relative_file_path, sheet_name="sink"),
-        "sources": pd.read_excel(relative_file_path, sheet_name="source"),
-        "converters": pd.read_excel(relative_file_path, sheet_name="converter"),
-        "storage": pd.read_excel(relative_file_path, sheet_name="storage"),
-        "general": pd.read_excel(relative_file_path, sheet_name="general"),
-    }
-
-
-@typechecked
-def define_time_period(general: pd.DataFrame) -> pd.DatetimeIndex:
-    # Definition of the time period
-    start_time = general.loc[general["label"] == "start_time", "value"].item()
-    end_time = general.loc[general["label"] == "end_time", "value"].item()
-    time = pd.date_range(start=start_time, end=end_time, freq="h", inclusive="both")
-    return time
-
-
-def slice_time_period_from_profiles(profiles: pd.DataFrame, time: pd.DatetimeIndex) -> pd.DataFrame:
-    # Slice the time period from profiles
-    profiles["timeindex"] = pd.to_datetime(profiles["timeindex"])
-    profiles = profiles[profiles["timeindex"].isin(time)]
-    return profiles
-
-
-@typechecked
-def retrieve_scenario_from_input_data(general_df: pd.DataFrame) -> str:
-    scenario = general_df.loc[general_df["label"] == "scenario", "value"].item()
-    return scenario
-
-
-@typechecked
-def matches_scenario(scenario_to_check: str, scenario_wanted: str) -> bool:
-    """
-    Checks wether the string "scenario to check" is either "all" or
-    includes the "scenario_wanted".
-    "scenario_wanted" should be the scenario to be optimized,
-    and "scenario_to_check" a scenario field
-    from the input data.
-    """
-    return scenario_to_check == "all" or scenario_wanted in scenario_to_check
-
-
-@typechecked
-def filter_input_data_by_scenario(
-    sinks: pd.DataFrame,
-    sources: pd.DataFrame,
-    converters: pd.DataFrame,
-    storage: pd.DataFrame,
-    scenario_wanted: str,
-):
-    dfs = {
-        "sinks": sinks,
-        "sources": sources,
-        "converters": converters,
-        "storage": storage,
-    }
-    dfs = {
-        name: df[df["scenario"].apply(matches_scenario, args=(scenario_wanted,))]
-        for name, df in dfs.items()
-    }
-    return dfs["sinks"], dfs["sources"], dfs["converters"], dfs["storage"]
+from pyromof.policies.implement_policies import implement_policies
+from pyromof.preprocessing_functions.preprocessing_input_data import preprocess
 
 
 @typechecked
@@ -128,21 +64,31 @@ def extract_components_and_buses_from_input_data(
     return buses_df, components
 
 
+def calculate_ep_costs_for_time_period(capex, lifetime, wacc, time: pd.date_range):
+    annuity = economics.annuity(capex, lifetime, wacc)
+    time_period_hours = time.max() - time.min()
+    time_periods_per_year = 8760 / time_period_hours.total_seconds() * 3600
+    ep_costs = annuity / time_periods_per_year
+    return ep_costs
+
+
 @typechecked
 def create_energysystem(
     META_INFO,
-    profiles: pd.DataFrame,
-    sinks: pd.DataFrame,
-    sources: pd.DataFrame,
-    converters: pd.DataFrame,
-    storage: pd.DataFrame,
-    general: pd.DataFrame,
+    data: dict[str, pd.DataFrame],
     time,
     scenario: str,
 ) -> Tuple[solph.EnergySystem, solph.Model, bool, dict]:
     # Initiate an investment variable as False that will be overwritten
     # with True if any component with investment is added.
     # This information is required for the postprocessing.
+    profiles = data["profiles"]
+    sinks = data["sinks"]
+    sources = data["sources"]
+    converters = data["converters"]
+    storage = data["storage"]
+    general = data["general"]
+
     investment = False
 
     # Read in wacc for investment optimization
@@ -154,9 +100,6 @@ def create_energysystem(
     # Model definition
     es = solph.EnergySystem(timeindex=time)
 
-    sinks, sources, converters, storage = filter_input_data_by_scenario(
-        sinks, sources, converters, storage, scenario
-    )
     buses, components = extract_components_and_buses_from_input_data(
         sinks, sources, converters, storage
     )
@@ -357,7 +300,9 @@ def create_energysystem(
         row = converters.loc[converters.label == "orc"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(
+                row.capex.item(), row.lifetime.item(), wacc, time
+            )
             epcs["orc_invest to " + row.bus_out_1.item()] = epc
             print("epc for orc: ", epc)
             orc = solph.components.Converter(
@@ -399,7 +344,9 @@ def create_energysystem(
         row = converters.loc[converters.label == "chp"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(
+                row.capex.item(), row.lifetime.item(), wacc, time
+            )
             epcs["chp_cold_invest to " + row.bus_out_1.item()] = epc
             print("epc for chp: ", epc)
             chp_cold = solph.components.Converter(
@@ -445,7 +392,9 @@ def create_energysystem(
         row = converters.loc[converters.label == "power_to_heat"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(
+                row.capex.item(), row.lifetime.item(), wacc, time
+            )
             epcs["power_to_heat_invest to " + row.bus_out_1.item()] = epc
             print("epc for power_to_heat: ", epc)
             power_to_heat = solph.components.Converter(
@@ -481,7 +430,9 @@ def create_energysystem(
         row = converters.loc[converters.label == "h2_filtration"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(
+                row.capex.item(), row.lifetime.item(), wacc, time
+            )
             epcs["h2_filtration_invest to " + row.bus_out_1.item()] = epc
             print("epc for h2_filtration: ", epc)
             h2_filtration = solph.components.Converter(
@@ -517,7 +468,9 @@ def create_energysystem(
         row = converters.loc[converters.label == "pyrolysis"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(
+                row.capex.item(), row.lifetime.item(), wacc, time
+            )
             epcs["pyrolysis_invest to " + row.bus_out_1.item()] = epc
             print("epc for pyrolysis: ", epc)
             pyrolysis = solph.components.Converter(
@@ -638,7 +591,9 @@ def create_energysystem(
         row = converters.loc[converters.label == "heat_exchanger"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(
+                row.capex.item(), row.lifetime.item(), wacc, time
+            )
             epcs["heat_exchanger_invest to " + row.bus_out_1.item()] = epc
             print("epc for heat_exchanger: ", epc)
             heat_exchanger = solph.components.Converter(
@@ -676,7 +631,9 @@ def create_energysystem(
         row = converters.loc[converters.label == "combustor"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(
+                row.capex.item(), row.lifetime.item(), wacc, time
+            )
             epcs["combustor_invest to " + row.bus_out_1.item()] = epc
             print("epc for combustor: ", epc)
             combustor_hot = solph.components.Converter(
@@ -757,7 +714,9 @@ def create_energysystem(
         row = converters.loc[converters.label == "condensor"]
         if row.investment.item() is True:
             investment = True
-            epc = economics.annuity(row.capex.item(), row.lifetime.item(), wacc)
+            epc = calculate_ep_costs_for_time_period(
+                row.capex.item(), row.lifetime.item(), wacc, time
+            )
             epcs["condensor_invest to " + row.bus_out_1.item()] = epc
             print("epc for condensor: ", epc)
             condensor = solph.components.Converter(
@@ -830,15 +789,21 @@ def create_energysystem(
         """
         if row.investment is True:
             label = row.label + "_invest"
-            epc_nominal_storage_capacity = economics.annuity(row.capex, row.lifetime, wacc)
+            epc_nominal_storage_capacity = calculate_ep_costs_for_time_period(
+                row.capex, row.lifetime, wacc, time
+            )
             epcs[label + " to None"] = epc_nominal_storage_capacity
             print("epc for ", label, " : ", epc_nominal_storage_capacity)
             investment = True
+            print(row.maximum)
+            nominal_cap = solph.Investment(
+                ep_costs=epc_nominal_storage_capacity, maximum=row.maximum
+            )
             storage = solph.components.GenericStorage(
                 label=label,
                 inputs={
                     busd[row.bus_in]: solph.Flow(),
-                },  # The flows could also be constrained by a nominal capacity or variable costs.
+                },
                 outputs={
                     busd[row.bus_out]: solph.Flow(),
                 },
@@ -846,7 +811,7 @@ def create_energysystem(
                 initial_storage_level=row.initial_storage_level,
                 inflow_conversion_factor=row.inflow_conversion_factor,
                 outflow_conversion_factor=row.outflow_conversion_factor,
-                nominal_storage_capacity=solph.Investment(ep_costs=epc_nominal_storage_capacity),
+                nominal_capacity=nominal_cap,
             )
         elif row.investment is False:
             storage = solph.components.GenericStorage(
@@ -936,9 +901,60 @@ def create_energysystem(
                         status_t - status_prev
                     )
 
-            # om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
-            # om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
-            # om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
+            om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
+            om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
+            om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
+
+    # Add active-flow-count-limit to avoid the use of storage to waste energy
+    if not storage.empty:
+        print("Creating flow count limits for storage")
+        storage_components = []
+
+        for _, row in storage.iterrows():
+            label = row.label + ("_invest" if row.investment else "")
+            comp = next(n for n in es.nodes if n.label == label)
+            storage_components.append(comp)
+
+        om.STORAGES = Set(initialize=storage_components)
+        om.storage_direction = Var(om.STORAGES, om.TIMESTEPS, within=Binary)
+        M = 100000  # a safe but tight upper bound
+
+        def make_limit_charge(bus_in, storage_comp):
+            # Factory function to create a charge constraint for a specific storage's inflow
+            def limit_charge(m, t):
+                flow_in = m.flow[(bus_in, storage_comp), t]
+                return flow_in <= M * m.storage_direction[storage_comp, t]
+
+            return limit_charge
+
+        def make_limit_discharge(storage_comp, bus_out):
+            # Factory function to create a discharge constraint for a specific storage's outflow
+            def limit_discharge(m, t):
+                flow_out = m.flow[(storage_comp, bus_out), t]
+                return flow_out <= M * (1 - m.storage_direction[storage_comp, t])
+
+            return limit_discharge
+
+        for idx, (_, row) in enumerate(storage.iterrows()):
+            # Determine the label of the storage component (may have "_invest" suffix)
+            label = row.label + ("_invest" if row.investment else "")
+            # Find the storage component in the energy system
+            storage_component = next(n for n in es.nodes if n.label == label)
+            # Get the bus objects for this storage
+            bus_in = busd[row.bus_in]
+            bus_out = busd[row.bus_out]
+
+            # Apply constraints with unique names for each storage component
+            setattr(
+                om,
+                f"flow_count_limit_charge_{idx}",
+                Constraint(om.TIMESTEPS, rule=make_limit_charge(bus_in, storage_component)),
+            )
+            setattr(
+                om,
+                f"flow_count_limit_discharge_{idx}",
+                Constraint(om.TIMESTEPS, rule=make_limit_discharge(storage_component, bus_out)),
+            )
 
     # Tell the model to get the dual variables when solving
     # om.receive_duals()
@@ -950,7 +966,8 @@ def create_energysystem(
     # Solve the system with error handling
     from pyomo.opt import SolverStatus, TerminationCondition
 
-    om.solve(solver="cbc")
+    print("Solving the model...")
+    om.solve(solver="cbc", tee=True)
 
     # Check solver status
     if (
@@ -1023,11 +1040,9 @@ def save_results(
     print("The results have been saved.")
 
 
-def optimize():
-    data = read_raw_data("input_data.xlsx")
-    scenario = retrieve_scenario_from_input_data(data["general"])
-    time = define_time_period(data["general"])
-    profiles = slice_time_period_from_profiles(data["profiles"], time)
+if __name__ == "__main__":
+    data, time, scenario = preprocess("input_data.xlsx")
+    data = implement_policies(data, scenario)
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
         Path(__file__).parent.parent, scenario
     )
@@ -1037,12 +1052,7 @@ def optimize():
 
     es, om, investment, epcs = create_energysystem(
         META_INFO=META_INFO,
-        profiles=profiles,
-        sinks=data["sinks"],
-        sources=data["sources"],
-        converters=data["converters"],
-        storage=data["storage"],
-        general=data["general"],
+        data=data,
         time=time,
         scenario=scenario,
     )

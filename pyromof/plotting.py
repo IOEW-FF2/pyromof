@@ -189,6 +189,73 @@ def plot(scenario, RESULTS):
     plot_cost_scalars(scalcosts, scenario, RESULTS)
     sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting(RESULTS)
     plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario, RESULTS)
+def plot_storage_content(storage_content, scenario):
+    # Creates a line plot with the storage content over time for each storage type
+    fig = go.Figure()
+    for col in storage_content.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=storage_content.index,
+                y=storage_content[col],
+                mode="lines",
+                line=dict(dash="solid"),
+                name=col,
+            )
+        )
+    fig.write_html(os.path.join(RESULTS, "storage_content_{}.html".format(scenario)))
+
+
+def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario):
+    # Creates a line plot with the demand and revenue for electricity and heat over time
+    fig = make_subplots(rows=2, cols=1)
+
+    fig.add_trace(
+        go.Scatter(
+            x=profiles.index,
+            y=profiles["profile_electricity_remuneration"],
+            mode="lines",
+            line=dict(dash="solid"),
+            name="Electricity revenue",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=profiles.index,
+            y=profiles["heat_village"],
+            mode="lines",
+            line=dict(dash="solid"),
+            name="Heat demand",
+        ),
+        row=2,
+        col=1,
+    )
+
+    fig.update_yaxes(title_text="EUR/kWh", row=1)
+    fig.update_yaxes(title_text="kWh/hour", row=2)
+    fig.update_layout(hoverlabel_namelength=-1)
+    fig.write_html(os.path.join(RESULTS, "demand_and_revenue_{}.html".format(scenario)))
+
+
+def plot(scenario):
+    df_dict = prepare_cost_sequences_for_plotting()
+    plot_cost_sequences(df_dict, scenario)
+    scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
+    plot_cost_scalars(scalcosts, scenario)
+    sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting()
+    plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario)
+    storage_contents = pd.read_csv(
+        os.path.join(RESULTS, "storage_contents.csv"),
+        sep=";",
+        index_col=0,
+        parse_dates=True,
+    )
+    plot_storage_content(storage_contents, scenario)
+    profiles = pd.read_excel(
+        "input_data.xlsx", sheet_name="profiles", index_col=0, parse_dates=True
+    )
+    plot_demand_and_revenue_for_elec_and_heat(profiles, scenario)
 
 
 def plot_sequences_and_scalars():
