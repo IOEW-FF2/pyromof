@@ -11,6 +11,7 @@ requires-python = ">=3.9"
 dependencies = [
     "pandas (>=2.2.3,<3.0.0)",
     "oemof (>=1.0,<2.0)",
+    "oemoph.soplh==0.6.3",
     "openpyxl (>=3.1.5,<4.0.0)",
     "matplotlib",
     "typeguard",
