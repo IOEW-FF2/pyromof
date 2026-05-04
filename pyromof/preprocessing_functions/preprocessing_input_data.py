@@ -1,5 +1,8 @@
 import pandas as pd
+import os
+import pyromof.paths as paths
 from typeguard import typechecked
+from oemof.tools import economics
 
 from pyromof.policies.implement_policies import implement_policies
 
@@ -25,7 +28,9 @@ def define_time_period(general: pd.DataFrame) -> pd.DatetimeIndex:
     return time
 
 
-def slice_time_period_from_profiles(profiles: pd.DataFrame, time: pd.DatetimeIndex) -> pd.DataFrame:
+def slice_time_period_from_profiles(
+    profiles: pd.DataFrame, time: pd.DatetimeIndex
+) -> pd.DataFrame:
     # Slice the time period from profiles
     profiles["timeindex"] = pd.to_datetime(profiles["timeindex"])
     profiles = profiles[profiles["timeindex"].isin(time)]
@@ -59,12 +64,74 @@ def filter_input_data_by_scenario(
     dfs = ["sinks", "sources", "converters", "storage"]
     # Filter sheets listed in dfs by scenario and leave the others unchanged
     data = {
-        name: df[df["scenario"].apply(matches_scenario, args=(scenario_wanted,))]
-        if name in dfs
-        else df
+        name: (
+            df[df["scenario"].apply(matches_scenario, args=(scenario_wanted,))]
+            if name in dfs
+            else df
+        )
         for name, df in data.items()
     }
     return data
+
+
+def calculate_ep_costs_for_time_period(capex, lifetime, wacc, time: pd.date_range):
+    annuity = economics.annuity(capex, lifetime, wacc)
+    time_period_hours = time.max() - time.min()
+    time_periods_per_year = 8760 / time_period_hours.total_seconds() * 3600
+    ep_costs = annuity / time_periods_per_year
+    return ep_costs
+
+
+def calculate_ep_costs_for_all_components(
+    data_filtered_by_scenario: pd.DataFrame, time: pd.date_range
+):
+    # Calculates ep costs for all converters and storage types and stores them.
+    general = data_filtered_by_scenario["general"]
+    wacc = general.loc[general["label"] == "wacc", "value"].item()
+    storage = data_filtered_by_scenario["storage"]
+    converters = data_filtered_by_scenario["converters"]
+
+    def process_dataframe(df, wacc, time):
+        results = {}
+        for i, row in df.iterrows():
+            epc = calculate_ep_costs_for_time_period(
+                row.capex, row.lifetime, wacc, time
+            )
+            results[row.label] = epc
+        return results
+
+    converters_results = process_dataframe(converters, wacc, time)
+    storage_results = process_dataframe(storage, wacc, time)
+    epcs = {**converters_results, **storage_results}
+
+    return epcs
+
+
+def calculate_exogenous_investment_costs(input_data, epcs, scenario):
+    results = []
+    epcs = pd.DataFrame(epcs.items(), columns=["object", "value"])
+    for i, row in input_data["converters"].iterrows():
+        if row.investment == False:
+            investment_cost = (
+                row.nominal_capacity
+                * epcs.loc[epcs["object"] == row.label, "value"].item()
+            )
+            results.append({"converter": row.label, "investment_cost": investment_cost})
+    for i, row in input_data["storage"].iterrows():
+        if row.investment == False:
+            investment_cost = (
+                row.nominal_storage_capacity
+                * epcs.loc[epcs["object"] == row.label, "value"].item()
+            )
+            results.append({"component": row.label, "investment_cost": investment_cost})
+    results = pd.DataFrame(results)
+    scenario_results = paths.scenario_results_path(scenario)
+    results.to_csv(
+        os.path.join(scenario_results, "exogenous_investment_costs.csv"),
+        sep=";",
+        index=False,
+    )
+    return results
 
 
 def preprocess(relative_file_path="input_data.xlsx"):
@@ -74,7 +141,11 @@ def preprocess(relative_file_path="input_data.xlsx"):
     scenario = retrieve_scenario_from_input_data(data["general"])
     data = filter_input_data_by_scenario(data, scenario)
     data = implement_policies(data, scenario)
-    return data, time, scenario
+    epcs = calculate_ep_costs_for_all_components(data, time)
+    exogeneous_investment_costs = calculate_exogenous_investment_costs(
+        data, epcs, scenario
+    )
+    return data, time, scenario, epcs
 
 
 if __name__ == "__main__":

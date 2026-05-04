@@ -22,13 +22,14 @@ def define_and_create_folders(ROOT_PATH: Path, scenario: str):
 
 def check_type(object, type_wanted):
     if not isinstance(object, type_wanted):
-        raise TypeError("Expected {0}; got {1}".format(type_wanted, type(object).__name__))
+        raise TypeError(
+            "Expected {0}; got {1}".format(type_wanted, type(object).__name__)
+        )
 
 
 def retreive_scenario_from_results(es):
     scenario = es.results["scenario"]
-    investment = es.results["investment"]
-    return scenario, investment
+    return scenario
 
 
 def convert_tuple_columnnames_to_strings(df):
@@ -48,7 +49,9 @@ def prepare_cost_scalars_for_plotting(folder_name, file_name, scenario):
     """
     Reads in the scalars from a csv file, filters for cost components and multiplies by -1
     """
-    scalar_data = pd.read_csv(os.path.join(folder_name, file_name), sep=";", index_col=0)
+    scalar_data = pd.read_csv(
+        os.path.join(folder_name, file_name), sep=";", index_col=0
+    )
     scalcosts = filter_cost_items_from_scalar_data(scalar_data).copy()
     scalcosts.loc[:, scenario] = scalcosts.loc[:, "value"] * -1
     scalcosts.drop("value", axis=1, inplace=True)

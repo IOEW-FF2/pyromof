@@ -8,6 +8,11 @@ from oemof.solph import (
 )
 
 from pyromof import helpers
+from pyromof.paths import (
+    scenario_path,
+    scenario_results_path,
+    scenario_dumping_space_path,
+)
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 
@@ -108,8 +113,12 @@ def gas_char_ratio(df_sequences, df_additional_columns, converters):
     Then, the ratio is multiplied with the normed ratio to get a ratio range close to 1.
     The normed ratio is based on the normed pyrolysis outputs from the input_data.xlsx file.
     """
-    normed_biochar_output = converters.loc[converters["label"] == "pyrolysis", "eff_out_1"].iloc[0]
-    normed_syngas_output = converters.loc[converters["label"] == "pyrolysis", "eff_out_2"].iloc[0]
+    normed_biochar_output = converters.loc[
+        converters["label"] == "pyrolysis", "eff_out_1"
+    ].iloc[0]
+    normed_syngas_output = converters.loc[
+        converters["label"] == "pyrolysis", "eff_out_2"
+    ].iloc[0]
     normed_ratio = normed_syngas_output / normed_biochar_output
 
     bio_char_output = df_sequences["pyrolysis to b_biochar"]
@@ -134,7 +143,9 @@ def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
 
     # Create a new dataframe with the same structure as the sequences dataframe
     # to store the cost sequences
-    effective_variable_costs = pd.DataFrame(index=sequences.index, columns=sequences.columns)
+    effective_variable_costs = pd.DataFrame(
+        index=sequences.index, columns=sequences.columns
+    )
     # Calculate the effective variable costs by multiplying the sequences with the variable costs
     for col in effective_variable_costs.columns:
         effective_variable_costs[col] = sequences[col] * varcosts[col]
@@ -143,13 +154,13 @@ def calculate_variable_costs_per_flow_per_timestep(sequences, path_varcosts):
 
 
 def calculate_sum_of_variable_costs_per_timestep(effective_variable_costs):
-    effective_variable_costs["sum of variable costs"] = effective_variable_costs.sum(axis=1)
+    effective_variable_costs["sum of variable costs"] = effective_variable_costs.sum(
+        axis=1
+    )
     return effective_variable_costs
 
 
-def add_investment_amount_to_scalar_results(
-    investment: bool, scalars, scalar_results, DUMPING_SPACE
-):
+def add_investment_amount_to_scalar_results(scalars, scalar_results, epcs):
     """
     Extract non-NaN-values from the scalars df and append them to the scalar results.
     The scalars df should be composed of the scalars of all flows taken from the raw results
@@ -164,20 +175,30 @@ def add_investment_amount_to_scalar_results(
     # Separate the dict into two dicts, one for flows to None and one for flows between buses,
     # to assign the correct unit in the scalar results.
     flows_kWh = {key: value for key, value in dict.items() if key.endswith(" to None")}
-    flows_kW = {key: value for key, value in dict.items() if not key.endswith(" to None")}
-    scalar_results = add_items_to_scalar_results(flows_kWh, "built capacity [kWh]", scalar_results)
-    scalar_results = add_items_to_scalar_results(flows_kW, "built capacity [kW]", scalar_results)
+    flows_kW = {
+        key: value for key, value in dict.items() if not key.endswith(" to None")
+    }
+    scalar_results = add_items_to_scalar_results(
+        flows_kWh, "built capacity [kWh]", scalar_results
+    )
+    scalar_results = add_items_to_scalar_results(
+        flows_kW, "built capacity [kW]", scalar_results
+    )
 
-    epcs = pd.read_csv(os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";")
     investmentcost_dict = {}
     for key, value in dict.items():
-        investmentcost_dict[key] = dict[key] * epcs.loc[epcs["object"] == key, "value"].item()
+        investmentcost_dict[key] = (
+            dict[key]
+            * epcs.loc[
+                epcs["object"].apply(lambda x: key.startswith(x)), "value"
+            ].item()
+        )
     scalar_results = add_items_to_scalar_results(
         investmentcost_dict,
         "equivalent periodical costs of investment [Euros]",
         scalar_results,
     )
-    # The unit here should be kWh per timestep. It is kW because the timesteps are hours.
+
     return scalar_results
 
 
@@ -188,11 +209,13 @@ def check_scalar_costs_consistency(scalar_results):
     """
     print("Checking the completeness of the cost scalars")
     scalar_costs = helpers.filter_cost_items_from_scalar_data(scalar_results)
-    objective = scalar_results.loc[scalar_results["variable"] == "objective", "value"].item()
+    objective = scalar_results.loc[
+        scalar_results["variable"] == "objective", "value"
+    ].item()
     sum = scalar_costs.value.sum().item()
-    assert type(sum - objective) is type(0.1), (
-        "The data types are not coherent, a consistency check is not possible."
-    )
+    assert type(sum - objective) is type(
+        0.1
+    ), "The data types are not coherent, a consistency check is not possible."
     if objective - sum > 0.1:
         print(
             "Some cost or revenue scalars must be missing in the scalar results. "
@@ -214,23 +237,28 @@ def check_scalar_costs_consistency(scalar_results):
 
 def postprocess():
 
+    # Read out the scenario from the input data
     input_data = preprocessing_input_data.read_raw_data("input_data.xlsx")
     scenario = (
-        input_data["general"].loc[input_data["general"]["label"] == "scenario", "value"].item()
+        input_data["general"]
+        .loc[input_data["general"]["label"] == "scenario", "value"]
+        .item()
     )
 
-    ROOT_PATH = Path(__file__).parent.parent
-    SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
-    DUMPING_SPACE = os.path.join(SCENARIO_PATH, "dumping_space")
+    SCENARIO_PATH = scenario_path(scenario)
+    DUMPING_SPACE = scenario_dumping_space_path(scenario)
+    RESULTS = scenario_results_path(scenario)
+
     # Create a results folder if it doesn't exist yet
-    Path(os.path.join(SCENARIO_PATH, "results")).mkdir(exist_ok=True)
-    RESULTS = os.path.join(SCENARIO_PATH, "results")
+    RESULTS.mkdir(parents=True, exist_ok=True)
 
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
 
-    # Read in the scenario and set investment variable
-    scenario, investment = helpers.retreive_scenario_from_results(es)
+    epcs = pd.read_csv(
+        os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";", index_col=0
+    )
+
     # Create an empty dataframe for the scalar results:
 
     scalar_results = pd.DataFrame(columns=["variable", "type", "value"])
@@ -238,10 +266,12 @@ def postprocess():
     # From the meta information, only the objective value is interesting for the results.
     # Store this value in the scalar results remove the meta part from the results:
 
-    sequences, scalars, storage_contents, additional_columns = convert_result_sequences_to_df(
-        results_data=es.results["main"]
+    sequences, scalars, storage_contents, additional_columns = (
+        convert_result_sequences_to_df(results_data=es.results["main"])
     )
-    additional_columns = gas_char_ratio(sequences, additional_columns, input_data["converters"])
+    additional_columns = gas_char_ratio(
+        sequences, additional_columns, input_data["converters"]
+    )
 
     effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
         sequences,
@@ -255,16 +285,18 @@ def postprocess():
     # Create scalar results
     scalar_results = add_objective_to_scalar_results(es.results, scalar_results)
 
-    scalar_results = add_sums_to_scalar_results(sequences, "sum of flow [kWh]", scalar_results)
+    scalar_results = add_sums_to_scalar_results(
+        sequences, "sum of flow [kWh]", scalar_results
+    )
     scalar_results = add_sums_to_scalar_results(
         effective_variable_costs,
         "sum of variable costs [Euros]",
         scalar_results,
     )
-    if investment is True:
-        scalar_results = add_investment_amount_to_scalar_results(
-            investment, scalars, scalar_results, DUMPING_SPACE
-        )
+
+    scalar_results = add_investment_amount_to_scalar_results(
+        scalars, scalar_results, epcs
+    )
 
     result_dfs = {
         "sequences": sequences,
@@ -274,7 +306,9 @@ def postprocess():
         "additional_columns": additional_columns,
     }
 
-    result_dfs["scalar_results"] = check_scalar_costs_consistency(result_dfs["scalar_results"])
+    result_dfs["scalar_results"] = check_scalar_costs_consistency(
+        result_dfs["scalar_results"]
+    )
 
     # Save all results
     for key, df in result_dfs.items():
@@ -282,3 +316,7 @@ def postprocess():
     print("The postprocessing is finished and the results have been saved.")
 
     return result_dfs
+
+
+if __name__ == "__main__":
+    postprocess()
