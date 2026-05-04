@@ -11,7 +11,6 @@ from pyomo.environ import Binary, Constraint, Set, Var
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
-from pyromof.policies.implement_policies import implement_policies
 from pyromof.preprocessing_functions.preprocessing_input_data import preprocess
 
 
@@ -488,8 +487,8 @@ def create_energysystem(
                         # optimization. If it is activated, nominal_capacity becomes
                         # a NoneType object.
                         nonconvex=solph.NonConvex(
-                            # startup_costs=row.startup_costs.item(),
-                            # startup_costs in investment optimization makes the model infeasible
+                            # startup_costs in investment optimization 
+                            # would make the model infeasible
                             minimum_downtime=int(row.minimum_downtime.item()),
                             initial_status=row.initial_status.item(),
                             maximum_startups=row.maximum_startups.item(),
@@ -527,7 +526,7 @@ def create_energysystem(
                         min=row.min_load_share.item(),
                         max=1,
                         nonconvex=solph.NonConvex(
-                            # startup_costs=row.startup_costs.item(),
+                            startup_costs=row.startup_costs.item(),
                             minimum_downtime=int(row.minimum_downtime.item()),
                             initial_status=row.initial_status.item(),
                             maximum_startups=row.maximum_startups.item(),
@@ -1040,9 +1039,8 @@ def save_results(
     print("The results have been saved.")
 
 
-if __name__ == "__main__":
+def optimize():
     data, time, scenario = preprocess("input_data.xlsx")
-    data = implement_policies(data, scenario)
     SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
         Path(__file__).parent.parent, scenario
     )
