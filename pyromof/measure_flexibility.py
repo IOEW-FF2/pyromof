@@ -1,7 +1,8 @@
 import os
-from pathlib import Path
 
 import pandas as pd
+
+from pyromof.paths import RESULTS_DIR, scenario_path, scenario_results_path
 
 
 def calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles):
@@ -34,7 +35,11 @@ def calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles
         / sequences_aligned["b_electricity to electricity_grid"].sum().sum()
     )
     print("kWh elec fed_in_at_negative_price: " + str(fed_in_at_negative_price))
-    print("Share of total electricity: " + str(share_of_total_electricity_fed_in * 100) + "%")
+    print(
+        "Share of total electricity: "
+        + str(share_of_total_electricity_fed_in * 100)
+        + "%"
+    )
     return fed_in_at_negative_price, share_of_total_electricity_fed_in * 100
 
 
@@ -63,20 +68,23 @@ def measure_flexibility(scenarios: list):
             "pyrolysis_full_load_hours",
         ],
     )
-    ROOT_PATH = Path(__file__).parent.parent
     for scenario in scenarios:
         print(scenario)
-        SCENARIO_RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")
-        SCENARIO_META_INFO = os.path.join(ROOT_PATH, "results", scenario, "meta_info")
+        SCENARIO_RESULTS = scenario_results_path(scenario)
+        SCENARIO_META_INFO = scenario_path(scenario) / "meta_info"
 
         sequences = pd.read_csv(
             os.path.join(SCENARIO_RESULTS, "sequences.csv"), sep=";", index_col=0
         )
         profiles = pd.read_excel(
-            os.path.join(SCENARIO_META_INFO, "input_data.xlsx"), sheet_name="profiles", index_col=0
+            os.path.join(SCENARIO_META_INFO, "input_data.xlsx"),
+            sheet_name="profiles",
+            index_col=0,
         )
         fed_in_at_negative_price, share_of_total_electricity_fed_in = (
-            calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles)
+            calculate_electricity_fed_in_at_negative_price_timesteps(
+                sequences, profiles
+            )
         )
         pyrolysis_full_load_hours = calculate_pyrolysis_full_load_hours(sequences)
         results[scenario] = [
@@ -84,4 +92,4 @@ def measure_flexibility(scenarios: list):
             share_of_total_electricity_fed_in,
             pyrolysis_full_load_hours,
         ]
-    results.to_csv(os.path.join(ROOT_PATH, "results", "flexibility_results.csv"), sep=";")
+    results.to_csv(RESULTS_DIR / "flexibility_results.csv", sep=";")

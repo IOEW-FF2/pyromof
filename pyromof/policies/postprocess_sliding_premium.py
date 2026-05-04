@@ -8,23 +8,36 @@ from pyromof.policies.implement_policies import (
     receive_and_refine_electricity_price_data,
     receive_higher_threshold_basis_and_lower_threshold_basis,
 )
+from pyromof.paths import scenario_results_path
 from pyromof.postprocessing import add_items_to_scalar_results
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 
-def receive_data(scenario: str, data: dict) -> tuple[pd.Series, pd.Series, float, float]:
+def receive_data(
+    scenario: str, data: dict
+) -> tuple[pd.Series, pd.Series, float, float]:
 
     policies = data["policies"]
 
-    base_value, lower_threshold = receive_higher_threshold_basis_and_lower_threshold_basis(policies)
+    base_value, lower_threshold = (
+        receive_higher_threshold_basis_and_lower_threshold_basis(policies)
+    )
 
     pyrolysis_electricity_output = pd.read_csv(
-        f"./results/{scenario}/results/sequences.csv", sep=";", index_col=0, parse_dates=True
+        scenario_results_path(scenario) / "sequences.csv",
+        sep=";",
+        index_col=0,
+        parse_dates=True,
     )["b_electricity to electricity_grid"]
 
     electricity_price = receive_and_refine_electricity_price_data(data["profiles"])
 
-    return (electricity_price, pyrolysis_electricity_output, base_value, lower_threshold)
+    return (
+        electricity_price,
+        pyrolysis_electricity_output,
+        base_value,
+        lower_threshold,
+    )
 
 
 def calculate_payment_sums(
@@ -53,7 +66,7 @@ def calculate_payment_sums(
     sum_electricity_market_payment_euro = electricity_market_payment_euro.sum()
 
     # create csv file with payment sums
-    results_dir = Path(__file__).resolve().parents[2] / "results" / scenario / "results"
+    results_dir = scenario_results_path(scenario)
     df2 = pd.DataFrame({})
 
     sum_dict = {
@@ -77,7 +90,10 @@ def main(scenario: str, data) -> None:
     ) = receive_data(scenario, data)
 
     calculate_payment_sums(
-        electricity_price_euro_per_kwh, pyrolysis_electricity_output, base_value, lower_threshold
+        electricity_price_euro_per_kwh,
+        pyrolysis_electricity_output,
+        base_value,
+        lower_threshold,
     )
 
 

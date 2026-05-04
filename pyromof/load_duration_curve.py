@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from pyromof.paths import scenario_results_path
+
 
 def get_data_csv(scenario: str) -> pd.DataFrame:
     """Read data from CSV file of the chosen scenario."""
-    file_path = f"./results/{scenario}/results/sequences.csv"
+    file_path = scenario_results_path(scenario) / "sequences.csv"
     separator = ";"
     parse_dates = True
     target_columns = [
@@ -41,20 +43,24 @@ def plot_load_duration_curves(scenario=None):
 
     columns = get_data_csv(scenario)
 
-    descending_power_data = sort_values_descending(columns, "b_electricity to electricity_grid")
-    descending_biomass_data = sort_values_descending(columns, "b_biomass_dry to pyrolysis")
+    descending_power_data = sort_values_descending(
+        columns, "b_electricity to electricity_grid"
+    )
+    descending_biomass_data = sort_values_descending(
+        columns, "b_biomass_dry to pyrolysis"
+    )
 
     create_plot(
         sorted_column=descending_power_data,
         xlabel="Hours",
         ylabel="Electricity feed-in (kWh)",
         title=f"Scenario {scenario}: Load duration curve - Power",
-        save_path=f"./results/{scenario}/results/load_duration_curve_power.png",
+        save_path=scenario_results_path(scenario) / "load_duration_curve_power.png",
     )
     create_plot(
         sorted_column=descending_biomass_data,
         xlabel="Hours",
         ylabel="Biomass input (kg)",
         title=f"Scenario {scenario}: Load duration curve - Biomass",
-        save_path=f"./results/{scenario}/results/load_duration_curve_biomass.png",
+        save_path=scenario_results_path(scenario) / "load_duration_curve_biomass.png",
     )

@@ -1,11 +1,15 @@
 import os
 import shutil
 from functools import reduce
-from pathlib import Path
 
 import pandas as pd
 
 from pyromof import optimize, postprocessing, preprocessing_functions
+from pyromof.paths import (
+    scenario_path,
+    scenario_results_path,
+    scenario_dumping_space_path,
+)
 
 
 def analyze_sensitivity():
@@ -23,25 +27,24 @@ def analyze_sensitivity():
     scenario = "stromflex_h2"
 
     # Definition of the time period
-    data, time, scenario = preprocessing_functions.preprocessing_input_data.preprocess(
-        "input_data.xlsx"
+    data, time, scenario, epcs = (
+        preprocessing_functions.preprocessing_input_data.preprocess("input_data.xlsx")
     )
 
-    ROOT_PATH = Path(__file__).parent.parent
-    SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
-    RESULTS = os.path.join(SCENARIO_PATH, "results")
+    SCENARIO_PATH = scenario_path(scenario)
+    RESULTS = scenario_results_path(scenario)
     parameter_name = parameters["component"] + "_" + parameters["variable"]
     print(parameter_name)
-    Path(os.path.join(RESULTS, "sensitivity")).mkdir(exist_ok=True)
-    Path(os.path.join(RESULTS, "sensitivity", parameter_name)).mkdir(exist_ok=True)
-    THIS_SENSITIVITY = Path(os.path.join(RESULTS, "sensitivity", parameter_name))
+    (RESULTS / "sensitivity").mkdir(exist_ok=True)
+    (RESULTS / "sensitivity" / parameter_name).mkdir(exist_ok=True)
+    THIS_SENSITIVITY = RESULTS / "sensitivity" / parameter_name
 
     # These folders will be deleted again in the end
     # Create folders for meta_info and dumping_space
-    Path(os.path.join(THIS_SENSITIVITY, "meta_info")).mkdir(exist_ok=True)
-    META_INFO = Path(os.path.join(THIS_SENSITIVITY, "meta_info"))
-    Path(os.path.join(THIS_SENSITIVITY, "dumping_space")).mkdir(exist_ok=True)
-    DUMPING_SPACE = Path(os.path.join(THIS_SENSITIVITY, "dumping_space"))
+    (THIS_SENSITIVITY / "meta_info").mkdir(exist_ok=True)
+    META_INFO = THIS_SENSITIVITY / "meta_info"
+    (THIS_SENSITIVITY / "dumping_space").mkdir(exist_ok=True)
+    DUMPING_SPACE = THIS_SENSITIVITY / "dumping_space"
 
     # Loop over the steps below, changing the sensitivity parameter in the raw data each time
     all_dfs = []
@@ -63,13 +66,10 @@ def analyze_sensitivity():
         ] = parameter_value
 
         # OPTIMIZATION
-        es, om, investment, epcs = optimize.create_energysystem(
-            META_INFO=META_INFO,
-            data=data,
-            time=time,
-            scenario=scenario,
+        es, om = optimize.create_energysystem(
+            META_INFO=META_INFO, data=data, time=time, epcs=epcs
         )
-        optimize.save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
+        optimize.save_results(es, om, META_INFO, DUMPING_SPACE, scenario, time)
 
         # POSTPROCESSING
 
@@ -77,7 +77,9 @@ def analyze_sensitivity():
 
         postprocessing.check_scalar_costs_consistency(result_dfs["scalar_results"])
 
-        result_dfs["scalar_results"].rename(columns={"value": parameter_value}, inplace=True)
+        result_dfs["scalar_results"].rename(
+            columns={"value": parameter_value}, inplace=True
+        )
         print(result_dfs["scalar_results"])
 
         all_dfs.append(result_dfs["scalar_results"])
