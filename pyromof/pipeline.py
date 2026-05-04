@@ -1,28 +1,47 @@
-import os
-import subprocess
-import sys
 from pathlib import Path
+
+from pyromof import (
+    analyse_sensitivity,
+    compare_scenarios,
+    load_demand_profiles,
+    load_duration_curve,
+    optimize,
+    plotting,
+    postprocessing,
+)
 
 pyromof = Path(__file__).parent
 
-# Run optimize
-script1 = os.path.join(pyromof, "optimize.py")
-result1 = subprocess.run([sys.executable, script1])
-if result1.returncode != 0:
-    print("optimize.py failed. Aborting.")
-    sys.exit(result1.returncode)
-
-# Run postprocessing
-script2 = os.path.join(pyromof, "postprocessing.py")
-result2 = subprocess.run([sys.executable, script2])
-if result2.returncode != 0:
-    print("postprocessing.py failed.")
-    sys.exit(result2.returncode)
+PIPELINE_STEPS = {
+    "load_demand_profiles": load_demand_profiles.load_demand_profiles,
+    "optimize": optimize.optimize,
+    "postprocess": postprocessing.postprocess,
+    "plot_scenario_results": [
+        plotting.plot_sequences_and_scalars,
+        load_duration_curve.plot_load_duration_curves,
+    ],
+    "compare_scenarios": compare_scenarios.compare_scenarios,
+    "analyse_sensitivity": analyse_sensitivity.analyze_sensitivity,
+}
 
 
-# Run plotting
-script3 = os.path.join(pyromof, "plotting.py")
-result3 = subprocess.run([sys.executable, script3])
-if result3.returncode != 0:
-    print("plotting.py failed.")
-    sys.exit(result3.returncode)
+def run_pipeline(steps, scenario=None):
+    for step in steps:
+        if step in PIPELINE_STEPS:
+            print(f"Running {step}...")
+            handler = PIPELINE_STEPS[step]
+            if isinstance(handler, list):
+                # Execute multiple functions
+                for func in handler:
+                    if scenario:
+                        func(scenario)
+                    else:
+                        func()
+            else:
+                # Execute single function
+                if scenario:
+                    handler(scenario)
+                else:
+                    handler()
+        else:
+            print(f"Step {step} is not recognized. Skipping.")

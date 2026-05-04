@@ -3,38 +3,29 @@ import shutil
 from functools import reduce
 from pathlib import Path
 
-import optimize
 import pandas as pd
-import postprocessing
 
-if __name__ == "__main__":
+from pyromof import optimize, postprocessing, preprocessing_functions
+
+
+def analyze_sensitivity():
     # Insert here the parameters. Only two decimal places are possible!
     parameters = {
         "component_type": "storage",  # must be plural
         "component": "syngas_storage",
         "variable": "capex",
-        "min": 0,
-        "max": 10,
+        "min": 40,
+        "max": 40,
         "step": 1,
     }
 
-    # scenario = input("For which scenario shall the sensitivity be analyzed? ")
+    # Select the scenario here:
     scenario = "stromflex_h2"
 
     # Definition of the time period
-    time = pd.date_range(start="2023-07-01", end="2023-07-20", freq="h", inclusive="both")
-
-    profiles, sinks, sources, converters, storage, general = optimize.read_raw_data(
+    data, time, scenario = preprocessing_functions.preprocessing_input_data.preprocess(
         "input_data.xlsx"
     )
-    input_data = {
-        "profiles": profiles,
-        "sinks": sinks,
-        "sources": sources,
-        "converters": converters,
-        "storage": storage,
-        "general": general,
-    }
 
     ROOT_PATH = Path(__file__).parent.parent
     SCENARIO_PATH = os.path.join(ROOT_PATH, "results", scenario)
@@ -54,7 +45,7 @@ if __name__ == "__main__":
 
     # Loop over the steps below, changing the sensitivity parameter in the raw data each time
     all_dfs = []
-    range = [
+    value_range = [
         x / 100
         for x in range(
             int(parameters["min"] * 100),
@@ -63,43 +54,26 @@ if __name__ == "__main__":
         )
     ]
     # Somewhat complicated workaround because "range" only accepts integers
-    for parameter_value in range:
+    for parameter_value in value_range:
         print(parameter_value)
         df_name = parameters["component_type"]
-        input_data[df_name].loc[
-            input_data[df_name]["label"] == parameters["component"],
+        data[df_name].loc[
+            data[df_name]["label"] == parameters["component"],
             parameters["variable"],
         ] = parameter_value
 
         # OPTIMIZATION
-        # TODO: Use dict for input data everywhere instead of this loose list of dfs
         es, om, investment, epcs = optimize.create_energysystem(
             META_INFO=META_INFO,
-            profiles=input_data["profiles"],
-            sinks=input_data["sinks"],
-            sources=input_data["sources"],
-            converters=input_data["converters"],
-            storage=input_data["storage"],
-            general=input_data["general"],
+            data=data,
             time=time,
             scenario=scenario,
         )
-        optimize.save_results(
-            es=es,
-            om=om,
-            investment=investment,
-            epcs=epcs,
-            META_INFO=META_INFO,
-            DUMPING_SPACE=DUMPING_SPACE,
-            scenario=scenario,
-            time=time,
-        )
+        optimize.save_results(es, om, investment, epcs, META_INFO, DUMPING_SPACE, scenario, time)
 
         # POSTPROCESSING
 
-        result_dfs = postprocessing.postprocess(
-            es=es, DUMPING_SPACE=DUMPING_SPACE, investment=investment
-        )
+        result_dfs = postprocessing.postprocess()
 
         postprocessing.check_scalar_costs_consistency(result_dfs["scalar_results"])
 
