@@ -202,6 +202,22 @@ def add_investment_amount_to_scalar_results(scalars, scalar_results, epcs):
     return scalar_results
 
 
+def calulcate_objective_value_with_exogenous_investment_costs(scalar_results, RESULTS):
+    objective_value = scalar_results.loc[
+        scalar_results["variable"] == "objective", "value"
+    ].item()
+    exogenous_investment_costs = pd.read_csv(
+        RESULTS / "exogenous_investment_costs.csv", sep=";", index_col=0
+    )["investment_cost"].sum()
+    base_value = objective_value + exogenous_investment_costs
+    scalar_results = add_items_to_scalar_results(
+        {"objective with exogenous investment costs": base_value},
+        "objective [Euros]",
+        scalar_results,
+    )
+    return base_value
+
+
 def check_scalar_costs_consistency(scalar_results):
     """
     Check whether the sum of the monetary scalar results is equal to the objective variable
@@ -297,6 +313,8 @@ def postprocess():
     scalar_results = add_investment_amount_to_scalar_results(
         scalars, scalar_results, epcs
     )
+
+    calulcate_objective_value_with_exogenous_investment_costs(scalar_results, RESULTS)
 
     result_dfs = {
         "sequences": sequences,
