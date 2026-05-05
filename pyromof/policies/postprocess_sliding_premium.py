@@ -2,11 +2,11 @@ from pyromof.policies.implement_policies import (
     feed_in_payment_sliding_premium,
     receive_higher_threshold_basis_and_lower_threshold_basis,
 )
-from pyromof.policies.postprocess_policies_functions import add_sums_to_log_file, receive_data
+from pyromof.policies.postprocess_policies_functions import receive_data
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 
-def calculate_payment_sums(scenario, data):
+def postprocess_sliding_premium(scenario, data):
 
     # receive input data
     electricity_price, pyrolysis_electricity_output, policies = receive_data(scenario, data)
@@ -31,9 +31,9 @@ def calculate_payment_sums(scenario, data):
     sum_feed_in_revenue = feed_in_revenue.sum()
     sum_market_payment = market_payment.sum()
 
-    add_sums_to_log_file(sum_government_payment, sum_feed_in_revenue, sum_market_payment, scenario)
+    return sum_feed_in_revenue, sum_government_payment, sum_market_payment
 
 
 if __name__ == "__main__":
     data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
-    calculate_payment_sums(scenario, data)
+    postprocess_sliding_premium(scenario, data)
