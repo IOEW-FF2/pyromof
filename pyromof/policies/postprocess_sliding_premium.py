@@ -27,10 +27,10 @@ def postprocess_sliding_premium(scenario, data):
     market_payment = feed_in_revenue - government_payment
 
     # calculate payment sums
-    sum_government_payment = government_payment.sum()
-    sum_feed_in_revenue = feed_in_revenue.sum()
-    sum_market_payment = market_payment.sum()
-
+    sum_government_payment = government_payment.sum().round(1)
+    sum_feed_in_revenue = feed_in_revenue.sum().round(1)
+    sum_market_payment = market_payment.sum().round(1)
+    print(sum_feed_in_revenue, sum_government_payment, sum_market_payment)
     return sum_feed_in_revenue, sum_government_payment, sum_market_payment
 
 

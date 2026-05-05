@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from pyromof.preprocessing_functions import preprocessing_input_data
+#from pyromof.preprocessing_functions import preprocessing_input_data
 
 
 def receive_and_refine_electricity_price_data(profiles):
@@ -218,7 +218,8 @@ def implement_policies(data, scenario) -> None:
                 table_data.to_excel(writer, sheet_name=table_name, index=False)
     return data
 
-
+"""
 if __name__ == "__main__":
     data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
     implement_policies(data, scenario)
+"""

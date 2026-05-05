@@ -4,15 +4,13 @@ import pandas as pd
 
 from pyromof.policies.postprocess_policies_functions import (
     receive_data,
-    add_sums_to_log_file
-
 )
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 
-def postprocess_feed_in_tarrif(scenario, data):
+def postprocess_feed_in_tariff(scenario, data):
 
-
+    
     electricity_price, pyrolysis_electricity_output, policies = receive_data(scenario, data)
 
     feed_in_tarrif = ( 
@@ -21,22 +19,21 @@ def postprocess_feed_in_tarrif(scenario, data):
 
         / 100 
 
-        * policies.loc[policies["policy"] == "Fixed feed-in remuneration", "value 1"].values[0] 
+        * policies.loc[policies["policy"] == "feed in tariff", "value 1"].values[0] 
 
     ) 
-
-    feed_in_revenue = feed_in_tarrif * pyrolysis_electricity_output 
-
     government_payment_share = feed_in_tarrif - electricity_price 
-    governemt_payment = government_payment_share * pyrolysis_electricity_output 
 
+    
+    feed_in_revenue = feed_in_tarrif * pyrolysis_electricity_output 
+    governemt_payment = government_payment_share * pyrolysis_electricity_output 
     market_payment = electricity_price * pyrolysis_electricity_output
 
 
-    sum_feed_in_revenue = feed_in_revenue.sum()
-    sum_government_payment = governemt_payment.sum()
-    sum_market_payment = market_payment.sum()
-
+    sum_feed_in_revenue = feed_in_revenue.sum().round(1)
+    sum_government_payment = governemt_payment.sum().round(1)
+    sum_market_payment = market_payment.sum().round(1)
+    print(sum_feed_in_revenue, sum_government_payment, sum_market_payment)
     return sum_feed_in_revenue, sum_government_payment, sum_market_payment
 
 
@@ -45,4 +42,4 @@ def postprocess_feed_in_tarrif(scenario, data):
 
 if __name__ == "__main__":
     data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
-    postprocess_feed_in_tarrif(scenario, data)
+    postprocess_feed_in_tariff(scenario, data)
