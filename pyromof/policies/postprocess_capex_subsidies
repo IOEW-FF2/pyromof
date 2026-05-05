@@ -1,0 +1,31 @@
+import os
+from pathlib import Path
+import pandas as pd
+
+from pyromof.policies.postprocess_policies_functions import (
+    receive_capex_data,
+    add_sums_to_log_file,
+
+)
+
+def lump_sum_capex_subsidy(scenario, data):
+
+    policies, _, yearly_biochar_output = receive_capex_data(scenario, data)
+
+    subsidy_per_biochar_ton = policies.loc[policies["policy"] == "Subsidy for pyrolysis investment costs", "value 1"].values[0] 
+    total_subsidy = subsidy_per_biochar_ton * yearly_biochar_output # Wird die ganze Summe am Anfang ausgezahlt oder über die Förderdauer verteilt?
+
+    return total_subsidy
+
+
+def percentage_capex_subsidy(scenario, data):
+    policies, converters, yearly_biochar_output = receive_capex_data(scenario, data)
+
+    percentage_subsidy = 1/100 * policies.loc[policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "nominal_capacity"].values[0]
+    pyrolysis_capex = converters.loc[converters["label"] == "pyrolysis", "capex"].values[0]
+    subsidy_per_biochar_ton = percentage_subsidy * pyrolysis_capex
+    total_subsidy = subsidy_per_biochar_ton * yearly_biochar_output
+
+    return total_subsidy
+
+
