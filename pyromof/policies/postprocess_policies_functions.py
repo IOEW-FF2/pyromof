@@ -27,5 +27,4 @@ def receive_capex_data(scenario, data):
         8.76 * converters.loc[converters["label"] == "pyrolysis", "nominal_capacity"].values[0]
     )
 
-
     return policies, converters, yearly_biochar_output
