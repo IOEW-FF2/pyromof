@@ -14,7 +14,7 @@ Pyromof has been tested with Python3.12. In order to install pyromof, proceed wi
 1. Create a virtual environment (e.g. with venv)
 2. Clone the github repository (`git clone https://github.com/IOEW-FF2/pyromof.git`)
 3. Enter the folder and
-4. Install the package with `pip install -e .`. The `-e`-flag installs the project in editable mode - if you only want to run the model, you can install it without it.
+4. Install the package with `pip install -e .`. The `-e`-flag installs the project in editable mode.
 
 In order to run the model you need a solver. By default, the code expects the solver cbc which you can find in https://github.com/coin-or/Cbc/releases. If you want to use a different one, you have to adjust the code in pyromof/optimize.py `om.solve(solver="your_solver")`. If you use Windows, the file "cbc.exe" (located in the bin folder) should be placed in the same folder as this readme-file.
 
