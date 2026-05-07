@@ -142,6 +142,7 @@ def preprocess(relative_file_path="input_data.xlsx"):
     data = filter_input_data_by_scenario(data, scenario)
     data = implement_policies(data, scenario)
     epcs = calculate_ep_costs_for_all_components(data, time)
+    paths.ensure_scenario_directories(scenario)
     exogeneous_investment_costs = calculate_exogenous_investment_costs(
         data, epcs, scenario
     )
