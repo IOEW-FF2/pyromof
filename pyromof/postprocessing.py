@@ -202,7 +202,7 @@ def add_investment_amount_to_scalar_results(scalars, scalar_results, epcs):
     return scalar_results
 
 
-def calulcate_objective_value_with_exogenous_investment_costs(scalar_results, RESULTS):
+def calculate_objective_value_with_exogenous_investment_costs(scalar_results, RESULTS):
     objective_value = scalar_results.loc[
         scalar_results["variable"] == "objective", "value"
     ].item()
@@ -215,7 +215,7 @@ def calulcate_objective_value_with_exogenous_investment_costs(scalar_results, RE
         "objective [Euros]",
         scalar_results,
     )
-    return base_value
+    return scalar_results
 
 
 def check_scalar_costs_consistency(scalar_results):
@@ -251,7 +251,7 @@ def check_scalar_costs_consistency(scalar_results):
     return scalar_results
 
 
-def postprocess():
+def postprocess(dumping_space: Path | None = None, results: Path | None = None):
 
     # Read out the scenario from the input data
     input_data = preprocessing_input_data.read_raw_data("input_data.xlsx")
@@ -261,18 +261,19 @@ def postprocess():
         .item()
     )
 
-    SCENARIO_PATH = scenario_path(scenario)
-    DUMPING_SPACE = scenario_dumping_space_path(scenario)
-    RESULTS = scenario_results_path(scenario)
+    if dumping_space is None:
+        dumping_space = scenario_dumping_space_path(scenario)
+    if results is None:
+        results = scenario_results_path(scenario)
 
     # Create a results folder if it doesn't exist yet
-    RESULTS.mkdir(parents=True, exist_ok=True)
+    results.mkdir(parents=True, exist_ok=True)
 
     es = EnergySystem()
-    es.restore(DUMPING_SPACE, "es_dump.oemof")
+    es.restore(dumping_space, "es_dump.oemof")
 
     epcs = pd.read_csv(
-        os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";", index_col=0
+        os.path.join(dumping_space, "epcs_from_optimization.csv"), sep=";", index_col=0
     )
 
     # Create an empty dataframe for the scalar results:
@@ -291,7 +292,7 @@ def postprocess():
 
     effective_variable_costs = calculate_variable_costs_per_flow_per_timestep(
         sequences,
-        os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"),
+        os.path.join(dumping_space, "variable_costs_from_model.csv"),
     )
 
     # Remove all columns from sequences were the column name does not start with "b_"
@@ -314,7 +315,9 @@ def postprocess():
         scalars, scalar_results, epcs
     )
 
-    calulcate_objective_value_with_exogenous_investment_costs(scalar_results, RESULTS)
+    scalar_results = calculate_objective_value_with_exogenous_investment_costs(
+        scalar_results, results
+    )
 
     result_dfs = {
         "sequences": sequences,
@@ -330,7 +333,7 @@ def postprocess():
 
     # Save all results
     for key, df in result_dfs.items():
-        df.to_csv(os.path.join(RESULTS, f"{key}.csv"), sep=";")
+        df.to_csv(os.path.join(results, f"{key}.csv"), sep=";")
     print("The postprocessing is finished and the results have been saved.")
 
     return result_dfs
