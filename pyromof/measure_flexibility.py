@@ -55,19 +55,42 @@ def calculate_pyrolysis_full_load_hours(sequences):
     return full_load_hours
 
 
+def calculate_storage_charging_cycles(scalars, sequences, storage):
+    """
+    This function calculates the number of charging cycles for each storage component
+    based on the storage inflow over time.
+    """
+    charging_cycles = {}
+    inflow_columns = [s for s in sequences.columns if "storage" in s.split(" to ")[1]]
+    for column in sequences[inflow_columns]:
+        storage_name = column.split(" to ")[1]
+        total_inflow = sequences[column].sum()
+        # Check if the storage name exists as a substring in the scalars variable column:
+        if any(scalars["variable"].str.contains(storage_name)):
+            storage_capacity = scalars.loc[
+                scalars["variable"].str.contains(storage_name)
+                & scalars["type"].str.contains("built capacity"),
+                "value",
+            ].item()
+        else:
+            storage_capacity = storage.loc[
+                storage["label"] == storage_name, "nominal_storage_capacity"
+            ].item()
+        if storage_capacity > 0:
+            charging_cycles[storage_name] = total_inflow / storage_capacity
+        else:
+            charging_cycles[storage_name] = 0
+    print(charging_cycles)
+    return charging_cycles
+
+
 def measure_flexibility(scenarios: list):
     # Create a table with scenarios as column names and the elec fed in at negative price,
     # the share of total electricity fed in at negative price and the pyrolysis full load
     # hours as rows
 
-    results = pd.DataFrame(
-        columns=scenarios,
-        index=[
-            "fed_in_at_negative_price",
-            "share_of_total_electricity_fed_in",
-            "pyrolysis_full_load_hours",
-        ],
-    )
+    results = pd.DataFrame(columns=scenarios)
+
     for scenario in scenarios:
         print(scenario)
         SCENARIO_RESULTS = scenario_results_path(scenario)
@@ -76,9 +99,17 @@ def measure_flexibility(scenarios: list):
         sequences = pd.read_csv(
             os.path.join(SCENARIO_RESULTS, "sequences.csv"), sep=";", index_col=0
         )
+        scalars = pd.read_csv(
+            os.path.join(SCENARIO_RESULTS, "scalar_results.csv"), sep=";", index_col=0
+        )
         profiles = pd.read_excel(
             os.path.join(SCENARIO_META_INFO, "input_data.xlsx"),
             sheet_name="profiles",
+            index_col=0,
+        )
+        storage = pd.read_excel(
+            os.path.join(SCENARIO_META_INFO, "input_data.xlsx"),
+            sheet_name="storage",
             index_col=0,
         )
         fed_in_at_negative_price, share_of_total_electricity_fed_in = (
@@ -87,9 +118,28 @@ def measure_flexibility(scenarios: list):
             )
         )
         pyrolysis_full_load_hours = calculate_pyrolysis_full_load_hours(sequences)
-        results[scenario] = [
-            fed_in_at_negative_price,
-            share_of_total_electricity_fed_in,
-            pyrolysis_full_load_hours,
-        ]
+
+        charging_cycles = calculate_storage_charging_cycles(scalars, sequences, storage)
+
+        results.loc["fed_in_at_negative_price", scenario] = fed_in_at_negative_price
+        results.loc["share_of_total_electricity_fed_in", scenario] = (
+            share_of_total_electricity_fed_in
+        )
+        results.loc["pyrolysis_full_load_hours", scenario] = pyrolysis_full_load_hours
+
+        # Append charging_cycles to results DataFrame
+        for storage_name, cycles in charging_cycles.items():
+            rowname = f"charging_cycles_{storage_name}"
+            results.loc[rowname, scenario] = cycles
+
     results.to_csv(RESULTS_DIR / "flexibility_results.csv", sep=";")
+
+
+if __name__ == "__main__":
+    scenarios = [
+        "PyGas_1010",
+        "PyGas_505",
+        "PyGas_220",
+        "PyGas_126",
+    ]
+    measure_flexibility(scenarios)
