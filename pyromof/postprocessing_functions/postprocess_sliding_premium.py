@@ -1,8 +1,8 @@
-from pyromof.policies.implement_policies import (
+from pyromof.postprocessing_functions.implement_policies import (
     feed_in_payment_sliding_premium,
     receive_higher_threshold_basis_and_lower_threshold_basis,
 )
-from pyromof.policies.postprocess_policies_functions import receive_data
+from pyromof.postprocessing_functions.postprocess_policies_functions import receive_data
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 

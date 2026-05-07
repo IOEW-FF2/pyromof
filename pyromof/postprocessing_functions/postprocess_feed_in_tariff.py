@@ -1,4 +1,4 @@
-from pyromof.policies.postprocess_policies_functions import (
+from pyromof.postprocessing_functions.postprocess_policies_functions import (
     receive_data,
 )
 from pyromof.preprocessing_functions import preprocessing_input_data

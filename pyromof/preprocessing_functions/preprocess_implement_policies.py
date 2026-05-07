@@ -3,7 +3,9 @@ from pathlib import Path
 import pandas as pd
 
 # from pyromof.preprocessing_functions import preprocessing_input_data
-from pyromof.policies.preprocess_implement_storage_subsidies import implement_storage_subsidies
+from pyromof.preprocessing_functions.preprocess_define_storage_subsidies import (
+    implement_storage_subsidies,
+)
 
 
 def receive_and_refine_electricity_price_data(profiles):

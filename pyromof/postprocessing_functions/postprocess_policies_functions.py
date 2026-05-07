@@ -1,6 +1,6 @@
 import pandas as pd
 
-from pyromof.policies.implement_policies import (
+from pyromof.postprocessing_functions.implement_policies import (
     receive_and_refine_electricity_price_data,
 )
 

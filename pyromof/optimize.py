@@ -487,7 +487,7 @@ def create_energysystem(
                         # optimization. If it is activated, nominal_capacity becomes
                         # a NoneType object.
                         nonconvex=solph.NonConvex(
-                            # startup_costs in investment optimization 
+                            # startup_costs in investment optimization
                             # would make the model infeasible
                             minimum_downtime=int(row.minimum_downtime.item()),
                             initial_status=row.initial_status.item(),

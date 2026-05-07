@@ -3,13 +3,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from pyromof.policies.implement_policies import check_policy_choice_compatibility
-from pyromof.policies.postprocess_capex_subsidies import (
+from pyromof.postprocessing_functions.implement_policies import check_policy_choice_compatibility
+from pyromof.postprocessing_functions.postprocess_capex_subsidies import (
     postprocess_lump_sum_capex_subsidy,
     postprocess_percentage_capex_subsidy,
 )
-from pyromof.policies.postprocess_feed_in_tariff import postprocess_feed_in_tariff
-from pyromof.policies.postprocess_sliding_premium import postprocess_sliding_premium
+from pyromof.postprocessing_functions.postprocess_feed_in_tariff import postprocess_feed_in_tariff
+from pyromof.postprocessing_functions.postprocess_sliding_premium import postprocess_sliding_premium
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 
