@@ -958,6 +958,7 @@ def save_results(
     DUMPING_SPACE: Path,
     scenario: str,
     time: pd.date_range,
+    epcs: dict[str, float] | None = None,
 ):
     # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
     filename = os.path.join(META_INFO, "es_graph.graphml")
@@ -981,6 +982,12 @@ def save_results(
         os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";"
     )
 
+    if epcs is not None:
+        epcs_df = pd.DataFrame(epcs.items(), columns=["object", "value"])
+        epcs_df.to_csv(
+            os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";"
+        )
+
     # dump the EnergySystem
     es.dump(dpath=DUMPING_SPACE, filename="es_dump.oemof")
     print("The results have been saved.")
@@ -995,10 +1002,6 @@ def optimize():
     # Save current input data version in the scenario folder
     # (filtering them for the data used in the scenario would be better but is too much for now)
     shutil.copy("input_data.xlsx", os.path.join(META_INFO, "input_data.xlsx"))
-    # Create a dictionary with ep_costs and save it:
-
-    epcs_df = pd.DataFrame(epcs.items(), columns=["object", "value"])
-    epcs_df.to_csv(os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";")
 
     es, om = create_energysystem(
         META_INFO=META_INFO,
@@ -1007,8 +1010,8 @@ def optimize():
         epcs=epcs,
     )
 
-    visualize_network_in_dash(es)
-    save_results(es, om, META_INFO, DUMPING_SPACE, scenario, time)
+    # visualize_network_in_dash(es)
+    save_results(es, om, META_INFO, DUMPING_SPACE, scenario, time, epcs=epcs)
 
     # Dump results to CSV before further processing
     sequences, scalars, storage_contents, additional_columns = (
