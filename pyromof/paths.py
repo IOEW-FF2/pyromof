@@ -32,4 +32,7 @@ def ensure_scenario_directories(scenario: str):
     dumping_space = scenario_dir / "dumping_space"
     dumping_space.mkdir(exist_ok=True)
 
+    scenario_results = scenario_dir / "results"
+    scenario_results.mkdir(exist_ok=True)
+
     return scenario_dir, meta_info, dumping_space
