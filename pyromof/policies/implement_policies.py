@@ -5,6 +5,7 @@ import pandas as pd
 # from pyromof.preprocessing_functions import preprocessing_input_data
 from preprocess_implement_storage_subsidies import implement_storage_subsidies
 
+
 def receive_and_refine_electricity_price_data(profiles):
 
     timestamps = pd.to_datetime(profiles.index)
@@ -18,28 +19,13 @@ def receive_and_refine_electricity_price_data(profiles):
     return data_float
 
 
-def receive_higher_threshold_basis_and_lower_threshold_basis(policies):
-
-    base_value = (
-        -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 1"].values[0]
-    )
-
-    lower_threshold = (
-        -1 / 100 * policies.loc[policies["policy"] == "Sliding premium", "value 2"].values[0]
-    )
-
-    return base_value, lower_threshold
-
-
-def lump_sum_premium_policy(
+def feed_in_tariff_policy(
     sink: pd.DataFrame,
     policies: pd.DataFrame,
 ) -> pd.DataFrame:
 
     feed_in_premium = (
-        -1
-        / 100
-        * policies.loc[policies["policy"] == "Fixed feed-in remuneration", "value 1"].values[0]
+        -1 / 100 * policies.loc[policies["policy"] == "feed in tariff", "value 1"].values[0]
     )
 
     sink.loc[
@@ -50,11 +36,7 @@ def lump_sum_premium_policy(
     return sink
 
 
-def feed_in_payment_sliding_premium(
-    electricity_price_data: pd.Series,
-    base_value,
-    lower_threshold,
-) -> tuple[pd.Series, pd.Series, pd.Series]:
+def feed_in_payment_sliding_premium(data) -> tuple[pd.Series, pd.Series, pd.Series]:
     """
     This function calculates the feed-in payment for each hour in euro per kwh.
     Based on the electricity price data, base value, and lower threshold from policies.
@@ -64,40 +46,46 @@ def feed_in_payment_sliding_premium(
     Otherwise the feed-in payment is the electricity price.
     """
 
-    monthly_average_price = electricity_price_data.groupby(
-        electricity_price_data.index.to_period("M")
+    electricity_price = receive_and_refine_electricity_price_data(data["profiles"])
+
+    base_value = (
+        -1
+        / 100
+        * data["policies"].loc[data["policies"]["policy"] == "Sliding premium", "value 1"].values[0]
+    )
+
+    lower_threshold = (
+        -1
+        / 100
+        * data["policies"].loc[data["policies"]["policy"] == "Sliding premium", "value 2"].values[0]
+    )
+
+    monthly_average_price = electricity_price.groupby(
+        electricity_price.index.to_period("M")
     ).transform("mean")
 
     sliding_premium = (base_value - monthly_average_price).where(
-        electricity_price_data < lower_threshold, -0
+        electricity_price < lower_threshold, -0
     )
 
-    feed_in_payment_euro_per_kwh = electricity_price_data + sliding_premium
+    feed_in_revenue = electricity_price + sliding_premium
 
-    return feed_in_payment_euro_per_kwh, sliding_premium, monthly_average_price
+    return feed_in_revenue, sliding_premium, monthly_average_price
 
 
-def sliding_premium_policy(
-    sink: pd.DataFrame,
-    profiles: pd.DataFrame,
-    base_value,
-    lower_threshold,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+def sliding_premium_policy(data) -> tuple[pd.DataFrame, pd.DataFrame]:
 
-    electricity_price_euro_per_kwh = receive_and_refine_electricity_price_data(profiles)
-    feed_in_payment_euro_per_kwh, _, _ = feed_in_payment_sliding_premium(
-        electricity_price_euro_per_kwh, base_value, lower_threshold
-    )
+    feed_in_revenue, _, _ = feed_in_payment_sliding_premium(data)
 
-    profiles["sliding_premium_profile"] = feed_in_payment_euro_per_kwh
-    profiles["timeindex"] = profiles.index
+    data["profiles"]["sliding_premium_profile"] = feed_in_revenue
+    data["profiles"]["timeindex"] = data["profiles"].index
 
-    sink.loc[
-        (sink["label"] == "electricity_grid"),
+    data["sink"].loc[
+        (data["sink"]["label"] == "electricity_grid"),
         "variable_costs",
     ] = "sliding_premium_profile"
 
-    return sink, profiles
+    return data["sink"], data["profiles"]
 
 
 def lump_sum_investment_subsidy_policy(
@@ -166,53 +154,49 @@ def check_policy_choice_compatibility(activated_policies):
 
 def redefine_input_data_for_policies(data, activated_policies):
 
-    base_value = None
-    lower_threshold = None
+    if "feed in tariff" in activated_policies:
+        data["sinks"] = feed_in_tariff_policy(
+            data["sinks"],
+            data["policies"],
+        )
+    if "Sliding premium" in activated_policies:
+        data["sinks"], data["profiles"] = sliding_premium_policy(
+            data["sinks"],
+            data["profiles"],
+        )
 
-    for policy_name in activated_policies:
-        if policy_name == "Fixed feed-in remuneration":
-            data["sinks"] = lump_sum_premium_policy(data["sinks"], data["policies"])
+    if "Subsidy for pyrolysis investment costs" in activated_policies:
+        data["converters"] = lump_sum_investment_subsidy_policy(
+            data["converters"],
+            data["policies"],
+        )
 
-        elif policy_name == "Sliding premium":
-            if base_value is None or lower_threshold is None:
-                base_value, lower_threshold = (
-                    receive_higher_threshold_basis_and_lower_threshold_basis(data["policies"])
-                )
-
-            data["sinks"], data["profiles"] = sliding_premium_policy(
-                data["sinks"],
-                data["profiles"],
-                base_value,
-                lower_threshold,
-            )
-
-        elif policy_name == "Subsidy for pyrolysis investment costs":
-            data["converters"] = lump_sum_investment_subsidy_policy(
-                data["converters"], data["policies"]
-            )
-
-        elif policy_name == "Percentage subsidy for pyrolysis investment costs":
-            data["converters"] = percentage_investment_subsidy_policy(
-                data["converters"], data["policies"]
-            )
+    if "Percentage subsidy for pyrolysis investment costs" in activated_policies:
+        data["converters"] = percentage_investment_subsidy_policy(
+            data["converters"],
+            data["policies"],
+        )
 
     return data
 
 
 def implement_policies(data, scenario) -> None:
 
-    activated_policies = (
-        data["policies"].loc[data["policies"]["activate"] == "x", "policy"].tolist()
+    active_policies = (
+        data["policies"]
+        .loc[data["policies"]["activate"] == "x", ["policy", "value 1"]]
+        .set_index("policy")["value 1"]
+        .to_dict()
     )
 
-    check_policy_choice_compatibility(activated_policies)
+    check_policy_choice_compatibility(active_policies)
 
     # drop column "scenario" from all tables where it exists
     for key in data:
         if "scenario" in data[key].columns:
             data[key].drop(columns=["scenario"], inplace=True)
-    data = redefine_input_data_for_policies(data, activated_policies)
-    data["storage"] = implement_storage_subsidies(data["storage"], data["policies"])
+    data = redefine_input_data_for_policies(data, active_policies)
+    data["storage"] = implement_storage_subsidies(data, active_policies)
     output_file = (
         Path("results")
         / scenario
