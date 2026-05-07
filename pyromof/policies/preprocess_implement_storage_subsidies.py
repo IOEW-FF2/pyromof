@@ -1,4 +1,9 @@
-def implement_storage_subsidies(storage, policies):
+
+
+from pyromof.preprocessing_functions import preprocessing_input_data
+
+
+def implement_storage_subsidies(data, active_policies):
 
     subsidy_configs = {
         "lump_sum": {
@@ -15,20 +20,14 @@ def implement_storage_subsidies(storage, policies):
         },
     }
 
-    active_policies = (
-        policies.loc[policies["activate"] == "x", ["policy", "value 1"]]
-        .set_index("policy")["value 1"]
-        .to_dict()
-    )
-
     for storage_label, policy_name in subsidy_configs["lump_sum"].items():
         if policy_name not in active_policies:
             continue
 
         subsidy = active_policies[policy_name]
 
-        mask = storage["label"] == storage_label
-        storage.loc[mask, "capex"] -= subsidy
+        mask = data["storage"]["label"] == storage_label
+        data["storage"].loc[mask, "capex"] -= subsidy
 
     for storage_label, policy_name in subsidy_configs["percentage"].items():
         if policy_name not in active_policies:
@@ -37,7 +36,18 @@ def implement_storage_subsidies(storage, policies):
         percentage = active_policies[policy_name]
         subsidy_factor = 1 - (percentage / 100)
 
-        storage_subsidy = storage["label"] == storage_label
-        storage.loc[storage_subsidy, "capex"] *= subsidy_factor
+        storage_subsidy = data["storage"]["label"] == storage_label
+        data["storage"].loc[storage_subsidy, "capex"] *= subsidy_factor
 
-    return storage
+    return data["storage"]
+
+
+if __name__ == "__main__":
+    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
+    active_policies = (
+        data["policies"]
+        .loc[data["policies"]["activate"] == "x", ["policy", "value 1"]]
+        .set_index("policy")["value 1"]
+        .to_dict()
+    )
+    implement_storage_subsidies(data, active_policies)
