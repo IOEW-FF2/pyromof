@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 # from pyromof.preprocessing_functions import preprocessing_input_data
-
+from preprocess_implement_storage_subsidies import implement_storage_subsidies
 
 def receive_and_refine_electricity_price_data(profiles):
 
@@ -130,21 +130,30 @@ def percentage_investment_subsidy_policy(
     return converters
 
 
-def get_activated_policies(policies: pd.DataFrame) -> list[str]:
-
-    return policies.loc[policies["activate"] == "x", "policy"].tolist()
-
-
-def check_policy_choice_compatibility(policies):
-
-    activated_policies = get_activated_policies(policies)
+def check_policy_choice_compatibility(activated_policies):
 
     if (
-        "Fixed feed-in remuneration" in activated_policies
-        and "Sliding premium" in activated_policies
-    ) or (
-        "Subsidy for pyrolysis investment costs" in activated_policies
-        and "Percentage subsidy for pyrolysis investment costs" in activated_policies
+        ("feed in tariff" in activated_policies and "Sliding premium" in activated_policies)
+        or (
+            "Subsidy for pyrolysis investment costs" in activated_policies
+            and "Percentage subsidy for pyrolysis investment costs" in activated_policies
+        )
+        or (
+            "electricity lump sum subsidy" in activated_policies
+            and "electricity percentage subsidy" in activated_policies
+        )
+        or (
+            "heat storage lump sum subsidy" in activated_policies
+            and "heat storage percentage subsidy" in activated_policies
+        )
+        or (
+            "hydrogen storage lump sum subsidy" in activated_policies
+            and "hydrogen storage percentage subsidy" in activated_policies
+        )
+        or (
+            "co2 storage lump sum subsidy" in activated_policies
+            and "co2 storage percentage subsidy" in activated_policies
+        )
     ):
         raise ValueError(
             "Only one of the policies in each policy type can be activated at the same time. \n"
@@ -155,11 +164,7 @@ def check_policy_choice_compatibility(policies):
         return print("policies confirmed")
 
 
-def redefine_input_data_for_policies(data):
-
-    check_policy_choice_compatibility(data["policies"])
-
-    activated_policies = get_activated_policies(data["policies"])
+def redefine_input_data_for_policies(data, activated_policies):
 
     base_value = None
     lower_threshold = None
@@ -196,12 +201,18 @@ def redefine_input_data_for_policies(data):
 
 def implement_policies(data, scenario) -> None:
 
+    activated_policies = (
+        data["policies"].loc[data["policies"]["activate"] == "x", "policy"].tolist()
+    )
+
+    check_policy_choice_compatibility(activated_policies)
+
     # drop column "scenario" from all tables where it exists
     for key in data:
         if "scenario" in data[key].columns:
             data[key].drop(columns=["scenario"], inplace=True)
-    data = redefine_input_data_for_policies(data)
-
+    data = redefine_input_data_for_policies(data, activated_policies)
+    data["storage"] = implement_storage_subsidies(data["storage"], data["policies"])
     output_file = (
         Path("results")
         / scenario
