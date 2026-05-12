@@ -1,5 +1,5 @@
 from pyromof.postprocessing_functions.postprocess_policies_functions import receive_data
-from pyromof.preprocessing_functions import preprocessing_input_data
+from pyromof.preprocessing_functions import implement_preprocessing_input_data_functions
 from pyromof.preprocessing_functions.preprocess_implement_policies import (
     feed_in_payment_sliding_premium,
 )
@@ -30,5 +30,7 @@ def postprocess_sliding_premium(scenario, data):
 
 
 if __name__ == "__main__":
-    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
+    data, time, scenario = implement_preprocessing_input_data_functions.preprocess(
+        "input_data.xlsx"
+    )
     postprocess_sliding_premium(scenario, data)

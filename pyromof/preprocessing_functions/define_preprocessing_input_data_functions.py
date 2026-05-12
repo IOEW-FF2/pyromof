@@ -1,8 +1,6 @@
 import pandas as pd
 from typeguard import typechecked
 
-from pyromof.preprocessing_functions.preprocess_implement_policies import implement_policies
-
 
 def read_raw_data(relative_file_path):
     return {
@@ -65,17 +63,3 @@ def filter_input_data_by_scenario(
         for name, df in data.items()
     }
     return data
-
-
-def preprocess(relative_file_path="input_data.xlsx"):
-    data = read_raw_data(relative_file_path)
-    time = define_time_period(data["general"])
-    data["profiles"] = slice_time_period_from_profiles(data["profiles"], time)
-    scenario = retrieve_scenario_from_input_data(data["general"])
-    data = filter_input_data_by_scenario(data, scenario)
-    data = implement_policies(data, scenario)
-    return data, time, scenario
-
-
-if __name__ == "__main__":
-    data, time = preprocess("input_data.xlsx")

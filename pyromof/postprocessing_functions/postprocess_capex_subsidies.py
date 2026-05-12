@@ -1,7 +1,7 @@
 from pyromof.postprocessing_functions.postprocess_policies_functions import (
     receive_capex_data,
 )
-from pyromof.preprocessing_functions import preprocessing_input_data
+from pyromof.preprocessing_functions import implement_preprocessing_input_data_functions
 
 
 def postprocess_lump_sum_capex_subsidy(data):
@@ -34,6 +34,8 @@ def postprocess_percentage_capex_subsidy(data):
 
 
 if __name__ == "__main__":
-    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
+    data, time, scenario = implement_preprocessing_input_data_functions.preprocess(
+        "input_data.xlsx"
+    )
     postprocess_lump_sum_capex_subsidy(scenario, data)
     # postprocess_percentage_capex_subsidy(scenario, data)

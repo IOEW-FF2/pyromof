@@ -1,4 +1,4 @@
-from pyromof.preprocessing_functions import preprocessing_input_data
+from pyromof.preprocessing_functions.define_preprocessing_input_data_functions import read_raw_data
 
 
 def implement_storage_subsidies(data, active_policies):
@@ -41,7 +41,7 @@ def implement_storage_subsidies(data, active_policies):
 
 
 if __name__ == "__main__":
-    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
+    data = read_raw_data("input_data.xlsx")
     active_policies = (
         data["policies"]
         .loc[data["policies"]["activate"] == "x", ["policy", "value 1"]]

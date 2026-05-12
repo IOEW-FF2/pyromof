@@ -2,7 +2,10 @@ from pathlib import Path
 
 import pandas as pd
 
-# from pyromof.preprocessing_functions import preprocessing_input_data
+from pyromof.preprocessing_functions.define_preprocessing_input_data_functions import (
+    read_raw_data,
+    retrieve_scenario_from_input_data,
+)
 from pyromof.preprocessing_functions.preprocess_define_storage_subsidies import (
     implement_storage_subsidies,
 )
@@ -216,8 +219,7 @@ def implement_policies(data, scenario) -> None:
     return data
 
 
-"""
 if __name__ == "__main__":
-    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
+    data = read_raw_data("input_data.xlsx")
+    scenario = retrieve_scenario_from_input_data(data["general"])
     implement_policies(data, scenario)
-"""

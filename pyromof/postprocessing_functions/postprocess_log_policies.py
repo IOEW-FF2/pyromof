@@ -9,7 +9,7 @@ from pyromof.postprocessing_functions.postprocess_capex_subsidies import (
 )
 from pyromof.postprocessing_functions.postprocess_feed_in_tariff import postprocess_feed_in_tariff
 from pyromof.postprocessing_functions.postprocess_sliding_premium import postprocess_sliding_premium
-from pyromof.preprocessing_functions import preprocessing_input_data
+from pyromof.preprocessing_functions import implement_preprocessing_input_data_functions
 from pyromof.preprocessing_functions.preprocess_implement_policies import (
     check_policy_choice_compatibility,
 )
@@ -79,5 +79,7 @@ def log_postprocessed_policies(scenario, data):
 
 
 if __name__ == "__main__":
-    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
+    data, time, scenario = implement_preprocessing_input_data_functions.preprocess(
+        "input_data.xlsx"
+    )
     log_postprocessed_policies(scenario, data)

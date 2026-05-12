@@ -1,7 +1,7 @@
 from pyromof.postprocessing_functions.postprocess_policies_functions import (
     receive_data,
 )
-from pyromof.preprocessing_functions import preprocessing_input_data
+from pyromof.preprocessing_functions import implement_preprocessing_input_data_functions
 
 
 def postprocess_feed_in_tariff(scenario, data):
@@ -28,5 +28,7 @@ def postprocess_feed_in_tariff(scenario, data):
 
 
 if __name__ == "__main__":
-    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
+    data, time, scenario = implement_preprocessing_input_data_functions.preprocess(
+        "input_data.xlsx"
+    )
     postprocess_feed_in_tariff(scenario, data)
