@@ -1,6 +1,6 @@
 import pandas as pd
 
-from pyromof.postprocessing_functions.implement_policies import (
+from pyromof.preprocessing_functions.preprocess_implement_policies import (
     receive_and_refine_electricity_price_data,
 )
 
@@ -18,7 +18,7 @@ def receive_data(scenario: str, data: dict) -> tuple[pd.Series, pd.Series, float
     return (electricity_price, pyrolysis_electricity_output, policies)
 
 
-def receive_capex_data(scenario, data):
+def receive_capex_data(data):
 
     policies = data["policies"]
     converters = data["converters"]

@@ -4,9 +4,9 @@ from pyromof.postprocessing_functions.postprocess_policies_functions import (
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 
-def postprocess_lump_sum_capex_subsidy(scenario, data):
+def postprocess_lump_sum_capex_subsidy(data):
 
-    policies, _, yearly_biochar_output = receive_capex_data(scenario, data)
+    policies, _, yearly_biochar_output = receive_capex_data(data)
 
     subsidy_per_biochar_ton = policies.loc[
         policies["policy"] == "Subsidy for pyrolysis investment costs", "value 1"
@@ -16,8 +16,8 @@ def postprocess_lump_sum_capex_subsidy(scenario, data):
     return {"pyrolysis_capex_subsidy": total_subsidy}
 
 
-def postprocess_percentage_capex_subsidy(scenario, data):
-    policies, converters, yearly_biochar_output = receive_capex_data(scenario, data)
+def postprocess_percentage_capex_subsidy(data):
+    policies, converters, yearly_biochar_output = receive_capex_data(data)
 
     percentage_subsidy = (
         1
