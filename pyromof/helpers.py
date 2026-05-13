@@ -64,3 +64,21 @@ def filter_bus_in_string(string):
     pattern = r"b_[^ ]+"  # Matches 'b_' followed by one or more non-space characters
     match = re.search(pattern, string)
     return match.group(0) if match else None
+
+
+def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
+    """
+    This functions adds given data to an existing dataframe with scalar results.
+    The existing dataframe must have the columns "variable", "type" and "value".
+    The input dict must contain the variable and value for each item. The type
+    must be valid for all items in the dictionary.
+    """
+    new_df = pd.DataFrame(
+        {
+            "variable": list(dictionary.keys()),
+            # Insert the given type for all new rows:
+            "type": [type] * len(dictionary),
+            "value": list(dictionary.values()),
+        }
+    )
+    return pd.concat([scalar_results, new_df], ignore_index=True)

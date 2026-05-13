@@ -4,8 +4,6 @@ import pyromof.paths as paths
 from typeguard import typechecked
 from oemof.tools import economics
 
-from pyromof.policies.implement_policies import implement_policies
-
 
 def read_raw_data(relative_file_path):
     return {
@@ -107,34 +105,9 @@ def calculate_ep_costs_for_all_components(
     return epcs
 
 
-def calculate_exogenous_investment_costs(input_data, epcs, scenario):
-    results = []
-    epcs = pd.DataFrame(epcs.items(), columns=["object", "value"])
-    for i, row in input_data["converters"].iterrows():
-        if row.investment == False:
-            investment_cost = (
-                row.nominal_capacity
-                * epcs.loc[epcs["object"] == row.label, "value"].item()
-            )
-            results.append({"converter": row.label, "investment_cost": investment_cost})
-    for i, row in input_data["storage"].iterrows():
-        if row.investment == False:
-            investment_cost = (
-                row.nominal_storage_capacity
-                * epcs.loc[epcs["object"] == row.label, "value"].item()
-            )
-            results.append({"component": row.label, "investment_cost": investment_cost})
-    results = pd.DataFrame(results)
-    scenario_results = paths.scenario_results_path(scenario)
-    results.to_csv(
-        os.path.join(scenario_results, "exogenous_investment_costs.csv"),
-        sep=";",
-        index=False,
-    )
-    return results
-
-
 def preprocess(relative_file_path="input_data.xlsx"):
+    from pyromof.policies.implement_policies import implement_policies
+
     data = read_raw_data(relative_file_path)
     time = define_time_period(data["general"])
     data["profiles"] = slice_time_period_from_profiles(data["profiles"], time)
@@ -142,10 +115,6 @@ def preprocess(relative_file_path="input_data.xlsx"):
     data = filter_input_data_by_scenario(data, scenario)
     data = implement_policies(data, scenario)
     epcs = calculate_ep_costs_for_all_components(data, time)
-    paths.ensure_scenario_directories(scenario)
-    exogeneous_investment_costs = calculate_exogenous_investment_costs(
-        data, epcs, scenario
-    )
     return data, time, scenario, epcs
 
 

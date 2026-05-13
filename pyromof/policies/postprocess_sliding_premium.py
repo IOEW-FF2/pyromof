@@ -9,7 +9,7 @@ from pyromof.policies.implement_policies import (
     receive_higher_threshold_basis_and_lower_threshold_basis,
 )
 from pyromof.paths import scenario_results_path
-from pyromof.postprocessing import add_items_to_scalar_results
+from pyromof.helpers import add_items_to_scalar_results
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 
@@ -41,7 +41,11 @@ def receive_data(
 
 
 def calculate_payment_sums(
-    electricity_price, pyrolysis_electricity_output, base_value, lower_threshold
+    electricity_price,
+    pyrolysis_electricity_output,
+    base_value,
+    lower_threshold,
+    scenario,
 ):
 
     # calculate sliding premium and revenue per kwh
@@ -94,9 +98,10 @@ def main(scenario: str, data) -> None:
         pyrolysis_electricity_output,
         base_value,
         lower_threshold,
+        scenario,
     )
 
 
 if __name__ == "__main__":
-    data, time, scenario = preprocessing_input_data.preprocess("input_data.xlsx")
+    data, time, scenario, epcs = preprocessing_input_data.preprocess("input_data.xlsx")
     main(scenario, data)

@@ -14,24 +14,7 @@ from pyromof.paths import (
     scenario_dumping_space_path,
 )
 from pyromof.preprocessing_functions import preprocessing_input_data
-
-
-def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
-    """
-    This functions adds given data to an existing dataframe with scalar results.
-    The existing dataframe must have the columns "variable", "type" and "value".
-    The input dict must contain the variable and value for each item. The type
-    must be valid for all items in the dictionary.
-    """
-    new_df = pd.DataFrame(
-        {
-            "variable": list(dictionary.keys()),
-            # Insert the given type for all new rows:
-            "type": [type] * len(dictionary),
-            "value": list(dictionary.values()),
-        }
-    )
-    return pd.concat([scalar_results, new_df], ignore_index=True)
+from pyromof.policies import postprocess_sliding_premium
 
 
 def add_sums_to_scalar_results(data, description, scalar_results):
@@ -48,12 +31,14 @@ def add_sums_to_scalar_results(data, description, scalar_results):
     """
     sums = data.sum(axis=0)
     dict = {index: value for index, value in sums.items()}
-    scalar_results = add_items_to_scalar_results(dict, description, scalar_results)
+    scalar_results = helpers.add_items_to_scalar_results(
+        dict, description, scalar_results
+    )
     return scalar_results
 
 
 def add_objective_to_scalar_results(results, scalar_results):
-    scalar_results = add_items_to_scalar_results(
+    scalar_results = helpers.add_items_to_scalar_results(
         {"objective": results["meta"]["objective"]},
         "objective [Euros]",
         scalar_results,
@@ -178,10 +163,10 @@ def add_investment_amount_to_scalar_results(scalars, scalar_results, epcs):
     flows_kW = {
         key: value for key, value in dict.items() if not key.endswith(" to None")
     }
-    scalar_results = add_items_to_scalar_results(
+    scalar_results = helpers.add_items_to_scalar_results(
         flows_kWh, "built capacity [kWh]", scalar_results
     )
-    scalar_results = add_items_to_scalar_results(
+    scalar_results = helpers.add_items_to_scalar_results(
         flows_kW, "built capacity [kW]", scalar_results
     )
 
@@ -193,7 +178,7 @@ def add_investment_amount_to_scalar_results(scalars, scalar_results, epcs):
                 epcs["object"].apply(lambda x: key.startswith(x)), "value"
             ].item()
         )
-    scalar_results = add_items_to_scalar_results(
+    scalar_results = helpers.add_items_to_scalar_results(
         investmentcost_dict,
         "equivalent periodical costs of investment [Euros]",
         scalar_results,
@@ -210,7 +195,7 @@ def calculate_objective_value_with_exogenous_investment_costs(scalar_results, RE
         RESULTS / "exogenous_investment_costs.csv", sep=";", index_col=0
     )["investment_cost"].sum()
     base_value = objective_value + exogenous_investment_costs
-    scalar_results = add_items_to_scalar_results(
+    scalar_results = helpers.add_items_to_scalar_results(
         {"objective with exogenous investment costs": base_value},
         "objective [Euros]",
         scalar_results,
@@ -251,6 +236,76 @@ def check_scalar_costs_consistency(scalar_results):
     return scalar_results
 
 
+def calculate_exogenous_investment_costs(sequences, storage_contents, scenario):
+    # Calculates the investment costs for components with fixed investments,
+    # assuming they have the size that would be necessary for peak production.
+    results = []
+    epcs = pd.read_csv(
+        os.path.join(
+            scenario_dumping_space_path(scenario), "epcs_from_optimization.csv"
+        ),
+        sep=";",
+    )
+    storage = pd.read_excel(
+        os.path.join(
+            scenario_path(scenario),
+            "meta_info",
+            "input_preprocessed",
+            "input_data_with_applied_policies.xlsx",
+        ),
+        sheet_name="storage",
+    )
+    converter = pd.read_excel(
+        os.path.join(
+            scenario_path(scenario),
+            "meta_info",
+            "input_preprocessed",
+            "input_data_with_applied_policies.xlsx",
+        ),
+        sheet_name="converters",
+    )
+
+    for i, row in converter.iterrows():
+        if row.investment == False:
+            matching_columns = [
+                col
+                for col in sequences.columns
+                if row.label in col and col.endswith(f" to {row.bus_out_1}")
+            ]
+            if not matching_columns:
+                raise ValueError(
+                    f"No sequence column found for converter {row.label} ending with {row.bus_out_1}"
+                )
+            columnname_in_sequences = matching_columns[0]
+            capacity = sequences[columnname_in_sequences].max()
+            investment_cost = (
+                capacity * epcs.loc[epcs["object"] == row.label, "value"].item()
+            )
+            print(
+                f"Investment cost for {row.label} with capacity {capacity} is {investment_cost}"
+            )
+            results.append({"component": row.label, "investment_cost": investment_cost})
+    for i, row in storage.iterrows():
+        if row.investment == False:
+            columnname_in_storage_contents = row.label + " to None"
+            capacity = storage_contents[columnname_in_storage_contents].max()
+            investment_cost = (
+                capacity * epcs.loc[epcs["object"] == row.label, "value"].item()
+            )
+            print(
+                f"Investment cost for {row.label} with capacity {capacity} is {investment_cost}"
+            )
+            results.append({"component": row.label, "investment_cost": investment_cost})
+    results = pd.DataFrame(results)
+    scenario_results = scenario_results_path(scenario)
+    results.to_csv(
+        os.path.join(scenario_results, "exogenous_investment_costs.csv"),
+        sep=";",
+        index=False,
+    )
+    return results
+
+
 def postprocess(dumping_space: Path | None = None, results: Path | None = None):
 
     # Read out the scenario from the input data
@@ -260,6 +315,7 @@ def postprocess(dumping_space: Path | None = None, results: Path | None = None):
         .loc[input_data["general"]["label"] == "scenario", "value"]
         .item()
     )
+    scenario = "PyGas_1010"
 
     if dumping_space is None:
         dumping_space = scenario_dumping_space_path(scenario)
@@ -315,6 +371,19 @@ def postprocess(dumping_space: Path | None = None, results: Path | None = None):
         scalars, scalar_results, epcs
     )
 
+    exogeneous_investment_costs = calculate_exogenous_investment_costs(
+        sequences, storage_contents, scenario
+    )
+
+    # Add exogenous investment costs to scalar results
+    costs_dict = {}
+    for _, row in exogeneous_investment_costs.iterrows():
+        key = row["component"]
+        costs_dict[key] = row["investment_cost"]
+    scalar_results = helpers.add_items_to_scalar_results(
+        costs_dict, "ep_costs for existing capacity [Euros]", scalar_results
+    )
+
     scalar_results = calculate_objective_value_with_exogenous_investment_costs(
         scalar_results, results
     )
@@ -330,6 +399,8 @@ def postprocess(dumping_space: Path | None = None, results: Path | None = None):
     result_dfs["scalar_results"] = check_scalar_costs_consistency(
         result_dfs["scalar_results"]
     )
+
+    postprocess_sliding_premium.main(scenario, input_data)
 
     # Save all results
     for key, df in result_dfs.items():
