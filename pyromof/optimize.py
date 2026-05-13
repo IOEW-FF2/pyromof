@@ -319,8 +319,8 @@ def create_energysystem(
         row = converters.loc[converters.label == "chp"]
         if row.investment.item() is True:
             epc = epcs["chp"]
-            chp_cold = solph.components.Converter(
-                label="chp_cold_invest",
+            chp = solph.components.Converter(
+                label="chp_invest",
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
@@ -341,8 +341,8 @@ def create_energysystem(
 
         elif row.investment.item() is False:
             # Create chp for cold gas
-            chp_cold = solph.components.Converter(
-                label="chp_cold",
+            chp = solph.components.Converter(
+                label="chp",
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
@@ -358,7 +358,7 @@ def create_energysystem(
                     busd[row.bus_out_3.item()]: row.eff_out_3.item(),
                 },
             )
-        es.add(chp_cold)
+        es.add(chp)
 
     if "power_to_heat" in components:
         row = converters.loc[converters.label == "power_to_heat"]
