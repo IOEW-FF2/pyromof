@@ -112,3 +112,6 @@ def compare_scenarios():
     multiscenario_scalcosts = merge_scalars_from_scenarios(scenarios, RESULTS)
     plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios, RESULTS)
     measure_flexibility.measure_flexibility(scenarios)
+
+if __name__ == "__main__":
+    compare_scenarios()
