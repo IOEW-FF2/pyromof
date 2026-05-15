@@ -6,11 +6,20 @@ from pyromof.preprocessing_functions.define_preprocessing_input_data_functions i
 )
 
 
-def receive_pyrolysis_investment(data):
+def receive_investment(data, variable_name, type_name):
     scenario = retrieve_scenario_from_input_data(data["general"])
     file_path = f"./results/{scenario}/results/scalar_results.csv"
-    storage_invest_results = pd.read_csv(file_path, sep=";")
+    scalar_results = pd.read_csv(file_path, sep=";")
 
+    result = scalar_results.loc[
+        (scalar_results["variable"] == variable_name) & (scalar_results["type"] == type_name),
+        "value",
+    ].values[0]
+
+    return result
+
+
+def receive_pyrolysis_investment(data):
     investment = (
         data["converters"].loc[data["converters"]["label"] == "pyrolysis", "investment"].values[0]
     )
@@ -24,12 +33,9 @@ def receive_pyrolysis_investment(data):
         )
 
     else:
-        pyrolysis_investment = storage_invest_results.loc[
-            (storage_invest_results["variable"] == "pyrolysis_invest to b_biochar")
-            & (storage_invest_results["type"] == "built capacity [kW]"),
-            "value",
-        ].values[0]
-
+        pyrolysis_investment = receive_investment(
+            data, "pyrolysis_invest to b_biochar", "built capacity [kW]"
+        )
     return pyrolysis_investment
 
 
@@ -71,17 +77,8 @@ def percentage_pyrolysis_subsidy(data):
 
 def lump_sum_storage_subsidy(data, subsidy_value, subsidized_storage, scalar_objective):
 
-    scenario = retrieve_scenario_from_input_data(data["general"])
-    file_path = f"./results/{scenario}/results/scalar_results.csv"
-    storage_invest_results = pd.read_csv(file_path, sep=";")
-
     subsidy = data["policies"].loc[data["policies"]["policy"] == subsidy_value, "value 1"].values[0]
-    storage_investment = storage_invest_results.loc[
-        (storage_invest_results["variable"] == scalar_objective)
-        & (storage_invest_results["type"] == "built capacity [kWh]"),
-        "value",
-    ].values[0]
-
+    storage_investment = receive_investment(data, scalar_objective, "built capacity [kWh]")
     total_subsidy = subsidy * storage_investment
     total_subsidy = round(total_subsidy, 1)
 
@@ -89,10 +86,6 @@ def lump_sum_storage_subsidy(data, subsidy_value, subsidized_storage, scalar_obj
 
 
 def percentage_storage_subsidy(data, subsidy_value, subsidized_storage, scalar_objective):
-
-    scenario = retrieve_scenario_from_input_data(data["general"])
-    file_path = f"./results/{scenario}/results/scalar_results.csv"
-    storage_invest_results = pd.read_csv(file_path, sep=";")
     storage_capex = (
         data["storage"].loc[data["storage"]["label"] == subsidized_storage, "capex"].values[0]
     )
@@ -101,11 +94,7 @@ def percentage_storage_subsidy(data, subsidy_value, subsidized_storage, scalar_o
         / 100
         * data["policies"].loc[data["policies"]["policy"] == subsidy_value, "value 1"].values[0]
     )
-    storage_investment = storage_invest_results.loc[
-        (storage_invest_results["variable"] == scalar_objective)
-        & (storage_invest_results["type"] == "built capacity [kWh]"),
-        "value",
-    ].values[0]
+    storage_investment = receive_investment(data, scalar_objective, "built capacity [kWh]")
     subsidy_per_installed_capacity = percentage_subsidy * storage_capex
     total_subsidy = subsidy_per_installed_capacity * storage_investment
     total_subsidy = round(total_subsidy, 1)
