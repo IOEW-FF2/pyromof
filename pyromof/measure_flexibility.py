@@ -62,7 +62,7 @@ def calculate_storage_charging_cycles(scalars, sequences, storage):
         storage_name = column.split(" to ")[1]
         total_inflow = sequences[column].sum()
         # Check if the storage name exists as a substring in the scalars variable column:
-        if any(scalars["variable"].str.contains(storage_name)):
+        if storage.loc[storage_name, "investment"].item() is True:
             storage_capacity = scalars.loc[
                 scalars["variable"].str.contains(storage_name)
                 & scalars["type"].str.contains("built capacity"),
@@ -70,7 +70,7 @@ def calculate_storage_charging_cycles(scalars, sequences, storage):
             ].item()
         else:
             storage_capacity = storage.loc[
-                storage["label"] == storage_name, "nominal_storage_capacity"
+                storage.index == storage_name, "nominal_storage_capacity"
             ].item()
         if storage_capacity > 0:
             charging_cycles[storage_name] = total_inflow / storage_capacity
