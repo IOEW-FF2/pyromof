@@ -15,8 +15,9 @@ def receive_investment(data, variable_name, type_name):
         (scalar_results["variable"] == variable_name) & (scalar_results["type"] == type_name),
         "value",
     ].values[0]
-
-    return result
+    if isinstance(result, str):
+        result = result.replace(".", "")
+    return float(result)
 
 
 def receive_pyrolysis_investment(data):
