@@ -53,50 +53,58 @@ def log_postprocessed_policies(data):
         "electricity storage lump sum subsidy": {
             "function": lump_sum_storage_subsidy,
             "type": "capex",
-            "subsidized storage": "electricity storage lump sum subsidy",
+            "subsidy_value": "electricity storage lump sum subsidy",
+            "subsidized storage": "electricity_storage",
             "scalar_objective": "electricity_storage_invest to None",
         },
         "electricity storage percentage subsidy": {
             "function": percentage_storage_subsidy,
             "type": "capex",
-            "subsidized storage": "electricity storage percentage subsidy",
+            "subsidy_value": "electricity storage percentage subsidy",
+            "subsidized storage": "electricity_storage",
             "scalar_objective": "electricity_storage_invest to None",
         },
         "heat storage lump sum subsidy": {
             "function": lump_sum_storage_subsidy,
             "type": "capex",
-            "subsidized storage": "heat storage lump sum subsidy",
+            "subsidy_value": "heat storage lump sum subsidy",
+            "subsidized storage": "heat_storage",
             "scalar_objective": "heat_storage_invest to None",
         },
         "heat storage percentage subsidy": {
             "function": percentage_storage_subsidy,
             "type": "capex",
-            "subsidized storage": "heat storage percentage subsidy",
+            "subsidy_value": "heat storage percentage subsidy",
+            "subsidized storage": "heat_storage",
             "scalar_objective": "heat_storage_invest to None",
         },
         "hydrogen storage lump sum subsidy": {
             "function": lump_sum_storage_subsidy,
             "type": "capex",
-            "subsidized storage": "hydrogen storage lump sum subsidy",
-            "scalar_objective": "hydrogen_storage_invest to None",
+            "subsidy_value": "hydrogen storage lump sum subsidy",
+            "subsidized storage": "h2_storage",
+            "scalar_objective": "h2_storage_invest to None",
         },
         "hydrogen storage percentage subsidy": {
             "function": percentage_storage_subsidy,
             "type": "capex",
-            "subsidized storage": "hydrogen storage percentage subsidy",
-            "scalar_objective": "hydrogen_storage_invest to None",
+            "subsidy_value": "hydrogen storage percentage subsidy",
+            "subsidized storage": "h2_storage",
+            "scalar_objective": "h2_storage_invest to None",
         },
-        "co2 storage lump sum subsidy": {
+        "syngas storage lump sum subsidy": {
             "function": lump_sum_storage_subsidy,
             "type": "capex",
-            "subsidized storage": "co2 storage lump sum subsidy",
-            "scalar_objective": "co2_storage_invest to None",
+            "subsidy_value": "syngas storage lump sum subsidy",
+            "subsidized storage": "syngas_storage",
+            "scalar_objective": "syngas_storage_invest to None",
         },
-        "co2 storage percentage subsidy": {
+        "syngas storage percentage subsidy": {
             "function": percentage_storage_subsidy,
             "type": "capex",
-            "subsidized storage": "co2 storage percentage subsidy",
-            "scalar_objective": "co2_storage_invest to None",
+            "subsidy_value": "syngas storage percentage subsidy",
+            "subsidized storage": "syngas_storage",
+            "scalar_objective": "syngas_storage_invest to None",
         },
     }
     rows = []
@@ -110,7 +118,12 @@ def log_postprocessed_policies(data):
         policy_type = entry["type"]
 
         kwargs = {}
-        if "subsidized_storage" in entry and "scalar_objective" in entry:
+        if (
+            "subsidy_value" in entry
+            and "subsidized_storage" in entry
+            and "scalar_objective" in entry
+        ):
+            kwargs["subsidy_value"] = entry["subsidy_value"]
             kwargs["subsidized_storage"] = entry["subsidized_storage"]
             kwargs["scalar_objective"] = entry["scalar_objective"]
         result = function(data, **kwargs) if kwargs else function(data)
