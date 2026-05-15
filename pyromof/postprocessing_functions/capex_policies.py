@@ -6,14 +6,17 @@ from pyromof.preprocessing_functions.define_preprocessing_input_data_functions i
 )
 
 
-def receive_biochar_output(data):
+def receive_pyrolysis_investment(data):
+    scenario = retrieve_scenario_from_input_data(data["general"])
+    file_path = f"./results/{scenario}/results/scalar_results.csv"
+    storage_invest_results = pd.read_csv(file_path, sep=";")
 
     investment = (
         data["converters"].loc[data["converters"]["label"] == "pyrolysis", "investment"].values[0]
     )
 
     if not investment:
-        biochar_output = (
+        pyrolysis_investment = (
             8.76
             * data["converters"]
             .loc[data["converters"]["label"] == "pyrolysis", "nominal_capacity"]
@@ -21,27 +24,31 @@ def receive_biochar_output(data):
         )
 
     else:
-        biochar_output = 1  # Ich weiß aktuell wie die Zeile heißt, Pfad noch hinzufügen
+        pyrolysis_investment = storage_invest_results.loc[
+            (storage_invest_results["variable"] == "pyrolysis_invest to b_biochar")
+            & (storage_invest_results["type"] == "built capacity [kW]"),
+            "value",
+        ].values[0]
 
-    return biochar_output
+    return pyrolysis_investment
 
 
 def lump_sum_pyrolysis_subsidy(data):
 
-    biochar_output = receive_biochar_output(data)
+    pyrolysis_investment = receive_pyrolysis_investment(data)
 
     subsidy_per_biochar_ton = (
         data["policies"]
         .loc[data["policies"]["policy"] == "Subsidy for pyrolysis investment costs", "value 1"]
         .values[0]
     )
-    total_subsidy = subsidy_per_biochar_ton * biochar_output
+    total_subsidy = subsidy_per_biochar_ton * pyrolysis_investment
     total_subsidy = round(total_subsidy, 1)
     return {"pyrolysis_capex_subsidy": total_subsidy}
 
 
 def percentage_pyrolysis_subsidy(data):
-    biochar_output = receive_biochar_output(data)
+    pyrolysis_investment = receive_pyrolysis_investment(data)
 
     percentage_subsidy = (
         1
@@ -57,7 +64,7 @@ def percentage_pyrolysis_subsidy(data):
         data["converters"].loc[data["converters"]["label"] == "pyrolysis", "capex"].values[0]
     )
     subsidy_per_biochar_ton = percentage_subsidy * pyrolysis_capex
-    total_subsidy = subsidy_per_biochar_ton * biochar_output
+    total_subsidy = subsidy_per_biochar_ton * pyrolysis_investment
     total_subsidy = round(total_subsidy, 1)
     return {"pyrolysis_capex_subsidy": total_subsidy}
 
@@ -70,7 +77,9 @@ def lump_sum_storage_subsidy(data, subsidy_value, subsidized_storage, scalar_obj
 
     subsidy = data["policies"].loc[data["policies"]["policy"] == subsidy_value, "value 1"].values[0]
     storage_investment = storage_invest_results.loc[
-        storage_invest_results["variable"] == scalar_objective, "value"
+        (storage_invest_results["variable"] == scalar_objective)
+        & (storage_invest_results["type"] == "built capacity [kWh]"),
+        "value",
     ].values[0]
 
     total_subsidy = subsidy * storage_investment
@@ -93,7 +102,9 @@ def percentage_storage_subsidy(data, subsidy_value, subsidized_storage, scalar_o
         * data["policies"].loc[data["policies"]["policy"] == subsidy_value, "value 1"].values[0]
     )
     storage_investment = storage_invest_results.loc[
-        storage_invest_results["variable"] == scalar_objective, "value"
+        (storage_invest_results["variable"] == scalar_objective)
+        & (storage_invest_results["type"] == "built capacity [kWh]"),
+        "value",
     ].values[0]
     subsidy_per_installed_capacity = percentage_subsidy * storage_capex
     total_subsidy = subsidy_per_installed_capacity * storage_investment
