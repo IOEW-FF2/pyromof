@@ -1,8 +1,6 @@
 import pandas as pd
-import os
-import pyromof.paths as paths
-from typeguard import typechecked
 from oemof.tools import economics
+from typeguard import typechecked
 
 
 def read_raw_data(relative_file_path):
@@ -26,9 +24,7 @@ def define_time_period(general: pd.DataFrame) -> pd.DatetimeIndex:
     return time
 
 
-def slice_time_period_from_profiles(
-    profiles: pd.DataFrame, time: pd.DatetimeIndex
-) -> pd.DataFrame:
+def slice_time_period_from_profiles(profiles: pd.DataFrame, time: pd.DatetimeIndex) -> pd.DataFrame:
     # Slice the time period from profiles
     profiles["timeindex"] = pd.to_datetime(profiles["timeindex"])
     profiles = profiles[profiles["timeindex"].isin(time)]
@@ -92,9 +88,7 @@ def calculate_ep_costs_for_all_components(
     def process_dataframe(df, wacc, time):
         results = {}
         for i, row in df.iterrows():
-            epc = calculate_ep_costs_for_time_period(
-                row.capex, row.lifetime, wacc, time
-            )
+            epc = calculate_ep_costs_for_time_period(row.capex, row.lifetime, wacc, time)
             results[row.label] = epc
         return results
 

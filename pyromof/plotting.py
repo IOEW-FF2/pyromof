@@ -7,7 +7,7 @@ from oemof.solph import EnergySystem
 from plotly.subplots import make_subplots
 
 from pyromof import helpers
-from pyromof.paths import scenario_results_path, scenario_dumping_space_path
+from pyromof.paths import scenario_dumping_space_path, scenario_results_path
 
 
 def prepare_amount_sequences_for_plotting(RESULTS):
@@ -235,9 +235,7 @@ def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS):
 def plot(scenario, RESULTS):
     df_dict = prepare_cost_sequences_for_plotting(RESULTS)
     plot_cost_sequences(df_dict, scenario, RESULTS)
-    scalcosts = helpers.prepare_cost_scalars_for_plotting(
-        RESULTS, "scalar_results.csv", scenario
-    )
+    scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
     plot_cost_scalars(scalcosts, scenario, RESULTS)
     sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting(RESULTS)
     plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario, RESULTS)

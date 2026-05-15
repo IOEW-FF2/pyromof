@@ -43,12 +43,8 @@ def plot_load_duration_curves(scenario=None):
 
     columns = get_data_csv(scenario)
 
-    descending_power_data = sort_values_descending(
-        columns, "b_electricity to electricity_grid"
-    )
-    descending_biomass_data = sort_values_descending(
-        columns, "b_biomass_dry to pyrolysis"
-    )
+    descending_power_data = sort_values_descending(columns, "b_electricity to electricity_grid")
+    descending_biomass_data = sort_values_descending(columns, "b_biomass_dry to pyrolysis")
 
     create_plot(
         sorted_column=descending_power_data,

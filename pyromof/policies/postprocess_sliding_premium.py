@@ -1,27 +1,22 @@
 import os
-from pathlib import Path
 
 import pandas as pd
 
+from pyromof.helpers import add_items_to_scalar_results
+from pyromof.paths import scenario_meta_info_path, scenario_results_path
 from pyromof.policies.implement_policies import (
     feed_in_payment_sliding_premium,
     receive_and_refine_electricity_price_data,
     receive_higher_threshold_basis_and_lower_threshold_basis,
 )
-from pyromof.paths import scenario_meta_info_path, scenario_results_path
-from pyromof.helpers import add_items_to_scalar_results
 from pyromof.preprocessing_functions import preprocessing_input_data
 
 
-def receive_data(
-    scenario: str, data: dict
-) -> tuple[pd.Series, pd.Series, float, float]:
+def receive_data(scenario: str, data: dict) -> tuple[pd.Series, pd.Series, float, float]:
 
     policies = data["policies"]
 
-    base_value, lower_threshold = (
-        receive_higher_threshold_basis_and_lower_threshold_basis(policies)
-    )
+    base_value, lower_threshold = receive_higher_threshold_basis_and_lower_threshold_basis(policies)
 
     pyrolysis_electricity_output = pd.read_csv(
         scenario_results_path(scenario) / "sequences.csv",

@@ -6,9 +6,7 @@ import pandas as pd
 
 from pyromof import optimize, postprocessing, preprocessing_functions
 from pyromof.paths import (
-    scenario_path,
     scenario_results_path,
-    scenario_dumping_space_path,
 )
 from pyromof.preprocessing_functions.preprocessing_input_data import (
     calculate_ep_costs_for_all_components,
@@ -74,14 +72,13 @@ def analyze_sensitivity():
     }
 
     # Select the scenario here:
-    scenario = "stromflex_h2"
+    scenario = "Scenario_X"
 
     # Definition of the time period
     data, time, scenario, epcs = (
         preprocessing_functions.preprocessing_input_data.preprocess("input_data.xlsx")
     )
 
-    SCENARIO_PATH = scenario_path(scenario)
     RESULTS = scenario_results_path(scenario)
     parameter_name = parameters["component"] + "_" + parameters["variable"]
     print(parameter_name)
@@ -139,7 +136,8 @@ def analyze_sensitivity():
         sep=";",
     )
 
-    # Delete all other CSV files in the sensitivity results folder, keeping only the merged scalar results
+    # Delete all other CSV files in the sensitivity results folder, keeping only the
+    # merged scalar results
     merged_file = "scalar_results_" + parameter_name + ".csv"
     for file in THIS_SENSITIVITY.glob("*.csv"):
         if file.name != merged_file:

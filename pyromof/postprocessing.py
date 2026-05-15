@@ -9,12 +9,12 @@ from oemof.solph import (
 
 from pyromof import helpers
 from pyromof.paths import (
+    scenario_dumping_space_path,
     scenario_path,
     scenario_results_path,
-    scenario_dumping_space_path,
 )
-from pyromof.preprocessing_functions import preprocessing_input_data
 from pyromof.policies import postprocess_sliding_premium
+from pyromof.preprocessing_functions import preprocessing_input_data
 
 
 def add_sums_to_scalar_results(data, description, scalar_results):
@@ -228,7 +228,7 @@ def check_scalar_costs_consistency(scalar_results):
             objective - sum,
             " will be added as undefined costs to the scalar results.",
         )
-        scalar_results = add_items_to_scalar_results(
+        scalar_results = helpers.add_items_to_scalar_results(
             {"unallocated costs": objective - sum},
             "sum of unallocated costs [Euros]",
             scalar_results,
@@ -266,7 +266,7 @@ def calculate_exogenous_investment_costs(sequences, storage_contents, scenario):
     )
 
     for i, row in converter.iterrows():
-        if row.investment == False:
+        if not row.investment:
             matching_columns = [
                 col
                 for col in sequences.columns
@@ -274,7 +274,8 @@ def calculate_exogenous_investment_costs(sequences, storage_contents, scenario):
             ]
             if not matching_columns:
                 raise ValueError(
-                    f"No sequence column found for converter {row.label} ending with {row.bus_out_1}"
+                    f"No sequence column found for converter {row.label}"
+                    f"ending with {row.bus_out_1}"
                 )
             columnname_in_sequences = matching_columns[0]
             capacity = sequences[columnname_in_sequences].max()
@@ -286,7 +287,7 @@ def calculate_exogenous_investment_costs(sequences, storage_contents, scenario):
             )
             results.append({"component": row.label, "investment_cost": investment_cost})
     for i, row in storage.iterrows():
-        if row.investment == False:
+        if not row.investment:
             columnname_in_storage_contents = row.label + " to None"
             capacity = storage_contents[columnname_in_storage_contents].max()
             investment_cost = (

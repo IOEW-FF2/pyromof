@@ -24,9 +24,7 @@ def merge_scalars_from_scenarios(scenarios, RESULTS):
     dataframes = []
     for scenario in scenarios:
         SCENARIO_RESULTS = scenario_results_path(scenario)
-        scalar_results = pd.read_csv(
-            SCENARIO_RESULTS / "scalar_results.csv", sep=";", index_col=0
-        )
+        scalar_results = pd.read_csv(SCENARIO_RESULTS / "scalar_results.csv", sep=";", index_col=0)
         dataframes.append(rename_columns_for_scenario(scalar_results, scenario))
 
         scalcosts = helpers.prepare_cost_scalars_for_plotting(
@@ -114,6 +112,7 @@ def compare_scenarios():
     multiscenario_scalcosts = merge_scalars_from_scenarios(scenarios, RESULTS)
     plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios, RESULTS)
     measure_flexibility.measure_flexibility(scenarios)
+
 
 if __name__ == "__main__":
     compare_scenarios()

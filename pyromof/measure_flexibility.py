@@ -35,11 +35,7 @@ def calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles
         / sequences_aligned["b_electricity to electricity_grid"].sum().sum()
     )
     print("kWh elec fed_in_at_negative_price: " + str(fed_in_at_negative_price))
-    print(
-        "Share of total electricity: "
-        + str(share_of_total_electricity_fed_in * 100)
-        + "%"
-    )
+    print("Share of total electricity: " + str(share_of_total_electricity_fed_in * 100) + "%")
     return fed_in_at_negative_price, share_of_total_electricity_fed_in * 100
 
 
@@ -113,9 +109,7 @@ def measure_flexibility(scenarios: list):
             index_col=0,
         )
         fed_in_at_negative_price, share_of_total_electricity_fed_in = (
-            calculate_electricity_fed_in_at_negative_price_timesteps(
-                sequences, profiles
-            )
+            calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles)
         )
         pyrolysis_full_load_hours = calculate_pyrolysis_full_load_hours(sequences)
 
