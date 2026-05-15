@@ -211,13 +211,14 @@ def check_scalar_costs_consistency(scalar_results):
     print("Checking the completeness of the cost scalars")
     scalar_costs = helpers.filter_cost_items_from_scalar_data(scalar_results)
     objective = scalar_results.loc[
-        scalar_results["variable"] == "objective", "value"
+        scalar_results["variable"] == "objective with exogenous investment costs",
+        "value",
     ].item()
     sum = scalar_costs.value.sum().item()
     assert type(sum - objective) is type(
         0.1
     ), "The data types are not coherent, a consistency check is not possible."
-    if objective - sum > 0.1:
+    if abs(objective - sum) > 0.1:
         print(
             "Some cost or revenue scalars must be missing in the scalar results. "
             "The sum of the cost and revenue data is ",
@@ -232,6 +233,14 @@ def check_scalar_costs_consistency(scalar_results):
             {"unallocated costs": objective - sum},
             "sum of unallocated costs [Euros]",
             scalar_results,
+        )
+    else:
+        print(
+            "The cost scalars are consistent. The sum of the cost and revenue data is ",
+            scalar_costs.value.sum(),
+            "and the objective is ",
+            objective,
+            ".",
         )
     return scalar_results
 
@@ -282,9 +291,6 @@ def calculate_exogenous_investment_costs(sequences, storage_contents, scenario):
             investment_cost = (
                 capacity * epcs.loc[epcs["object"] == row.label, "value"].item()
             )
-            print(
-                f"Investment cost for {row.label} with capacity {capacity} is {investment_cost}"
-            )
             results.append({"component": row.label, "investment_cost": investment_cost})
     for i, row in storage.iterrows():
         if not row.investment:
@@ -292,9 +298,6 @@ def calculate_exogenous_investment_costs(sequences, storage_contents, scenario):
             capacity = storage_contents[columnname_in_storage_contents].max()
             investment_cost = (
                 capacity * epcs.loc[epcs["object"] == row.label, "value"].item()
-            )
-            print(
-                f"Investment cost for {row.label} with capacity {capacity} is {investment_cost}"
             )
             results.append({"component": row.label, "investment_cost": investment_cost})
     results = pd.DataFrame(results)
@@ -400,12 +403,12 @@ def postprocess(dumping_space: Path | None = None, results: Path | None = None):
         result_dfs["scalar_results"]
     )
 
-    postprocess_sliding_premium.main(scenario)
-
     # Save all results
     for key, df in result_dfs.items():
         df.to_csv(os.path.join(results, f"{key}.csv"), sep=";")
     print("The postprocessing is finished and the results have been saved.")
+
+    postprocess_sliding_premium.main(scenario)
 
     return result_dfs
 
