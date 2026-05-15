@@ -84,7 +84,8 @@ def create_energysystem(
         sinks, sources, converters, storage
     )
 
-    buses.loc[len(buses.index)] = ["b_combustor_cap"]
+    if "combustor" in components:
+        buses.loc[len(buses.index)] = ["b_combustor_cap"]
 
     # Create Bus objects from buses table
 
@@ -115,7 +116,9 @@ def create_energysystem(
         biochar_market = solph.components.Sink(
             label="biochar_market",
             inputs={
-                busd[row.bus_in.item()]: solph.Flow(variable_costs=row.variable_costs.item()),
+                busd[row.bus_in.item()]: solph.Flow(
+                    variable_costs=row.variable_costs.item()
+                ),
             },
         )
         es.add(biochar_market)
@@ -144,7 +147,9 @@ def create_energysystem(
                     nominal_capacity=row.nominal_capacity.item(),
                     min=get_value_or_profile(row, "min", profiles),
                     max=get_value_or_profile(row, "max", profiles),
-                    variable_costs=get_value_or_profile(row, "variable_costs", profiles),
+                    variable_costs=get_value_or_profile(
+                        row, "variable_costs", profiles
+                    ),
                 )
             },
         )
@@ -159,7 +164,9 @@ def create_energysystem(
                     nominal_capacity=row.nominal_capacity.item(),
                     min=get_value_or_profile(row, "min", profiles),
                     max=get_value_or_profile(row, "max", profiles),
-                    variable_costs=get_value_or_profile(row, "variable_costs", profiles),
+                    variable_costs=get_value_or_profile(
+                        row, "variable_costs", profiles
+                    ),
                 )
             },
         )
@@ -258,7 +265,9 @@ def create_energysystem(
         heat_source = solph.components.Source(
             label="heat_source",
             outputs={
-                busd[row.bus_out.item()]: solph.Flow(variable_costs=row.variable_costs.item())
+                busd[row.bus_out.item()]: solph.Flow(
+                    variable_costs=row.variable_costs.item()
+                )
             },
         )
         es.add(heat_source)
@@ -270,11 +279,13 @@ def create_energysystem(
         if row.investment.item() is True:
             epc = epcs["orc"]
             orc = solph.components.Converter(
-                label="orc_invest",
+                label="orc",
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc, minimum=row.minimum.item())
+                        nominal_capacity=solph.Investment(
+                            ep_costs=epc, minimum=row.minimum.item()
+                        )
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                 },
@@ -309,11 +320,13 @@ def create_energysystem(
         if row.investment.item() is True:
             epc = epcs["chp"]
             chp = solph.components.Converter(
-                label="chp_invest",
+                label="chp",
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc, minimum=row.minimum.item()),
+                        nominal_capacity=solph.Investment(
+                            ep_costs=epc, minimum=row.minimum.item()
+                        ),
                     ),
                     busd[row.bus_out_2.item()]: solph.Flow(),
                     busd[row.bus_out_3.item()]: solph.Flow(),
@@ -352,11 +365,13 @@ def create_energysystem(
         if row.investment.item() is True:
             epc = epcs["power_to_heat"]
             power_to_heat = solph.components.Converter(
-                label="power_to_heat_invest",
+                label="power_to_heat",
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc, minimum=row.minimum.item()),
+                        nominal_capacity=solph.Investment(
+                            ep_costs=epc, minimum=row.minimum.item()
+                        ),
                     ),
                 },
                 conversion_factors={
@@ -385,11 +400,13 @@ def create_energysystem(
         if row.investment.item() is True:
             epc = epcs["h2_filtration"]
             h2_filtration = solph.components.Converter(
-                label="h2_filtration_invest",
+                label="h2_filtration",
                 inputs={busd[row.bus_in_1.item()]: solph.Flow()},
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc, minimum=row.minimum.item()),
+                        nominal_capacity=solph.Investment(
+                            ep_costs=epc, minimum=row.minimum.item()
+                        ),
                     ),
                 },
                 conversion_factors={
@@ -418,7 +435,7 @@ def create_energysystem(
         if row.investment.item() is True:
             epc = epcs["pyrolysis"]
             pyrolysis = solph.components.Converter(
-                label="pyrolysis_invest",
+                label="pyrolysis",
                 inputs={
                     busd[row.bus_in_1.item()]: solph.Flow(),
                     busd[row.bus_in_2.item()]: solph.Flow(),
@@ -535,7 +552,7 @@ def create_energysystem(
         if row.investment.item() is True:
             epc = epcs["heat_exchanger"]
             heat_exchanger = solph.components.Converter(
-                label="heat_exchanger_invest",
+                label="heat_exchanger",
                 inputs={
                     busd[row.bus_in_1.item()]: solph.Flow(),
                 },
@@ -570,7 +587,7 @@ def create_energysystem(
         if row.investment.item() is True:
             epc = epcs["combustor"]
             combustor_hot = solph.components.Converter(
-                label="combustor_hot_invest",
+                label="combustor_hot",
                 inputs={
                     busd[row.bus_in_1.item()]: solph.Flow(),
                 },
@@ -583,7 +600,7 @@ def create_energysystem(
                 },
             )
             combustor_cold = solph.components.Converter(
-                label="combustor_cold_invest",
+                label="combustor_cold",
                 inputs={
                     busd[row.bus_in_1_alternative.item()]: solph.Flow(),
                 },
@@ -601,7 +618,9 @@ def create_energysystem(
                 label="combustor_to_out1",
                 inputs={
                     busd["b_combustor_cap"]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc, minimum=row.minimum.item()),
+                        nominal_capacity=solph.Investment(
+                            ep_costs=epc, minimum=row.minimum.item()
+                        ),
                     ),
                 },
                 outputs={
@@ -648,13 +667,15 @@ def create_energysystem(
         if row.investment.item() is True:
             epc = epcs["condensor"]
             condensor = solph.components.Converter(
-                label="condensor_invest",
+                label="condensor",
                 inputs={
                     busd[row.bus_in_1.item()]: solph.Flow(),
                 },
                 outputs={
                     busd[row.bus_out_1.item()]: solph.Flow(
-                        nominal_capacity=solph.Investment(ep_costs=epc, minimum=row.minimum.item())
+                        nominal_capacity=solph.Investment(
+                            ep_costs=epc, minimum=row.minimum.item()
+                        )
                     ),  # cold syngas
                     busd[row.bus_out_2.item()]: solph.Flow(),  # heat
                     busd[row.bus_out_3.item()]: solph.Flow(),  # oil
@@ -716,7 +737,7 @@ def create_energysystem(
         investment optimization and is returned.
         """
         if row.investment is True:
-            label = row.label + "_invest"
+            label = row.label
             epc_nominal_storage_capacity = epcs[row.label]
 
             nominal_cap = solph.Investment(
@@ -803,7 +824,9 @@ def create_energysystem(
                     out1 = om.flow[pyrolysis_component, bus_out_1, t]
                     out1_prev = om.flow[pyrolysis_component, bus_out_1, t - 1]
 
-                    status_t = om.NonConvexFlowBlock.status[pyrolysis_component, bus_out_1, t]
+                    status_t = om.NonConvexFlowBlock.status[
+                        pyrolysis_component, bus_out_1, t
+                    ]
                     status_prev = om.NonConvexFlowBlock.status[
                         pyrolysis_component, bus_out_1, t - 1
                     ]
@@ -818,8 +841,12 @@ def create_energysystem(
                         status_t - status_prev
                     )
 
-            om.tradeoff_lower_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_lower)
-            om.tradeoff_upper_constraint = Constraint(om.TIMESTEPS, rule=tradeoff_bounds_upper)
+            om.tradeoff_lower_constraint = Constraint(
+                om.TIMESTEPS, rule=tradeoff_bounds_lower
+            )
+            om.tradeoff_upper_constraint = Constraint(
+                om.TIMESTEPS, rule=tradeoff_bounds_upper
+            )
             om.custom_ramp = Constraint(om.TIMESTEPS, rule=ramp_rule)
 
     # Add active-flow-count-limit to avoid the use of storage to waste energy
@@ -828,7 +855,7 @@ def create_energysystem(
         storage_components = []
 
         for _, row in storage.iterrows():
-            label = row.label + ("_invest" if row.investment else "")
+            label = row.label
             comp = next(n for n in es.nodes if n.label == label)
             storage_components.append(comp)
 
@@ -853,8 +880,8 @@ def create_energysystem(
             return limit_discharge
 
         for idx, (_, row) in enumerate(storage.iterrows()):
-            # Determine the label of the storage component (may have "_invest" suffix)
-            label = row.label + ("_invest" if row.investment else "")
+            # Determine the label of the storage component
+            label = row.label
             # Find the storage component in the energy system
             storage_component = next(n for n in es.nodes if n.label == label)
             # Get the bus objects for this storage
@@ -865,12 +892,16 @@ def create_energysystem(
             setattr(
                 om,
                 f"flow_count_limit_charge_{idx}",
-                Constraint(om.TIMESTEPS, rule=make_limit_charge(bus_in, storage_component)),
+                Constraint(
+                    om.TIMESTEPS, rule=make_limit_charge(bus_in, storage_component)
+                ),
             )
             setattr(
                 om,
                 f"flow_count_limit_discharge_{idx}",
-                Constraint(om.TIMESTEPS, rule=make_limit_discharge(storage_component, bus_out)),
+                Constraint(
+                    om.TIMESTEPS, rule=make_limit_discharge(storage_component, bus_out)
+                ),
             )
 
     # Tell the model to get the dual variables when solving
@@ -889,11 +920,14 @@ def create_energysystem(
     # Check solver status
     if (
         om.solver_results.Solver.Status == SolverStatus.warning
-        or om.solver_results.Solver.termination_condition == TerminationCondition.infeasible
+        or om.solver_results.Solver.termination_condition
+        == TerminationCondition.infeasible
     ):
         print("\n=== MODEL IS INFEASIBLE ===")
         print(f"Solver Status: {om.solver_results.Solver.Status}")
-        print(f"Termination Condition: {om.solver_results.Solver.termination_condition}")
+        print(
+            f"Termination Condition: {om.solver_results.Solver.termination_condition}"
+        )
 
         # for c in om.component_data_objects(Constraint, active=True):
         #    if c.body is not None:
@@ -944,11 +978,15 @@ def save_results(
         series = list([b for a, b in flows.items() if a == col][0].variable_costs)
         df[col] = series[: len(time) - 1]
     variable_costs = helpers.convert_tuple_columnnames_to_strings(df)
-    variable_costs.to_csv(os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";")
+    variable_costs.to_csv(
+        os.path.join(DUMPING_SPACE, "variable_costs_from_model.csv"), sep=";"
+    )
 
     if epcs is not None:
         epcs_df = pd.DataFrame(epcs.items(), columns=["object", "value"])
-        epcs_df.to_csv(os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";")
+        epcs_df.to_csv(
+            os.path.join(DUMPING_SPACE, "epcs_from_optimization.csv"), sep=";"
+        )
 
     # dump the EnergySystem
     es.dump(dpath=DUMPING_SPACE, filename="es_dump.oemof")
@@ -957,7 +995,9 @@ def save_results(
 
 def optimize():
     data, time, scenario, epcs = preprocess("input_data.xlsx")
-    SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(ROOT_PATH, scenario)
+    SCENARIO_PATH, META_INFO, DUMPING_SPACE = helpers.define_and_create_folders(
+        ROOT_PATH, scenario
+    )
 
     # Save current input data version in the scenario folder
     # (filtering them for the data used in the scenario would be better but is too much for now)
