@@ -11,7 +11,7 @@ from pyromof.preprocessing_functions.preprocess_implement_policies import (
 
 
 def receive_data(data: dict) -> tuple[pd.Series, pd.Series, float, float]:
-    scenario = retrieve_scenario_from_input_data(data)
+    scenario = retrieve_scenario_from_input_data(data["general"])
 
     pyrolysis_electricity_output = pd.read_csv(
         f"./results/{scenario}/results/sequences.csv", sep=";", index_col=0, parse_dates=True
