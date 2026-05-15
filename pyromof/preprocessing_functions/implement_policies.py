@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from pyromof.preprocessing_functions.define_preprocessing_input_data_functions import (
+from pyromof.preprocessing_functions.define_input_data_functions import (
     read_raw_data,
     retrieve_scenario_from_input_data,
 )
-from pyromof.preprocessing_functions.preprocess_define_storage_subsidies import (
+from pyromof.preprocessing_functions.define_storage_subsidies import (
     implement_storage_subsidies,
 )
 

@@ -11,7 +11,7 @@ from pyomo.environ import Binary, Constraint, Set, Var
 from typeguard import typechecked
 
 from pyromof import helpers, postprocessing
-from pyromof.preprocessing_functions.implement_preprocessing_input_data_functions import preprocess
+from pyromof.preprocessing_functions.implement_input_data_functions import preprocess
 
 
 @typechecked

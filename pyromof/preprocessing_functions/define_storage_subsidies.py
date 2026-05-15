@@ -1,4 +1,4 @@
-from pyromof.preprocessing_functions.define_preprocessing_input_data_functions import read_raw_data
+from pyromof.preprocessing_functions.define_input_data_functions import read_raw_data
 
 
 def implement_storage_subsidies(data, active_policies):

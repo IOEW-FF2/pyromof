@@ -13,8 +13,8 @@ from pyromof.postprocessing_functions.opex_policies import (
     postprocess_feed_in_tariff,
     postprocess_sliding_premium,
 )
-from pyromof.preprocessing_functions import implement_preprocessing_input_data_functions
-from pyromof.preprocessing_functions.preprocess_implement_policies import (
+from pyromof.preprocessing_functions import implement_input_data_functions
+from pyromof.preprocessing_functions.implement_policies import (
     check_policy_choice_compatibility,
 )
 
@@ -162,7 +162,5 @@ def log_postprocessed_policies(data):
 
 
 if __name__ == "__main__":
-    data, time, scenario = implement_preprocessing_input_data_functions.preprocess(
-        "input_data.xlsx"
-    )
+    data, time, scenario = implement_input_data_functions.preprocess("input_data.xlsx")
     log_postprocessed_policies(data)

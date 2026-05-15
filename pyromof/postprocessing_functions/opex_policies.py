@@ -1,10 +1,10 @@
 import pandas as pd
 
-from pyromof.preprocessing_functions import implement_preprocessing_input_data_functions
-from pyromof.preprocessing_functions.define_preprocessing_input_data_functions import (
+from pyromof.preprocessing_functions import implement_input_data_functions
+from pyromof.preprocessing_functions.define_input_data_functions import (
     retrieve_scenario_from_input_data,
 )
-from pyromof.preprocessing_functions.preprocess_implement_policies import (
+from pyromof.preprocessing_functions.implement_policies import (
     feed_in_payment_sliding_premium,
     receive_and_refine_electricity_price_data,
 )
@@ -71,8 +71,6 @@ def postprocess_sliding_premium(data):
 
 
 if __name__ == "__main__":
-    data, time, scenario = implement_preprocessing_input_data_functions.preprocess(
-        "input_data.xlsx"
-    )
+    data, time, scenario = implement_input_data_functions.preprocess("input_data.xlsx")
     postprocess_sliding_premium(data)
     postprocess_feed_in_tariff(data)

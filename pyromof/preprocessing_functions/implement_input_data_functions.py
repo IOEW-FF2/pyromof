@@ -1,11 +1,11 @@
-from pyromof.preprocessing_functions.define_preprocessing_input_data_functions import (
+from pyromof.preprocessing_functions.define_input_data_functions import (
     define_time_period,
     filter_input_data_by_scenario,
     read_raw_data,
     retrieve_scenario_from_input_data,
     slice_time_period_from_profiles,
 )
-from pyromof.preprocessing_functions.preprocess_implement_policies import implement_policies
+from pyromof.preprocessing_functions.implement_policies import implement_policies
 
 
 def preprocess(relative_file_path="input_data.xlsx"):

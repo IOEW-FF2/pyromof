@@ -8,7 +8,7 @@ from oemof.solph import (
 )
 
 from pyromof import helpers
-from pyromof.preprocessing_functions import implement_preprocessing_input_data_functions
+from pyromof.preprocessing_functions import implement_input_data_functions
 
 
 def add_items_to_scalar_results(dictionary: dict, type: str, scalar_results):
@@ -214,7 +214,7 @@ def check_scalar_costs_consistency(scalar_results):
 
 def postprocess():
 
-    input_data = implement_preprocessing_input_data_functions.read_raw_data("input_data.xlsx")
+    input_data = implement_input_data_functions.read_raw_data("input_data.xlsx")
     scenario = (
         input_data["general"].loc[input_data["general"]["label"] == "scenario", "value"].item()
     )

@@ -1,7 +1,7 @@
 import pandas as pd
 
-from pyromof.preprocessing_functions import implement_preprocessing_input_data_functions
-from pyromof.preprocessing_functions.define_preprocessing_input_data_functions import (
+from pyromof.preprocessing_functions import implement_input_data_functions
+from pyromof.preprocessing_functions.define_input_data_functions import (
     retrieve_scenario_from_input_data,
 )
 
@@ -100,9 +100,7 @@ def percentage_storage_subsidy(data, subsidy_value, subsidized_investment, scala
 
 
 if __name__ == "__main__":
-    data, time, scenario = implement_preprocessing_input_data_functions.preprocess(
-        "input_data.xlsx"
-    )
+    data, time, scenario = implement_input_data_functions.preprocess("input_data.xlsx")
     lump_sum_pyrolysis_subsidy(data)
     percentage_pyrolysis_subsidy(data)
     lump_sum_storage_subsidy(
