@@ -4,13 +4,15 @@ from pathlib import Path
 import pandas as pd
 
 from pyromof.postprocessing_functions.capex_policies import (
+    lump_sum_pyrolysis_subsidy,
     lump_sum_storage_subsidy,
+    percentage_pyrolysis_subsidy,
     percentage_storage_subsidy,
-    postprocess_lump_sum_capex_subsidy,
-    postprocess_percentage_capex_subsidy,
 )
-from pyromof.postprocessing_functions.opex_policies import postprocess_sliding_premium
-from pyromof.postprocessing_functions.postprocess_feed_in_tariff import postprocess_feed_in_tariff
+from pyromof.postprocessing_functions.opex_policies import (
+    postprocess_feed_in_tariff,
+    postprocess_sliding_premium,
+)
 from pyromof.preprocessing_functions import implement_preprocessing_input_data_functions
 from pyromof.preprocessing_functions.preprocess_implement_policies import (
     check_policy_choice_compatibility,
@@ -41,11 +43,11 @@ def log_postprocessed_policies(data):
         "feed in tariff": {"function": postprocess_feed_in_tariff, "type": "opex"},
         "sliding premium": {"function": postprocess_sliding_premium, "type": "opex"},
         "Percentage subsidy for pyrolysis investment costs": {
-            "function": postprocess_percentage_capex_subsidy,
+            "function": percentage_pyrolysis_subsidy,
             "type": "capex",
         },
         "Subsidy for pyrolysis investment cost": {
-            "function": postprocess_lump_sum_capex_subsidy,
+            "function": lump_sum_pyrolysis_subsidy,
             "type": "capex",
         },
         "electricity storage lump sum subsidy": {
@@ -75,8 +77,8 @@ def log_postprocessed_policies(data):
         "hydrogen storage lump sum subsidy": {
             "function": lump_sum_storage_subsidy,
             "type": "capex",
-            "subsidized storage": "heat storage lump sum subsidy",
-            "scalar_objective": "heat_storage_invest to None",
+            "subsidized storage": "hydrogen storage lump sum subsidy",
+            "scalar_objective": "hydrogen_storage_invest to None",
         },
         "hydrogen storage percentage subsidy": {
             "function": percentage_storage_subsidy,
