@@ -40,70 +40,82 @@ def log_postprocessed_policies(data):
     print("active policies:", activated_policies)
 
     policy_functions = {
-        "feed in tariff": {"function": postprocess_feed_in_tariff, "type": "opex"},
-        "sliding premium": {"function": postprocess_sliding_premium, "type": "opex"},
+        "feed in tariff": {
+            "function": postprocess_feed_in_tariff,
+            "type": "opex",
+        },
+        "sliding premium": {
+            "function": postprocess_sliding_premium,
+            "type": "opex",
+        },
         "Percentage subsidy for pyrolysis investment costs": {
             "function": percentage_pyrolysis_subsidy,
             "type": "capex",
+            "subsidy_value": "Percentage subsidy for pyrolysis investment costs",
+            "subsidized_investment": "pyrolysis",
+            "scalar_objective": "pyrolysis_invest to b_biochar",
         },
         "Subsidy for pyrolysis investment cost": {
             "function": lump_sum_pyrolysis_subsidy,
             "type": "capex",
+            "subsidy_value": "Subsidy for pyrolysis investment cost",
+            "subsidized_investment": "pyrolysis",
+            "scalar_objective": "pyrolysis_invest to b_biochar",
         },
         "electricity storage lump sum subsidy": {
             "function": lump_sum_storage_subsidy,
             "type": "capex",
             "subsidy_value": "electricity storage lump sum subsidy",
-            "subsidized storage": "electricity_storage",
+            "subsidized_investment": "electricity_storage",
             "scalar_objective": "electricity_storage_invest to None",
         },
         "electricity storage percentage subsidy": {
             "function": percentage_storage_subsidy,
             "type": "capex",
             "subsidy_value": "electricity storage percentage subsidy",
-            "subsidized storage": "electricity_storage",
+            "subsidized_investment": "electricity_storage",
             "scalar_objective": "electricity_storage_invest to None",
         },
         "heat storage lump sum subsidy": {
             "function": lump_sum_storage_subsidy,
             "type": "capex",
             "subsidy_value": "heat storage lump sum subsidy",
-            "subsidized storage": "heat_storage",
+            "subsidized_investment": "heat_storage",
             "scalar_objective": "heat_storage_invest to None",
         },
         "heat storage percentage subsidy": {
             "function": percentage_storage_subsidy,
             "type": "capex",
             "subsidy_value": "heat storage percentage subsidy",
-            "subsidized storage": "heat_storage",
+            "subsidized_investment": "heat_storage",
             "scalar_objective": "heat_storage_invest to None",
         },
         "hydrogen storage lump sum subsidy": {
             "function": lump_sum_storage_subsidy,
             "type": "capex",
             "subsidy_value": "hydrogen storage lump sum subsidy",
-            "subsidized storage": "h2_storage",
+            "subsidized_investment": "h2_storage",
             "scalar_objective": "h2_storage_invest to None",
         },
         "hydrogen storage percentage subsidy": {
             "function": percentage_storage_subsidy,
             "type": "capex",
             "subsidy_value": "hydrogen storage percentage subsidy",
-            "subsidized storage": "h2_storage",
+            "subsidized_investment": "h2_storage",
             "scalar_objective": "h2_storage_invest to None",
         },
         "syngas storage lump sum subsidy": {
             "function": lump_sum_storage_subsidy,
             "type": "capex",
             "subsidy_value": "syngas storage lump sum subsidy",
-            "subsidized storage": "syngas_storage",
+            "subsidized_investment": "syngas_storage",
             "scalar_objective": "syngas_storage_invest to None",
         },
         "syngas storage percentage subsidy": {
             "function": percentage_storage_subsidy,
             "type": "capex",
             "subsidy_value": "syngas storage percentage subsidy",
-            "subsidized storage": "syngas_storage",
+            "subsidized_investment": "syngas_storage",
             "scalar_objective": "syngas_storage_invest to None",
         },
     }
@@ -120,11 +132,11 @@ def log_postprocessed_policies(data):
         kwargs = {}
         if (
             "subsidy_value" in entry
-            and "subsidized_storage" in entry
+            and "subsidized_investment" in entry
             and "scalar_objective" in entry
         ):
             kwargs["subsidy_value"] = entry["subsidy_value"]
-            kwargs["subsidized_storage"] = entry["subsidized_storage"]
+            kwargs["subsidized_investment"] = entry["subsidized_investment"]
             kwargs["scalar_objective"] = entry["scalar_objective"]
         result = function(data, **kwargs) if kwargs else function(data)
 

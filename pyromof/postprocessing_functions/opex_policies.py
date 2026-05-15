@@ -23,6 +23,7 @@ def receive_data(data: dict) -> tuple[pd.Series, pd.Series, float, float]:
 
 
 def postprocess_feed_in_tariff(data):
+
     electricity_price, pyrolysis_electricity_output = receive_data(data)
 
     feed_in_tarrif = (
@@ -47,7 +48,6 @@ def postprocess_feed_in_tariff(data):
 
 
 def postprocess_sliding_premium(data):
-
     # receive input data
     electricity_price, pyrolysis_electricity_output = receive_data(data)
     feed_in_revenue_euro_per_kwh, sliding_premium, _ = feed_in_payment_sliding_premium(data)
