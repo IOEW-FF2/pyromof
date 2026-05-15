@@ -95,6 +95,8 @@ def plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios, RESULTS):
     fig.update_layout(barmode="relative")
     # Save plot as html
     fig.write_html(os.path.join(RESULTS, "cost_scalars.html"))
+    # Save plot as svg
+    fig.write_image(os.path.join(RESULTS, "cost_scalars.svg"))
 
 
 def compare_scenarios():
