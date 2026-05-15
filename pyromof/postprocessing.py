@@ -315,7 +315,6 @@ def postprocess(dumping_space: Path | None = None, results: Path | None = None):
         .loc[input_data["general"]["label"] == "scenario", "value"]
         .item()
     )
-    scenario = "PyGas_1010"
 
     if dumping_space is None:
         dumping_space = scenario_dumping_space_path(scenario)
@@ -400,7 +399,7 @@ def postprocess(dumping_space: Path | None = None, results: Path | None = None):
         result_dfs["scalar_results"]
     )
 
-    postprocess_sliding_premium.main(scenario, input_data)
+    postprocess_sliding_premium.main(scenario)
 
     # Save all results
     for key, df in result_dfs.items():

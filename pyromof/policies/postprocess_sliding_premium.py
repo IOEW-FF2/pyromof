@@ -8,7 +8,7 @@ from pyromof.policies.implement_policies import (
     receive_and_refine_electricity_price_data,
     receive_higher_threshold_basis_and_lower_threshold_basis,
 )
-from pyromof.paths import scenario_results_path
+from pyromof.paths import scenario_meta_info_path, scenario_results_path
 from pyromof.helpers import add_items_to_scalar_results
 from pyromof.preprocessing_functions import preprocessing_input_data
 
@@ -85,7 +85,9 @@ def calculate_payment_sums(
     )
 
 
-def main(scenario: str, data) -> None:
+def main(scenario: str) -> None:
+    scenario_input_data_path = scenario_meta_info_path(scenario) / "input_data.xlsx"
+    data, __, __, __ = preprocessing_input_data.preprocess(scenario_input_data_path)
     (
         electricity_price_euro_per_kwh,
         pyrolysis_electricity_output,
@@ -103,5 +105,5 @@ def main(scenario: str, data) -> None:
 
 
 if __name__ == "__main__":
-    data, time, scenario, epcs = preprocessing_input_data.preprocess("input_data.xlsx")
-    main(scenario, data)
+    scenario = "Scenario_X"
+    main(scenario)
