@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -8,6 +7,7 @@ from oemof.solph import EnergySystem
 from plotly.subplots import make_subplots
 
 from pyromof import helpers
+from pyromof.paths import scenario_dumping_space_path, scenario_results_path
 
 
 def prepare_amount_sequences_for_plotting(RESULTS):
@@ -256,12 +256,11 @@ def plot_sequences_and_scalars():
     general = pd.read_excel("input_data.xlsx", sheet_name="general")
     scenario = general.loc[general["label"] == "scenario", "value"].item()
 
-    ROOT_PATH = Path(__file__).parent.parent
-    RESULTS = os.path.join(ROOT_PATH, "results", scenario, "results")
-    DUMPING_SPACE = os.path.join(ROOT_PATH, "results", scenario, "dumping_space")
+    RESULTS = scenario_results_path(scenario)
+    DUMPING_SPACE = scenario_dumping_space_path(scenario)
 
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
-    scenario, investment = helpers.retreive_scenario_from_results(es)
+    scenario = helpers.retreive_scenario_from_results(es)
 
     plot(scenario, RESULTS)
