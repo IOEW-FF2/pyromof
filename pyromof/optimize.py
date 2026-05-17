@@ -1010,7 +1010,7 @@ def optimize():
         epcs=epcs,
     )
 
-    # visualize_network_in_dash(es)
+    visualize_network_in_dash(es)
     save_results(es, om, META_INFO, DUMPING_SPACE, scenario, time, epcs=epcs)
 
     # Dump results to CSV before further processing
