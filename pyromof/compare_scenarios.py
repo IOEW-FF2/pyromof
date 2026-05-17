@@ -24,7 +24,9 @@ def merge_scalars_from_scenarios(scenarios, RESULTS):
     dataframes = []
     for scenario in scenarios:
         SCENARIO_RESULTS = scenario_results_path(scenario)
-        scalar_results = pd.read_csv(SCENARIO_RESULTS / "scalar_results.csv", sep=";", index_col=0)
+        scalar_results = pd.read_csv(
+            SCENARIO_RESULTS / "scalar_results.csv", sep=";", index_col=0
+        )
         dataframes.append(rename_columns_for_scenario(scalar_results, scenario))
 
         scalcosts = helpers.prepare_cost_scalars_for_plotting(
@@ -45,8 +47,6 @@ def merge_scalars_from_scenarios(scenarios, RESULTS):
     for df in dataframes[1:]:
         merged_df = pd.merge(merged_df, df, on=key_columns, how="outer")
 
-    print(merged_cost_df)
-    print(merged_df)
     merged_df.to_csv(RESULTS / "merged_scalar_results.csv", sep=";", index=False)
     return merged_cost_df
 
@@ -93,8 +93,8 @@ def plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios, RESULTS):
     fig.update_layout(barmode="relative")
     # Save plot as html
     fig.write_html(os.path.join(RESULTS, "cost_scalars.html"))
-    # Save plot as svg
-    fig.write_image(os.path.join(RESULTS, "cost_scalars.svg"))
+    # Save plot as svg - requires the installation of kaleido
+    # fig.write_image(os.path.join(RESULTS, "cost_scalars.svg"))
 
 
 def compare_scenarios():
@@ -112,6 +112,7 @@ def compare_scenarios():
     multiscenario_scalcosts = merge_scalars_from_scenarios(scenarios, RESULTS)
     plot_cost_scalars_comparison(multiscenario_scalcosts, scenarios, RESULTS)
     measure_flexibility.measure_flexibility(scenarios)
+    print("The results have been saved.")
 
 
 if __name__ == "__main__":
