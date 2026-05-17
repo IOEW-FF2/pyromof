@@ -34,8 +34,6 @@ def calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles
         fed_in_at_negative_price
         / sequences_aligned["b_electricity to electricity_grid"].sum().sum()
     )
-    print("kWh elec fed_in_at_negative_price: " + str(fed_in_at_negative_price))
-    print("Share of total electricity: " + str(share_of_total_electricity_fed_in * 100) + "%")
     return fed_in_at_negative_price, share_of_total_electricity_fed_in * 100
 
 
@@ -47,7 +45,6 @@ def calculate_pyrolysis_full_load_hours(sequences):
     total_biochar_produced = sequences["b_biochar to biochar_market"].sum()
     pyrolysis_capacity = sequences["b_biochar to biochar_market"].max()
     full_load_hours = total_biochar_produced / pyrolysis_capacity
-    print("full load hours: " + str(full_load_hours))
     return full_load_hours
 
 
@@ -76,7 +73,6 @@ def calculate_storage_charging_cycles(scalars, sequences, storage):
             charging_cycles[storage_name] = total_inflow / storage_capacity
         else:
             charging_cycles[storage_name] = 0
-    print(charging_cycles)
     return charging_cycles
 
 
@@ -88,7 +84,6 @@ def measure_flexibility(scenarios: list):
     results = pd.DataFrame(columns=scenarios)
 
     for scenario in scenarios:
-        print(scenario)
         SCENARIO_RESULTS = scenario_results_path(scenario)
         SCENARIO_META_INFO = scenario_path(scenario) / "meta_info"
 
@@ -109,7 +104,9 @@ def measure_flexibility(scenarios: list):
             index_col=0,
         )
         fed_in_at_negative_price, share_of_total_electricity_fed_in = (
-            calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles)
+            calculate_electricity_fed_in_at_negative_price_timesteps(
+                sequences, profiles
+            )
         )
         pyrolysis_full_load_hours = calculate_pyrolysis_full_load_hours(sequences)
 
@@ -131,9 +128,7 @@ def measure_flexibility(scenarios: list):
 
 if __name__ == "__main__":
     scenarios = [
-        "PyGas_1010",
-        "PyGas_505",
-        "PyGas_220",
-        "PyGas_126",
+        "scenario_1",
+        "scenario_2",
     ]
     measure_flexibility(scenarios)
