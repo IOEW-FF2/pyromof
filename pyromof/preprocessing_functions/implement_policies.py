@@ -98,7 +98,7 @@ def lump_sum_investment_subsidy_policy(
 ) -> pd.DataFrame:
 
     fix_subsidy = policies.loc[
-        policies["policy"] == "Subsidy for pyrolysis investment costs", "value 1"
+        policies["policy"] == "Subsidy for pyrolysis investment costs: lump sum", "value 1"
     ].values[0]
 
     converters.loc[(converters["label"] == "pyrolysis"), "capex"] = (
@@ -113,7 +113,7 @@ def percentage_investment_subsidy_policy(
 ) -> pd.DataFrame:
 
     percentage_subsidy = policies.loc[
-        policies["policy"] == "Percentage subsidy for pyrolysis investment costs", "value 1"
+        policies["policy"] == "Subsidy for pyrolysis investment costs: capex share", "value 1"
     ].values[0]
 
     converters.loc[(converters["label"] == "pyrolysis"), "capex"] = converters.loc[
@@ -128,24 +128,24 @@ def check_policy_choice_compatibility(activated_policies):
     if (
         ("feed in tariff" in activated_policies and "Sliding premium" in activated_policies)
         or (
-            "Subsidy for pyrolysis investment costs" in activated_policies
-            and "Percentage subsidy for pyrolysis investment costs" in activated_policies
+            "Subsidy for pyrolysis investment costs: lump sum" in activated_policies
+            and "Subsidy for pyrolysis investment costs: capex share" in activated_policies
         )
         or (
-            "electricity lump sum subsidy" in activated_policies
-            and "electricity percentage subsidy" in activated_policies
+            "Subsidy for electricity storage: lump sum" in activated_policies
+            and "Subsidy for electricity storage: capex share" in activated_policies
         )
         or (
-            "heat storage lump sum subsidy" in activated_policies
-            and "heat storage percentage subsidy" in activated_policies
+            "Subsidy for heat storage: lump sum" in activated_policies
+            and "Subsidy for heat storage: capex share" in activated_policies
         )
         or (
-            "hydrogen storage lump sum subsidy" in activated_policies
-            and "hydrogen storage percentage subsidy" in activated_policies
+            "Subsidy for hydrogen storage: lump sum" in activated_policies
+            and "Subsidy for hydrogen storage: capex share" in activated_policies
         )
         or (
-            "co2 storage lump sum subsidy" in activated_policies
-            and "co2 storage percentage subsidy" in activated_policies
+            "Subsidy for co2 storage: lump sum" in activated_policies
+            and "Subsidy for co2 storage: capex share" in activated_policies
         )
     ):
         raise ValueError(
@@ -170,13 +170,13 @@ def redefine_input_data_for_policies(data, activated_policies):
             data["profiles"],
         )
 
-    if "Subsidy for pyrolysis investment costs" in activated_policies:
+    if "Subsidy for pyrolysis investment costs: lump sum" in activated_policies:
         data["converters"] = lump_sum_investment_subsidy_policy(
             data["converters"],
             data["policies"],
         )
 
-    if "Percentage subsidy for pyrolysis investment costs" in activated_policies:
+    if "Subsidy for pyrolysis investment costs: capex share" in activated_policies:
         data["converters"] = percentage_investment_subsidy_policy(
             data["converters"],
             data["policies"],

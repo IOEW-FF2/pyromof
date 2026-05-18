@@ -5,16 +5,16 @@ def implement_storage_subsidies(data, active_policies):
 
     subsidy_configs = {
         "lump_sum": {
-            "electricity_storage": "electricity storage lump sum subsidy",
-            "heat_storage": "heat storage lump sum subsidy",
-            "h2_storage": "hydrogen storage lump sum subsidy",
-            "syngas_storage": "syngas storage lump sum subsidy",
+            "electricity_storage": "Subsidy for electricity storage: lump sum",
+            "heat_storage": "Subsidy for heat storage: lump sum",
+            "h2_storage": "Subsidy for hydrogen storage: lump sum",
+            "syngas_storage": "Subsidy for syngas storage: lump sum",
         },
         "percentage": {
-            "electricity_storage": "electricity storage percentage subsidy",
-            "heat_storage": "heat storage percentage subsidy",
-            "h2_storage": "hydrogen storage percentage subsidy",
-            "syngas_storage": "syngas storage percentage subsidy",
+            "electricity_storage": "Subsidy for electricity storage: percentage",
+            "heat_storage": "Subsidy for heat storage: percentage",
+            "h2_storage": "Subsidy for hydrogen storage: percentage",
+            "syngas_storage": "Subsidy for syngas storage: percentage",
         },
     }
 
