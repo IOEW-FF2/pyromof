@@ -7,7 +7,11 @@ from oemof.solph import EnergySystem
 from plotly.subplots import make_subplots
 
 from pyromof import helpers
-from pyromof.paths import scenario_dumping_space_path, scenario_results_path
+from pyromof.paths import (
+    scenario_dumping_space_path,
+    scenario_results_path,
+    scenario_meta_info_path,
+)
 
 
 def prepare_amount_sequences_for_plotting(RESULTS):
@@ -199,14 +203,18 @@ def plot_storage_content(storage_content, scenario, RESULTS):
     fig.write_html(os.path.join(RESULTS, "storage_content_{}.html".format(scenario)))
 
 
-def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS):
+def plot_demand_and_revenue_for_elec_and_heat(profiles, sinks, scenario, RESULTS):
     # Creates a line plot with the demand and revenue for electricity and heat over time
+    if profiles["sliding_premium_profile"].any():
+        profile_column = profiles["sliding_premium_profile"]
+    else:
+        profile_column = profiles[sinks.loc["electricity_grid", "variable_costs"]]
     fig = make_subplots(rows=2, cols=1)
 
     fig.add_trace(
         go.Scatter(
             x=profiles.index,
-            y=profiles["profile_electricity_remuneration"],
+            y=profile_column,
             mode="lines",
             line=dict(dash="solid"),
             name="Electricity revenue",
@@ -235,7 +243,9 @@ def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS):
 def plot(scenario, RESULTS):
     df_dict = prepare_cost_sequences_for_plotting(RESULTS)
     plot_cost_sequences(df_dict, scenario, RESULTS)
-    scalcosts = helpers.prepare_cost_scalars_for_plotting(RESULTS, "scalar_results.csv", scenario)
+    scalcosts = helpers.prepare_cost_scalars_for_plotting(
+        RESULTS, "scalar_results.csv", scenario
+    )
     plot_cost_scalars(scalcosts, scenario, RESULTS)
     sequences_in_kg, sequences_in_kWh = prepare_amount_sequences_for_plotting(RESULTS)
     plot_amount_sequences(sequences_in_kg, sequences_in_kWh, scenario, RESULTS)
@@ -246,10 +256,15 @@ def plot(scenario, RESULTS):
         parse_dates=True,
     )
     plot_storage_content(storage_contents, scenario, RESULTS)
-    profiles = pd.read_excel(
-        "input_data.xlsx", sheet_name="profiles", index_col=0, parse_dates=True
+    meta_info_dir = scenario_meta_info_path(scenario)
+    input_data_path = (
+        meta_info_dir / "input_preprocessed" / "input_data_with_applied_policies.xlsx"
     )
-    plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS)
+    profiles = pd.read_excel(
+        input_data_path, sheet_name="profiles", index_col=0, parse_dates=True
+    )
+    sinks = pd.read_excel(input_data_path, sheet_name="sinks", index_col=0)
+    plot_demand_and_revenue_for_elec_and_heat(profiles, sinks, scenario, RESULTS)
 
 
 def plot_sequences_and_scalars():
