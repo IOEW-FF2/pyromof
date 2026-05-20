@@ -172,20 +172,6 @@ def create_energysystem(
         )
         es.add(heat_demand_ht)
 
-    if "heat_demand_lt" in components:
-        row = sinks.loc[sinks.label == "heat_demand_lt", :]
-        heat_demand_lt = solph.components.Sink(
-            label="heat_demand_lt",
-            inputs={
-                busd[row.bus_in.item()]: solph.Flow(
-                    nominal_capacity=row.nominal_capacity.item(),
-                    fix=profiles[row.profile.item()],
-                    variable_costs=row.variable_costs.item(),
-                )
-            },
-        )
-        es.add(heat_demand_lt)
-
     if "oil_market" in components:
         row = sinks.loc[sinks.label == "oil_market", :]
         oil_market = solph.components.Sink(
@@ -312,10 +298,6 @@ def create_energysystem(
         es.add(orc)
 
     if "chp" in components:
-        # The chp can convert either hot or cold syngas. Because a single component which
-        # uses either one input or the other doesn't exist, this is simulated with two chps.
-        # For investment optimization, the two chps flow into one investment component instead
-        # of a separate investment in both.
         row = converters.loc[converters.label == "chp"]
         if row.investment.item() is True:
             epc = epcs["chp"]
@@ -444,13 +426,10 @@ def create_energysystem(
                     busd[row.bus_out_1.item()]: solph.Flow(
                         min=row.min_load_share.item(),  # Minimal load
                         max=1,  # A maximum is required for linearization
-                        # positive_gradient_limit=row.positive_gradient_limit.item(),
                         # A positive gradient limit isn't possible in investment
-                        # optimization. If it is activated, nominal_capacity becomes
-                        # a NoneType object.
+                        # optimization.
                         nonconvex=solph.NonConvex(
-                            # startup_costs in investment optimization
-                            # would make the model infeasible
+                            # Startup_costs cannot be set in investment optimization
                             minimum_downtime=int(row.minimum_downtime.item()),
                             initial_status=row.initial_status.item(),
                             maximum_startups=row.maximum_startups.item(),
@@ -504,47 +483,6 @@ def create_energysystem(
                     busd[row.bus_out_3.item()]: row.eff_out_3.item(),
                 },
             )
-            """
-            # Add a PiecewiseLinearTransformer which consumes biochar if little
-            # is produced (i.e. it has lower quality)
-            # Suppress warning that the slopes of two consecutive timesteps were 
-            # within 1e-08 of one another:
-
-            cap = row.nominal_capacity.item()
-            threshold = row.min_load_share.item()
-            breakpoints = np.array([0, 0.2*cap, 0.3*cap, 0.4*cap, cap])
-            x0 = 0.3*cap
-            x1 = 0.4*cap
-            m = x1 / (x1 - x0)
-            rates = np.array([0.0, 0.0, m, 1.0])
-
-            # Calculate function values at breakpoints
-            values = [0.0]
-            for i in range(len(rates)):
-                dx = breakpoints[i+1] - breakpoints[i]
-                values.append(values[-1] + rates[i] * dx)
-            values = np.array(values)
-            # values = np.array([0,0,0,0.4*cap,cap])
-            print(values)
-
-            def conversion_function(x):
-                return np.interp(x, breakpoints, values)
-
-            biochar_valuator = solph.components.experimental.PiecewiseLinearConverter(
-                label="biochar_valuator",
-                inputs={busd[row.bus_out_1.item()]: solph.Flow(
-                    nominal_capacity=row.nominal_capacity.item(),
-                    variable_costs=0
-                )},
-                outputs={busd["b_valuable_biochar"]: solph.Flow()},
-                in_breakpoints=[0, cap * 0.2, cap*0.4, cap*0.6,
-                            cap*0.8, cap],
-
-                conversion_function=lambda x: conversion_function(x),
-                pw_repn='CC'
-            )
-            es.add(biochar_valuator)
-            """
         es.add(pyrolysis)
 
     if "heat_exchanger" in components:
@@ -731,11 +669,7 @@ def create_energysystem(
     # STORAGE
 
     def instantiate_storage(row):
-        """
-        Instantiates the storage type provided in the given row of the dataframe "storage".
-        The investment variable is set to True in case one of the storage types has
-        investment optimization and is returned.
-        """
+
         if row.investment is True:
             label = row.label
             epc_nominal_storage_capacity = epcs[row.label]
@@ -814,9 +748,8 @@ def create_energysystem(
                 This constraint ensures that the ramping of the pyrolysis unit is limited according
                 to the positive_gradient_limit parameter.
                 The limitation is only enforced above the minimum load share to avoid conflicting
-                constraints in the case
-                positive_gradient_limit < minimum_load_share. The constraint is only active in
-                dispatch mode to keep the optimization problem linear.
+                constraints in the case positive_gradient_limit < minimum_load_share.
+                The constraint is only active in dispatch mode to keep the optimization problem linear.
                 """
                 if t == om.TIMESTEPS.first():
                     return Constraint.Skip
@@ -880,11 +813,8 @@ def create_energysystem(
             return limit_discharge
 
         for idx, (_, row) in enumerate(storage.iterrows()):
-            # Determine the label of the storage component
             label = row.label
-            # Find the storage component in the energy system
             storage_component = next(n for n in es.nodes if n.label == label)
-            # Get the bus objects for this storage
             bus_in = busd[row.bus_in]
             bus_out = busd[row.bus_out]
 
@@ -904,10 +834,7 @@ def create_energysystem(
                 ),
             )
 
-    # Tell the model to get the dual variables when solving
-    # om.receive_duals()
-
-    # Store lp file for debugging
+    # Store lp file
     file_path = os.path.join(META_INFO, "lp_file.lp")
     om.write(file_path, io_options={"symbolic_solver_labels": True})
 
@@ -928,10 +855,6 @@ def create_energysystem(
         print(
             f"Termination Condition: {om.solver_results.Solver.termination_condition}"
         )
-
-        # for c in om.component_data_objects(Constraint, active=True):
-        #    if c.body is not None:
-        #        print(c, c.body)
 
     elif om.solver_results.Solver.termination_condition == TerminationCondition.optimal:
         print("\n=== MODEL SOLVED SUCCESSFULLY ===")
@@ -963,9 +886,7 @@ def save_results(
     # Save model structure as a graph in the graphml format. Can be opened e.g. in Gephi.
     filename = os.path.join(META_INFO, "es_graph.graphml")
     create_nx_graph(es, filename=filename)
-    # Use tool from Fraunhofer to create more useful network graph
 
-    # get results from the solved model
     es.params = solph.processing.parameter_as_dict(es)
     es.results["main"] = solph.processing.results(om)
     es.results["meta"] = solph.processing.meta_results(om)
@@ -1000,7 +921,6 @@ def optimize():
     )
 
     # Save current input data version in the scenario folder
-    # (filtering them for the data used in the scenario would be better but is too much for now)
     shutil.copy("input_data.xlsx", os.path.join(META_INFO, "input_data.xlsx"))
 
     es, om = create_energysystem(

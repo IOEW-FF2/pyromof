@@ -14,7 +14,7 @@ def prepare_amount_sequences_for_plotting(RESULTS):
     """
     Reads the csv file with the sequences from the optimization results and splits it into
     2 according to the unit of the flows.
-    # TODO: Save input data in optimize.py and retrieve units from the input data
+    # TODO: Save units in input data  and retrieve read them here
     # instead of specifying them in the script.
     """
     amount_sequences = pd.read_csv(
