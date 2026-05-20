@@ -749,7 +749,8 @@ def create_energysystem(
                 to the positive_gradient_limit parameter.
                 The limitation is only enforced above the minimum load share to avoid conflicting
                 constraints in the case positive_gradient_limit < minimum_load_share.
-                The constraint is only active in dispatch mode to keep the optimization problem linear.
+                The constraint is only active in dispatch mode to keep the optimization
+                problem linear.
                 """
                 if t == om.TIMESTEPS.first():
                     return Constraint.Skip

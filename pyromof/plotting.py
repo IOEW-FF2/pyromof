@@ -215,9 +215,6 @@ def plot(scenario, RESULTS):
         parse_dates=True,
     )
     plot_storage_content(storage_contents, scenario, RESULTS)
-    profiles = pd.read_excel(
-        "input_data.xlsx", sheet_name="profiles", index_col=0, parse_dates=True
-    )
 
 
 def plot_sequences_and_scalars():
