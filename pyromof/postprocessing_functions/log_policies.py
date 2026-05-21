@@ -19,7 +19,7 @@ from pyromof.preprocessing_functions.implement_policies import (
 )
 
 
-def log_postprocessed_policies(data):
+def log_postprocessed_policies(data, scenario):
 
     activated_policies = (
         data["policies"].loc[data["policies"]["activate"] == "x", "policy"].dropna().tolist()
