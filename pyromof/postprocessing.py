@@ -13,8 +13,8 @@ from pyromof.paths import (
     scenario_path,
     scenario_results_path,
 )
-from pyromof.policies import postprocess_sliding_premium
-from pyromof.preprocessing_functions import preprocessing_input_data
+from pyromof.postprocessing_functions.log_policies import log_postprocessed_policies
+from pyromof.preprocessing_functions.implement_input_data_functions import preprocess
 
 
 def add_sums_to_scalar_results(data, description, scalar_results):
@@ -289,7 +289,7 @@ def calculate_exogenous_investment_costs(sequences, storage_contents, scenario):
 def postprocess(dumping_space: Path | None = None, results: Path | None = None):
 
     # Read out the scenario from the input data
-    input_data = preprocessing_input_data.read_raw_data("input_data.xlsx")
+    input_data = preprocess.read_raw_data("input_data.xlsx")
     scenario = (
         input_data["general"].loc[input_data["general"]["label"] == "scenario", "value"].item()
     )
@@ -370,7 +370,7 @@ def postprocess(dumping_space: Path | None = None, results: Path | None = None):
         df.to_csv(os.path.join(results, f"{key}.csv"), sep=";")
     print("The postprocessing is finished and the results have been saved.")
 
-    postprocess_sliding_premium.main(scenario)
+    log_postprocessed_policies(input_data)
 
     return result_dfs
 

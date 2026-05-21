@@ -5,7 +5,8 @@ import os
 
 import numpy as np
 import pandas as pd
-from pyromof.postprocessing_functions.implement_policies import feed_in_payment_sliding_premium
+
+from pyromof.preprocessing_functions.implement_policies import feed_in_payment_sliding_premium
 
 
 def receive_test_data(base_path):
