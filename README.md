@@ -4,7 +4,7 @@ Pyromof is an [oemof.solph](https://oemof-solph.readthedocs.io/en/stable/index.h
 The framework's purpose is to assess the profitability of different pyrolysis plants with different sets of flexibity-enhancing components under different policies. The following components are available:
 |sinks|sources|converter|storage|
 |-----|------|---------|--------|
-|markets for biochar, co2-certificats, heat, electricity, hydrogen, bio-oil|biomass, heat|biomass dryer, pyrolysis, combined heat and power, combustor, organic rankine cycle, power to heat, hydrogen extraction from syngas, heat exchanger, condensor|storage for syngas, heat, electricity and hydrogen|
+|markets for biochar, CO2 removal certificats, heat, electricity, hydrogen, bio-oil|biomass, heat|biomass dryer, pyrolysis, combined heat and power, combustor, organic rankine cycle, power to heat, hydrogen extraction from syngas, heat exchanger, condensor|storage for syngas, heat, electricity and hydrogen|
 
 Available policy options up to know are a fixed feed-in premium for electricity, a sliding premium for electricity and investment subsidies for pyrolysis. More will be implemented soon.
 
