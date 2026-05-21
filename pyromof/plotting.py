@@ -246,6 +246,10 @@ def plot(scenario, RESULTS):
         parse_dates=True,
     )
     plot_storage_content(storage_contents, scenario, RESULTS)
+    profiles = pd.read_excel(
+        "input_data.xlsx", sheet_name="profiles", index_col=0, parse_dates=True
+    )
+    plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS)
 
 
 def plot_sequences_and_scalars():
@@ -260,3 +264,7 @@ def plot_sequences_and_scalars():
     scenario = helpers.retreive_scenario_from_results(es)
 
     plot(scenario, RESULTS)
+
+
+if __name__ == "__main__":
+    plot_sequences_and_scalars()

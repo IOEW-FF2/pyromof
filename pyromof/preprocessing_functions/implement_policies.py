@@ -85,12 +85,12 @@ def sliding_premium_policy(data) -> tuple[pd.DataFrame, pd.DataFrame]:
     data["profiles"]["sliding_premium_profile"] = feed_in_revenue
     data["profiles"]["timeindex"] = data["profiles"].index
 
-    data["sink"].loc[
-        (data["sink"]["label"] == "electricity_grid"),
+    data["sinks"].loc[
+        (data["sinks"]["label"] == "electricity_grid"),
         "variable_costs",
     ] = "sliding_premium_profile"
 
-    return data["sink"], data["profiles"]
+    return data["sinks"], data["profiles"]
 
 
 def lump_sum_investment_subsidy_policy(
@@ -165,10 +165,7 @@ def redefine_input_data_for_policies(data, activated_policies):
             data["policies"],
         )
     if "Sliding premium" in activated_policies:
-        data["sinks"], data["profiles"] = sliding_premium_policy(
-            data["sinks"],
-            data["profiles"],
-        )
+        data["sinks"], data["profiles"] = sliding_premium_policy(data)
 
     if "Subsidy for pyrolysis investment costs: lump sum" in activated_policies:
         data["converters"] = lump_sum_investment_subsidy_policy(
