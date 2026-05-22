@@ -15,7 +15,7 @@ def receive_and_refine_electricity_price_data(profiles):
 
     timestamps = pd.to_datetime(profiles.index)
 
-    raw_data = profiles["electricity market price"]
+    raw_data = profiles["electricity market price"].copy()
 
     data_float = raw_data.astype(float)
 
@@ -211,8 +211,21 @@ def implement_policies(data, scenario) -> None:
     with pd.ExcelWriter(output_file) as writer:
         for table_name, table_data in data.items():
             table_data = table_data.replace({True: "True", False: "False"})
+
             if isinstance(table_data, pd.DataFrame):
-                table_data.to_excel(writer, sheet_name=table_name, index=False)
+                export_df = table_data.copy()
+
+                if isinstance(export_df.index, pd.DatetimeIndex):
+                    if export_df.index.name is None:
+                        export_df.index.name = "timeindex"
+
+                    export_df = export_df.reset_index()
+
+                export_df.to_excel(
+                    writer,
+                    sheet_name=table_name,
+                    index=False,
+                )
     return data
 
 

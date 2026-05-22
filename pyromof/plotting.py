@@ -205,7 +205,7 @@ def plot_storage_content(storage_content, scenario, RESULTS):
 
 def plot_demand_and_revenue_for_elec_and_heat(profiles, sinks, scenario, RESULTS):
     # Creates a line plot with the demand and revenue for electricity and heat over time
-    if profiles["sliding_premium_profile"].any():
+    if "sliding_premium_profile" in profiles.columns:
         profile_column = profiles["sliding_premium_profile"]
     else:
         profile_column = profiles[sinks.loc["electricity_grid", "variable_costs"]]
@@ -271,5 +271,8 @@ def plot_sequences_and_scalars():
     es = EnergySystem()
     es.restore(DUMPING_SPACE, "es_dump.oemof")
     scenario = helpers.retreive_scenario_from_results(es)
-
     plot(scenario, RESULTS)
+
+
+if __name__ == "__main__":
+    plot_sequences_and_scalars()
