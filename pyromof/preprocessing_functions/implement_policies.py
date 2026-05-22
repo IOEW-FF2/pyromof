@@ -15,7 +15,7 @@ def receive_and_refine_electricity_price_data(profiles):
 
     timestamps = pd.to_datetime(profiles.index)
 
-    raw_data = profiles["electricity market price"].copy()
+    raw_data = profiles["electricity market price"]
 
     data_float = raw_data.astype(float)
 
@@ -83,7 +83,6 @@ def sliding_premium_policy(data) -> tuple[pd.DataFrame, pd.DataFrame]:
     feed_in_revenue, _, _ = feed_in_payment_sliding_premium(data)
 
     data["profiles"]["sliding_premium_profile"] = feed_in_revenue
-    data["profiles"]["timeindex"] = data["profiles"].index
 
     data["sinks"].loc[
         (data["sinks"]["label"] == "electricity_grid"),
