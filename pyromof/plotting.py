@@ -7,14 +7,18 @@ from oemof.solph import EnergySystem
 from plotly.subplots import make_subplots
 
 from pyromof import helpers
-from pyromof.paths import scenario_dumping_space_path, scenario_results_path
+from pyromof.paths import (
+    scenario_dumping_space_path,
+    scenario_meta_info_path,
+    scenario_results_path,
+)
 
 
 def prepare_amount_sequences_for_plotting(RESULTS):
     """
     Reads the csv file with the sequences from the optimization results and splits it into
     2 according to the unit of the flows.
-    # TODO: Save units in input data  and retrieve read them here
+    # TODO: Save input data in optimize.py and retrieve units from the input data
     # instead of specifying them in the script.
     """
     amount_sequences = pd.read_csv(
@@ -199,14 +203,18 @@ def plot_storage_content(storage_content, scenario, RESULTS):
     fig.write_html(os.path.join(RESULTS, "storage_content_{}.html".format(scenario)))
 
 
-def plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS):
+def plot_demand_and_revenue_for_elec_and_heat(profiles, sinks, scenario, RESULTS):
     # Creates a line plot with the demand and revenue for electricity and heat over time
+    if profiles["sliding_premium_profile"].any():
+        profile_column = profiles["sliding_premium_profile"]
+    else:
+        profile_column = profiles[sinks.loc["electricity_grid", "variable_costs"]]
     fig = make_subplots(rows=2, cols=1)
 
     fig.add_trace(
         go.Scatter(
             x=profiles.index,
-            y=profiles["profile_electricity_remuneration"],
+            y=profile_column,
             mode="lines",
             line=dict(dash="solid"),
             name="Electricity revenue",
@@ -246,10 +254,11 @@ def plot(scenario, RESULTS):
         parse_dates=True,
     )
     plot_storage_content(storage_contents, scenario, RESULTS)
-    profiles = pd.read_excel(
-        "input_data.xlsx", sheet_name="profiles", index_col=0, parse_dates=True
-    )
-    plot_demand_and_revenue_for_elec_and_heat(profiles, scenario, RESULTS)
+    meta_info_dir = scenario_meta_info_path(scenario)
+    input_data_path = meta_info_dir / "input_preprocessed" / "input_data_with_applied_policies.xlsx"
+    profiles = pd.read_excel(input_data_path, sheet_name="profiles", index_col=0, parse_dates=True)
+    sinks = pd.read_excel(input_data_path, sheet_name="sinks", index_col=0)
+    plot_demand_and_revenue_for_elec_and_heat(profiles, sinks, scenario, RESULTS)
 
 
 def plot_sequences_and_scalars():
@@ -264,7 +273,3 @@ def plot_sequences_and_scalars():
     scenario = helpers.retreive_scenario_from_results(es)
 
     plot(scenario, RESULTS)
-
-
-if __name__ == "__main__":
-    plot_sequences_and_scalars()
