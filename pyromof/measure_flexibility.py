@@ -104,9 +104,7 @@ def measure_flexibility(scenarios: list):
             index_col=0,
         )
         fed_in_at_negative_price, share_of_total_electricity_fed_in = (
-            calculate_electricity_fed_in_at_negative_price_timesteps(
-                sequences, profiles
-            )
+            calculate_electricity_fed_in_at_negative_price_timesteps(sequences, profiles)
         )
         pyrolysis_full_load_hours = calculate_pyrolysis_full_load_hours(sequences)
 
